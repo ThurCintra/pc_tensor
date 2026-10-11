@@ -36,6 +36,8 @@ export const computerStatusDataSchema = z
   })
   .strict();
 
+export const deviceUnlinkedDataSchema = z.object({}).strict();
+
 export const errorCodeSchema = z.enum([
   'UNSUPPORTED_VERSION',
   'INVALID_MESSAGE',
@@ -57,5 +59,6 @@ export type StreamMode = z.infer<typeof streamModeSchema>;
 export type StreamModeData = z.infer<typeof streamModeDataSchema>;
 export type ComputerStatus = z.infer<typeof computerStatusSchema>;
 export type ComputerStatusData = z.infer<typeof computerStatusDataSchema>;
+export type DeviceUnlinkedData = z.infer<typeof deviceUnlinkedDataSchema>;
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 export type ErrorData = z.infer<typeof errorDataSchema>;

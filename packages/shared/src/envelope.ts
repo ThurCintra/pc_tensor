@@ -4,6 +4,7 @@ import { hardwareInfoDataSchema } from './hardware.js';
 import { metricsUpdateDataSchema } from './metrics.js';
 import {
   computerStatusDataSchema,
+  deviceUnlinkedDataSchema,
   errorDataSchema,
   streamModeDataSchema,
   subscribeDataSchema,
@@ -53,6 +54,11 @@ export const computerStatusEnvelopeSchema = baseEnvelope(
 
 export const errorEnvelopeSchema = baseEnvelope(z.literal('error'), errorDataSchema);
 
+export const deviceUnlinkedEnvelopeSchema = baseEnvelope(
+  z.literal('device:unlinked'),
+  deviceUnlinkedDataSchema,
+);
+
 export const envelopeSchema = z.discriminatedUnion('type', [
   hardwareInfoEnvelopeSchema,
   metricsUpdateEnvelopeSchema,
@@ -60,6 +66,7 @@ export const envelopeSchema = z.discriminatedUnion('type', [
   unsubscribeEnvelopeSchema,
   streamModeEnvelopeSchema,
   computerStatusEnvelopeSchema,
+  deviceUnlinkedEnvelopeSchema,
   errorEnvelopeSchema,
 ]);
 
@@ -70,6 +77,7 @@ export const messageTypeSchema = z.enum([
   'unsubscribe',
   'stream:mode',
   'computer:status',
+  'device:unlinked',
   'error',
 ]);
 
@@ -79,6 +87,7 @@ export type SubscribeEnvelope = z.infer<typeof subscribeEnvelopeSchema>;
 export type UnsubscribeEnvelope = z.infer<typeof unsubscribeEnvelopeSchema>;
 export type StreamModeEnvelope = z.infer<typeof streamModeEnvelopeSchema>;
 export type ComputerStatusEnvelope = z.infer<typeof computerStatusEnvelopeSchema>;
+export type DeviceUnlinkedEnvelope = z.infer<typeof deviceUnlinkedEnvelopeSchema>;
 export type ErrorEnvelope = z.infer<typeof errorEnvelopeSchema>;
 export type Envelope = z.infer<typeof envelopeSchema>;
 export type MessageType = z.infer<typeof messageTypeSchema>;

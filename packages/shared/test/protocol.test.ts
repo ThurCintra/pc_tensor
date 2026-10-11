@@ -99,6 +99,14 @@ describe('envelope', () => {
       },
       {
         v: 1,
+        type: 'device:unlinked',
+        id: MESSAGE_ID,
+        ts: TS,
+        computerId: COMPUTER_ID,
+        data: {},
+      },
+      {
+        v: 1,
         type: 'error',
         id: MESSAGE_ID,
         ts: TS,

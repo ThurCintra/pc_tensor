@@ -262,7 +262,7 @@ namespace PcSentinel.Protocol.Generated
 
     public enum Status { Offline, Online, Restarting, ShuttingDown, Suspended, Unlinked };
 
-    public enum TypeEnum { ComputerStatus, Error, HardwareInfo, MetricsUpdate, StreamMode, Subscribe, Unsubscribe };
+    public enum TypeEnum { ComputerStatus, DeviceUnlinked, Error, HardwareInfo, MetricsUpdate, StreamMode, Subscribe, Unsubscribe };
 
     public partial class Protocol
     {
@@ -560,6 +560,8 @@ namespace PcSentinel.Protocol.Generated
             {
                 case "computer:status":
                     return TypeEnum.ComputerStatus;
+                case "device:unlinked":
+                    return TypeEnum.DeviceUnlinked;
                 case "error":
                     return TypeEnum.Error;
                 case "hardware:info":
@@ -582,6 +584,9 @@ namespace PcSentinel.Protocol.Generated
             {
                 case TypeEnum.ComputerStatus:
                     JsonSerializer.Serialize(writer, "computer:status", options);
+                    return;
+                case TypeEnum.DeviceUnlinked:
+                    JsonSerializer.Serialize(writer, "device:unlinked", options);
                     return;
                 case TypeEnum.Error:
                     JsonSerializer.Serialize(writer, "error", options);

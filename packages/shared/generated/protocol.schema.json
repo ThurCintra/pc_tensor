@@ -724,6 +724,48 @@
         },
         "type": {
           "type": "string",
+          "const": "device:unlinked"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "computerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "replyTo": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "data": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "id",
+        "ts",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "v": {
+          "type": "number",
+          "const": 1
+        },
+        "type": {
+          "type": "string",
           "const": "error"
         },
         "id": {

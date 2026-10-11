@@ -111,4 +111,26 @@ public class ProtocolTests
         Assert.Equal((long?)25769803776, envelope.Data.Ram.AvailableBytes);
         Assert.Equal((double?)25.0, envelope.Data.Ram.Usage);
     }
+
+    [Fact]
+    public void DeviceUnlinked_Deserializes_And_Confirms_Values()
+    {
+        const string json = """
+            {
+              "v": 1,
+              "type": "device:unlinked",
+              "id": "123e4567-e89b-12d3-a456-426614174001",
+              "ts": "2026-01-01T00:00:00.000Z",
+              "computerId": "123e4567-e89b-12d3-a456-426614174000",
+              "data": {}
+            }
+            """;
+
+        var envelope = ProtocolModel.FromJson(json);
+
+        Assert.NotNull(envelope);
+        Assert.Equal(TypeEnum.DeviceUnlinked, envelope.Type);
+        Assert.Equal(Guid.Parse(MessageId), envelope.Id);
+        Assert.Equal(Guid.Parse(ComputerId), envelope.ComputerId);
+    }
 }
