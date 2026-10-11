@@ -9,18 +9,17 @@ export interface AuthRouteOptions {
   db: Database;
 }
 
-const authLimiter = new AttemptLimiter(10, 10 * 60 * 1000);
-
-function checkRateLimit(ip: string, email: string): void {
-  const ipAllowed = authLimiter.take(`auth:ip:${ip}`);
-  const emailAllowed = authLimiter.take(`auth:email:${email}`);
-  if (!ipAllowed || !emailAllowed) {
-    throw new AppError(429, 'RATE_LIMITED', 'Too many attempts, try again later');
-  }
-}
-
 export function authRoutes(app: FastifyInstance, options: AuthRouteOptions): void {
   const { db } = options;
+  const authLimiter = new AttemptLimiter(10, 10 * 60 * 1000);
+
+  function checkRateLimit(ip: string, email: string): void {
+    const ipAllowed = authLimiter.take(`auth:ip:${ip}`);
+    const emailAllowed = authLimiter.take(`auth:email:${email}`);
+    if (!ipAllowed || !emailAllowed) {
+      throw new AppError(429, 'RATE_LIMITED', 'Too many attempts, try again later');
+    }
+  }
 
   app.post('/register', async (request, reply) => {
     const parsed = registerSchema.safeParse(request.body);

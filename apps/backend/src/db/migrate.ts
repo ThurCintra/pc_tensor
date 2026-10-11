@@ -29,7 +29,7 @@ function loadLocalEnv(): void {
   }
 }
 
-async function migrate(databaseUrl: string): Promise<void> {
+export async function migrate(databaseUrl: string): Promise<void> {
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
   try {
@@ -75,7 +75,10 @@ async function main(): Promise<void> {
   await migrate(databaseUrl);
 }
 
-void main().catch((error: unknown) => {
-  console.error(error);
-  process.exit(1);
-});
+const invokedAsScript = (process.argv[1] ?? '').replace(/\\/g, '/').endsWith('/migrate.ts');
+if (invokedAsScript) {
+  void main().catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

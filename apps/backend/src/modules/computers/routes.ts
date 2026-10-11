@@ -22,8 +22,6 @@ const renameSchema = z
   })
   .strict();
 
-const linkLimiter = new AttemptLimiter(5, 10 * 60 * 1000);
-
 function parseId(raw: string): string {
   if (!computerIdSchema.safeParse(raw).success) {
     throw new AppError(404, 'NOT_FOUND', 'Computer not found');
@@ -33,6 +31,7 @@ function parseId(raw: string): string {
 
 export function computerRoutes(app: FastifyInstance, options: ComputerRouteOptions): void {
   const { db } = options;
+  const linkLimiter = new AttemptLimiter(5, 10 * 60 * 1000);
 
   app.post('/link', { preHandler: app.authenticate }, async (request, reply) => {
     const parsed = linkSchema.safeParse(request.body);
