@@ -4,6 +4,7 @@ import type { Database } from '../../db.js';
 import { auditLog, refreshTokens, users } from '../../db/schema.js';
 import { AppError } from '../../errors.js';
 import { randomTokenHex, sha256Hex } from '../../lib/crypto.js';
+import { isUniqueViolation } from '../../lib/db-errors.js';
 import { hashPassword, verifyPassword } from '../../lib/password.js';
 import type { LoginInput, RegisterInput } from './schemas.js';
 
@@ -19,12 +20,6 @@ type UserRow = typeof users.$inferSelect;
 
 function toPublicUser(row: UserRow): PublicUser {
   return { id: row.id, email: row.email, createdAt: row.createdAt };
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
-  );
 }
 
 async function writeAudit(

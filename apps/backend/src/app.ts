@@ -9,6 +9,8 @@ import type { AppConfig } from './config.js';
 import type { Database } from './db.js';
 import { AppError, errorHandler } from './errors.js';
 import { authRoutes } from './modules/auth/routes.js';
+import { computerRoutes } from './modules/computers/routes.js';
+import { pairingRoutes } from './modules/pairing/routes.js';
 import { userRoutes } from './modules/users/routes.js';
 import './types.js';
 
@@ -80,6 +82,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
 
   await app.register(authRoutes, { prefix: '/v1/auth', db });
   await app.register(userRoutes, { prefix: '/v1/users', db });
+  await app.register(computerRoutes, { prefix: '/v1/computers', db });
+  await app.register(pairingRoutes, { prefix: '/v1/agent', db });
 
   return app;
 }

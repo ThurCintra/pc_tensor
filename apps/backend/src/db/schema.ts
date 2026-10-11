@@ -46,6 +46,7 @@ export const agentCredentials = pgTable('agent_credential', {
 export const pairingCodes = pgTable('pairing_code', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  computerId: uuid('computer_id').references(() => computers.id, { onDelete: 'cascade' }),
   codeHash: text('code_hash').notNull().unique(),
   pollSecretHash: text('poll_secret_hash').notNull().unique(),
   nameHint: text('name_hint'),

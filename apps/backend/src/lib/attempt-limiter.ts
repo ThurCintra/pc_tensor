@@ -21,4 +21,10 @@ export class AttemptLimiter {
   reset(key: string): void {
     this.attempts.delete(key);
   }
+
+  isLimited(key: string, now: number = Date.now()): boolean {
+    const cutoff = now - this.windowMs;
+    const recent = (this.attempts.get(key) ?? []).filter((timestamp) => timestamp > cutoff);
+    return recent.length >= this.limit;
+  }
 }
