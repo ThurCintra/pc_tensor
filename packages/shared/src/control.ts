@@ -36,7 +36,9 @@ export const computerStatusDataSchema = z
   })
   .strict();
 
-export const deviceUnlinkedDataSchema = z.object({}).strict();
+export const deviceUnlinkedDataSchema: z.ZodType<Record<string, never>> = z
+  .object({})
+  .strict();
 
 export const errorCodeSchema = z.enum([
   'UNSUPPORTED_VERSION',
