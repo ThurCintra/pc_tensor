@@ -1,11 +1,12 @@
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
-import { createPool } from './db.js';
+import { createDb, createPool } from './db.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const pool = createPool(config.DATABASE_URL);
-  const app = await buildApp({ config, pool });
+  const db = createDb(pool);
+  const app = await buildApp({ config, pool, db });
 
   const close = async (): Promise<void> => {
     await app.close();

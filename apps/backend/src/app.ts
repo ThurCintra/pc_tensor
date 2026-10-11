@@ -1,18 +1,31 @@
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import fastifyJwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Pool } from 'pg';
+import { z } from 'zod';
 import type { AppConfig } from './config.js';
+import type { Database } from './db.js';
 import { AppError, errorHandler } from './errors.js';
+import { authRoutes } from './modules/auth/routes.js';
+import { userRoutes } from './modules/users/routes.js';
+import './types.js';
 
 export interface BuildAppOptions {
   config: AppConfig;
   pool: Pool;
+  db: Database;
 }
 
+const accessTokenPayloadSchema = z
+  .object({
+    sub: z.uuid(),
+  })
+  .strict();
+
 export async function buildApp(options: BuildAppOptions): Promise<FastifyInstance> {
-  const { config, pool } = options;
+  const { config, pool, db } = options;
 
   const app = Fastify({
     logger: { level: config.LOG_LEVEL },
@@ -30,6 +43,29 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       error: { code: 'RATE_LIMITED', message: 'Too many requests' },
     }),
   });
+  await app.register(fastifyJwt, {
+    secret: config.JWT_SECRET,
+    sign: { expiresIn: '15m' },
+  });
+
+  app.decorate('authenticate', (request) => {
+    const header = request.headers.authorization;
+    if (header === undefined || !header.startsWith('Bearer ')) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Missing access token');
+    }
+    const token = header.slice('Bearer '.length).trim();
+    let payload: unknown;
+    try {
+      payload = app.jwt.verify(token);
+    } catch {
+      throw new AppError(401, 'UNAUTHORIZED', 'Invalid access token');
+    }
+    const parsed = accessTokenPayloadSchema.safeParse(payload);
+    if (!parsed.success) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Invalid access token');
+    }
+    request.userId = parsed.data.sub;
+  });
 
   app.setErrorHandler(errorHandler);
 
@@ -41,6 +77,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     }
     return { status: 'ok' };
   });
+
+  await app.register(authRoutes, { prefix: '/v1/auth', db });
+  await app.register(userRoutes, { prefix: '/v1/users', db });
 
   return app;
 }
