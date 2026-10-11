@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.env
+*.log
+.DS_Store
+pnpm-store/
+
+# .NET
+apps/agent/**/bin/
+apps/agent/**/obj/
+*.user
+.vs/
