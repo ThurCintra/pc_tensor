@@ -16,4 +16,10 @@ contextBridge.exposeInMainWorld('sentinelAPI', {
 
   // Snapshot manual sob demanda
   fetchSnapshot: () => ipcRenderer.invoke('metrics:snapshot'),
+
+  // Alterna Modo Mini-Widget flutuante compacto
+  toggleMiniWidget: (toMini) => ipcRenderer.invoke('window:toggle-mini-widget', toMini),
+
+  // Inventário completo e estático de hardware (Raio-X do PC)
+  getHardwareInfo: (forceRefresh) => ipcRenderer.invoke('hardware:info', forceRefresh),
 });

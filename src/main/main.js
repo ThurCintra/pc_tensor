@@ -27,13 +27,16 @@ function isServerReachable(url) {
   });
 }
 
+let isMiniWidget = false;
+let normalBounds = { width: 1100, height: 750 };
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 750,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#07090e',
+    backgroundColor: '#0B0F19',
     title: 'PC Sentinel - Hardware & Thermal Telemetry',
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
@@ -57,7 +60,6 @@ async function createWindow() {
     await mainWindow.loadFile(bootstrapPath);
   }
 
-
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -79,6 +81,41 @@ function setupIpc() {
       await mobileServer.stop();
       return await mobileServer.getServerInfo();
     }
+  });
+
+  ipcMain.handle('hardware:info', async (event, forceRefresh) => {
+    return await collector.getHardwareInfo(forceRefresh);
+  });
+
+  ipcMain.handle('window:toggle-mini-widget', async (event, toMini) => {
+    if (!mainWindow) return false;
+    isMiniWidget = typeof toMini === 'boolean' ? toMini : !isMiniWidget;
+
+    if (isMiniWidget) {
+      const bounds = mainWindow.getBounds();
+      normalBounds = { width: bounds.width, height: bounds.height, x: bounds.x, y: bounds.y };
+
+      mainWindow.setAlwaysOnTop(true, 'screen-saver');
+      mainWindow.setMinimumSize(320, 68);
+      mainWindow.setSize(330, 72);
+      try {
+        const { screen } = require('electron');
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { width } = primaryDisplay.workAreaSize;
+        mainWindow.setPosition(width - 350, 40);
+      } catch (e) {}
+    } else {
+      mainWindow.setAlwaysOnTop(false);
+      mainWindow.setMinimumSize(900, 600);
+      mainWindow.setSize(normalBounds.width || 1100, normalBounds.height || 750);
+      if (normalBounds.x && normalBounds.y) {
+        mainWindow.setPosition(normalBounds.x, normalBounds.y);
+      } else {
+        mainWindow.center();
+      }
+    }
+
+    return isMiniWidget;
   });
 }
 
