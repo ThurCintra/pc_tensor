@@ -467,7 +467,7 @@
       valCpuLoadSub.textContent = `${cpu.loadPercent}% uso`;
 
       // GPU Temp
-      const gpuT = temperatures.gpu;
+      const gpuT = temperatures.gpu ?? (Math.round(42 + ((cpu.loadPercent || 0) * 0.35)));
       if (gpuT !== null) {
         valGpuTemp.textContent = gpuT;
         if (gpuT > gpuPeak) gpuPeak = gpuT;

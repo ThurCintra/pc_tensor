@@ -3,10 +3,29 @@ const path = require('path');
 const { SystemCollector } = require('./collector');
 const { MobileLiveServer } = require('../server/mobile-server');
 
+// Otimizações de processo: desativa processos sobressalentes do Chromium
+app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+
 let mainWindow = null;
 let collector = null;
 let mobileServer = null;
 let metricsInterval = null;
+let isCollecting = false;
+
+const http = require('http');
+const fs = require('fs');
+
+function isServerReachable(url) {
+  return new Promise((resolve) => {
+    const req = http.get(url, () => resolve(true));
+    req.on('error', () => resolve(false));
+    req.setTimeout(800, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
@@ -24,17 +43,20 @@ async function createWindow() {
     autoHideMenuBar: true,
   });
 
-  // Em desenvolvimento, tenta conectar ao servidor Vite ou carrega index local
   const devUrl = 'http://localhost:5173';
-  try {
+  const distPath = path.join(__dirname, '../../dist/index.html');
+  const bootstrapPath = path.join(__dirname, '../server/public/index.html');
+
+  const isViteUp = await isServerReachable(devUrl);
+
+  if (isViteUp) {
     await mainWindow.loadURL(devUrl);
-  } catch (e) {
-    // Fallback se o servidor vite ainda estiver subindo ou for build estático
-    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html')).catch(() => {
-      // Caso ainda não tenha build, exibe página de bootstrap
-      mainWindow.loadFile(path.join(__dirname, '../server/public/index.html'));
-    });
+  } else if (fs.existsSync(distPath)) {
+    await mainWindow.loadFile(distPath);
+  } else if (fs.existsSync(bootstrapPath)) {
+    await mainWindow.loadFile(bootstrapPath);
   }
+
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -61,7 +83,9 @@ function setupIpc() {
 }
 
 function startMetricsLoop() {
-  metricsInterval = setInterval(async () => {
+  const tickMetrics = async () => {
+    if (isCollecting) return;
+    isCollecting = true;
     try {
       const metrics = await collector.getMetricsSnapshot();
 
@@ -74,8 +98,13 @@ function startMetricsLoop() {
       mobileServer.broadcastMetrics(metrics);
     } catch (err) {
       console.error('Erro no loop de métricas:', err);
+    } finally {
+      isCollecting = false;
     }
-  }, 1000); // Taxa de atualização: a cada 1 segundo
+  };
+
+  tickMetrics();
+  metricsInterval = setInterval(tickMetrics, 1200);
 }
 
 app.whenReady().then(async () => {

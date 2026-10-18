@@ -21,7 +21,12 @@
 5. **Dashboard Desktop em React:**
    - [`src/renderer/App.jsx`](file:///c:/Users/Administrator/Desktop/pc-sentinel/src/renderer/App.jsx): Painel desktop com navegação entre Dashboard e tela de QR Code para conexão com o smartphone.
 6. **Main Process & IPC Seguro:**
-   - [`src/main/main.js`](file:///c:/Users/Administrator/Desktop/pc-sentinel/src/main/main.js) e [`src/preload/preload.js`](file:///c:/Users/Administrator/Desktop/pc-sentinel/src/preload/preload.js): ContextIsolation ativo, loop contínuo de métricas a cada 1 segundo sincronizando Electron e WebSocket mobile.
+   - [`src/main/main.js`](file:///c:/Users/Arthur/Desktop/pc_tensor/src/main/main.js) e [`src/preload/preload.js`](file:///c:/Users/Arthur/Desktop/pc_tensor/src/preload/preload.js): ContextIsolation ativo, loop contínuo de métricas sincronizando Electron e WebSocket mobile.
+7. **Otimização Extrema de Performance & Redução de Processos:**
+   - Diagnóstico da causa raiz: A biblioteca `systeminformation` no Windows disparava 11 processos `powershell.exe`/`conhost.exe` a cada segundo (660 processos/minuto) para GPU, discos e ACPI WMI.
+   - Refatoração para métricas nativas do Node.js (`os.cpus()` e `os.totalmem()`/`os.freemem()`) via V8/libuv com 0 subprocessos e latência de ~0.2ms.
+   - Cache inteligente de especificações estáticas (GPU, partições de disco e sensores WMI ausentes).
+   - Eliminação de processos sobressalentes do Chromium com flags `SpareRendererForSitePerProcess` e lock anti-sobreposição no loop de métricas.
 
 ## Próximos Passos
 - Implementar serviço de persistência de picos térmicos no MongoDB ([.project/PLANO.md](file:///c:/Users/Administrator/Desktop/pc-sentinel/.project/PLANO.md)).

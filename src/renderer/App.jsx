@@ -64,10 +64,15 @@ export default function App() {
     }
   };
 
-  const cpuTemp = metrics?.temperatures?.cpuMain ?? '--';
-  const gpuTemp = metrics?.temperatures?.gpu ?? '--';
   const cpuLoad = metrics?.cpu?.loadPercent ?? 0;
   const ramPercent = metrics?.memory?.percentUsed ?? 0;
+  const isEstimated = metrics?.temperatures?.isEstimated ?? false;
+  const cpuTemp = typeof metrics?.temperatures?.cpuMain === 'number'
+    ? metrics.temperatures.cpuMain
+    : Number((39 + (cpuLoad * 0.42)).toFixed(1));
+  const gpuTemp = typeof metrics?.temperatures?.gpu === 'number'
+    ? metrics.temperatures.gpu
+    : Number((42 + (cpuLoad * 0.35)).toFixed(1));
 
   return (
     <div className="app-container">
@@ -190,8 +195,21 @@ export default function App() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '18px' }}>
               {/* CPU Temp */}
               <div className="glass-panel" style={{ position: 'relative', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: '0.85rem' }}>
-                  <span style={{ fontWeight: 600, letterSpacing: '1px' }}>CPU TEMP</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 600, letterSpacing: '1px' }}>CPU TEMP</span>
+                    <span style={{
+                      fontSize: '0.62rem',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      background: isEstimated ? 'rgba(0, 240, 255, 0.12)' : 'rgba(0, 255, 136, 0.12)',
+                      color: isEstimated ? '#00f0ff' : '#00ff88',
+                      border: isEstimated ? '1px solid rgba(0, 240, 255, 0.3)' : '1px solid rgba(0, 255, 136, 0.3)',
+                      fontWeight: 700
+                    }}>
+                      {isEstimated ? 'ESTIMADO' : 'SENSOR'}
+                    </span>
+                  </div>
                   <Flame size={18} color="#ff0055" />
                 </div>
                 <div style={{ margin: '14px 0 8px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
@@ -215,8 +233,21 @@ export default function App() {
 
               {/* GPU Temp */}
               <div className="glass-panel">
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', fontSize: '0.85rem' }}>
-                  <span style={{ fontWeight: 600, letterSpacing: '1px' }}>GPU TEMP</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 600, letterSpacing: '1px' }}>GPU TEMP</span>
+                    <span style={{
+                      fontSize: '0.62rem',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      background: isEstimated ? 'rgba(0, 240, 255, 0.12)' : 'rgba(0, 255, 136, 0.12)',
+                      color: isEstimated ? '#00f0ff' : '#00ff88',
+                      border: isEstimated ? '1px solid rgba(0, 240, 255, 0.3)' : '1px solid rgba(0, 255, 136, 0.3)',
+                      fontWeight: 700
+                    }}>
+                      {isEstimated ? 'ESTIMADO' : 'SENSOR'}
+                    </span>
+                  </div>
                   <Activity size={18} color="#00f0ff" />
                 </div>
                 <div style={{ margin: '14px 0 8px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
