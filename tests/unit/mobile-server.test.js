@@ -58,4 +58,69 @@ describe('MobileLiveServer', () => {
 
     client.close();
   });
+
+  it('deve fornecer endpoint REST /api/hardware e /api/metrics', async () => {
+    const mockCollector = {
+      getHardwareInfo: async () => ({
+        os: { osName: 'Test OS', arch: 'x64' },
+        cpu: { name: 'Test CPU', cores: 8 },
+        ram: { totalBytes: 16 * 1024 * 1024 * 1024 },
+      }),
+      getMetricsSnapshot: async () => ({
+        temperatures: { cpuMain: 45.0, gpu: 40.0 },
+        cpu: { loadPercent: 20.0 },
+      }),
+    };
+
+    serverInstance = new MobileLiveServer({ port: 3897, collector: mockCollector });
+    await serverInstance.start();
+
+    // Teste REST /api/hardware
+    const hwRes = await fetch('http://127.0.0.1:3897/api/hardware');
+    expect(hwRes.status).toBe(200);
+    const hwData = await hwRes.json();
+    expect(hwData.os.osName).toBe('Test OS');
+    expect(hwData.cpu.name).toBe('Test CPU');
+
+    // Teste REST /api/metrics
+    const metricsRes = await fetch('http://127.0.0.1:3897/api/metrics');
+    expect(metricsRes.status).toBe(200);
+    const metricsData = await metricsRes.json();
+    expect(metricsData.temperatures.cpuMain).toBe(45.0);
+
+    // Teste REST /api/server/toggle
+    const toggleRes = await fetch('http://127.0.0.1:3897/api/server/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shouldStart: true }),
+    });
+    expect(toggleRes.status).toBe(200);
+  });
+
+  it('deve responder à requisição get_hardware via WebSocket', async () => {
+    const mockCollector = {
+      getHardwareInfo: async () => ({
+        cpu: { name: 'Ryzen 9 7950X' },
+      }),
+      getMetricsSnapshot: async () => ({}),
+    };
+
+    serverInstance = new MobileLiveServer({ port: 3896, collector: mockCollector });
+    await serverInstance.start();
+
+    const client = new WebSocket('ws://127.0.0.1:3896');
+    await new Promise((resolve) => client.on('open', resolve));
+
+    const received = [];
+    client.on('message', (d) => received.push(JSON.parse(d.toString())));
+
+    client.send(JSON.stringify({ type: 'get_hardware' }));
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    const hwMsg = received.find((m) => m.type === 'hardware_update');
+    expect(hwMsg).toBeDefined();
+    expect(hwMsg.data.cpu.name).toBe('Ryzen 9 7950X');
+
+    client.close();
+  });
 });

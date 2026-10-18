@@ -43,8 +43,22 @@ export function HardwareSpecsView({ initialInfo = null }) {
         const data = await window.sentinelAPI.getHardwareInfo(forceRefresh);
         setInfo(data);
       } else {
-        // Fallback para modo mock de navegador
-        setTimeout(() => {
+        // Modo Web: tenta buscar especificações reais da API REST
+        let fetchedData = null;
+        try {
+          const host = window.location.hostname || '127.0.0.1';
+          const res = await fetch(`http://${host}:3890/api/hardware${forceRefresh ? '?forceRefresh=true' : ''}`);
+          if (res.ok) {
+            fetchedData = await res.json();
+          }
+        } catch (netErr) {
+          console.warn('API /api/hardware não disponível, usando fallback:', netErr);
+        }
+
+        if (fetchedData) {
+          setInfo(fetchedData);
+        } else {
+          // Fallback para modo mock de navegador
           setInfo({
             os: {
               osName: 'Microsoft Windows 11 Home',
@@ -126,8 +140,7 @@ export function HardwareSpecsView({ initialInfo = null }) {
               perCoreLoad: true,
             },
           });
-          setLoading(false);
-        }, 400);
+        }
       }
     } catch (e) {
       console.error('Falha ao carregar hardware info:', e);

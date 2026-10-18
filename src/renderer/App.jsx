@@ -12,7 +12,9 @@ import {
   ExternalLink,
   ShieldCheck,
   Server,
-  Cpu
+  Cpu,
+  Copy,
+  Check
 } from 'lucide-react';
 
 import { BentoCard } from './components/ui/BentoCard';
@@ -30,12 +32,37 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileServerRunning, setIsMobileServerRunning] = useState(true);
   const [isMiniMode, setIsMiniMode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [history, setHistory] = useState([]);
+
+  const handleCopyLink = () => {
+    const url = mobileInfo?.url || 'http://192.168.100.85:3890';
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
 
   // Buffer circular deslizante de 30 minutos em memória
   const maxHistoryPoints = 60; // Amostragem temporal
 
   useEffect(() => {
+    const handleNewMetrics = (data) => {
+      setMetrics(data);
+
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const cpuT = typeof data?.temperatures?.cpuMain === 'number'
+        ? data.temperatures.cpuMain
+        : Number((39 + ((data?.cpu?.loadPercent || 0) * 0.42)).toFixed(1));
+      const load = data?.cpu?.loadPercent || 0;
+
+      setHistory((prev) => {
+        const next = [...prev, { temp: cpuT, load, time: timeStr }];
+        if (next.length > maxHistoryPoints) next.shift();
+        return next;
+      });
+    };
+
     if (window.sentinelAPI) {
       window.sentinelAPI.getMobileServerInfo().then((info) => {
         setMobileInfo(info);
@@ -43,34 +70,37 @@ export default function App() {
       });
 
       const unsubscribe = window.sentinelAPI.onMetricsUpdate((data) => {
-        setMetrics(data);
-
-        // Atualiza histórico contínuo
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        const cpuT = typeof data?.temperatures?.cpuMain === 'number'
-          ? data.temperatures.cpuMain
-          : Number((39 + ((data?.cpu?.loadPercent || 0) * 0.42)).toFixed(1));
-        const load = data?.cpu?.loadPercent || 0;
-
-        setHistory((prev) => {
-          const next = [...prev, { temp: cpuT, load, time: timeStr }];
-          if (next.length > maxHistoryPoints) next.shift();
-          return next;
-        });
+        handleNewMetrics(data);
       });
 
       return () => {
         if (unsubscribe) unsubscribe();
       };
     } else {
-      // Modo Mock isolado para testes
-      const timer = setInterval(() => {
+      // Modo Web: Conecta ao WebSocket do backend Sentinel e consulta REST APIs
+      const host = window.location.hostname || '127.0.0.1';
+
+      fetch(`http://${host}:3890/api/info`)
+        .then((res) => res.json())
+        .then((info) => {
+          setMobileInfo(info);
+          setIsMobileServerRunning(info.isRunning);
+        })
+        .catch(() => {});
+
+      let ws = null;
+      let reconnectTimer = null;
+      let mockTimer = null;
+      let receivedLiveStream = false;
+
+      // Inicia com fallback mock inicial que é desativado assim que a telemetria ao vivo chegar
+      mockTimer = setInterval(() => {
+        if (receivedLiveStream) {
+          clearInterval(mockTimer);
+          return;
+        }
         const dummyLoad = Math.round(25 + Math.random() * 35);
         const dummyTemp = Number((42 + dummyLoad * 0.38 + (Math.random() * 1.5)).toFixed(1));
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
         const mockData = {
           timestamp: Date.now(),
           temperatures: {
@@ -86,25 +116,67 @@ export default function App() {
           fan: { rpm: 1150 + dummyLoad * 14, pwmPercent: 48 + Math.round(dummyLoad * 0.4), maxRpm: 2400 },
           diskIo: { readMBps: 18.4, writeMBps: 6.2 },
         };
-
-        setMetrics(mockData);
-        setHistory((prev) => {
-          const next = [...prev, { temp: dummyTemp, load: dummyLoad, time: timeStr }];
-          if (next.length > maxHistoryPoints) next.shift();
-          return next;
-        });
+        handleNewMetrics(mockData);
       }, 1200);
 
-      return () => clearInterval(timer);
+      const connectWebSocket = () => {
+        try {
+          ws = new WebSocket(`ws://${host}:3890`);
+          ws.onmessage = (event) => {
+            try {
+              const msg = JSON.parse(event.data);
+              if (msg.type === 'metrics_update' && msg.data) {
+                receivedLiveStream = true;
+                if (mockTimer) clearInterval(mockTimer);
+                handleNewMetrics(msg.data);
+              }
+            } catch (e) {}
+          };
+
+          ws.onclose = () => {
+            reconnectTimer = setTimeout(connectWebSocket, 2000);
+          };
+
+          ws.onerror = () => {
+            try { ws.close(); } catch (e) {}
+          };
+        } catch (e) {
+          reconnectTimer = setTimeout(connectWebSocket, 2000);
+        }
+      };
+
+      connectWebSocket();
+
+      return () => {
+        if (ws) ws.close();
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        if (mockTimer) clearInterval(mockTimer);
+      };
     }
   }, []);
 
   const handleToggleMobileServer = async () => {
+    const nextState = !isMobileServerRunning;
     if (window.sentinelAPI) {
-      const nextState = !isMobileServerRunning;
       const updatedInfo = await window.sentinelAPI.toggleMobileServer(nextState);
       setMobileInfo(updatedInfo);
       setIsMobileServerRunning(updatedInfo.isRunning);
+    } else {
+      try {
+        const host = window.location.hostname || '127.0.0.1';
+        const res = await fetch(`http://${host}:3890/api/server/toggle`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shouldStart: nextState }),
+        });
+        if (res.ok) {
+          const updatedInfo = await res.json();
+          setMobileInfo(updatedInfo);
+          setIsMobileServerRunning(updatedInfo.isRunning);
+        }
+      } catch (e) {
+        console.error('Falha ao alternar streaming mobile:', e);
+      }
     }
   };
 
@@ -122,6 +194,8 @@ export default function App() {
   const cpuLoad = metrics?.cpu?.loadPercent ?? 0;
   const ramPercent = metrics?.memory?.percentUsed ?? 0;
   const isEstimated = metrics?.temperatures?.isEstimated ?? false;
+  const isCpuEstimated = metrics?.temperatures?.isCpuEstimated ?? isEstimated;
+  const isGpuEstimated = metrics?.temperatures?.isGpuEstimated ?? false;
   const cpuTemp = typeof metrics?.temperatures?.cpuMain === 'number'
     ? metrics.temperatures.cpuMain
     : Number((39 + (cpuLoad * 0.42)).toFixed(1));
@@ -373,6 +447,8 @@ export default function App() {
                 cpuModel={cpuModelName}
                 gpuModel={metrics?.temperatures?.gpuName || 'GPU Primária'}
                 isEstimated={isEstimated}
+                isCpuEstimated={isCpuEstimated}
+                isGpuEstimated={isGpuEstimated}
               />
 
               {/* Zona 2 (6 colunas): Gráfico de Tendência Temporal 30 Minutos */}
@@ -496,10 +572,10 @@ export default function App() {
               </div>
 
               <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#F3F4F6', marginBottom: '6px' }}>
-                PAREAMENTO COM DISPOSITIVO MÓVEL
+                PAREAMENTO COM SMARTPHONE OU OUTRO COMPUTADOR
               </h2>
-              <p style={{ color: '#9CA3AF', fontSize: '0.88rem', marginBottom: '20px', maxWidth: '480px' }}>
-                Conecte seu smartphone na mesma rede Wi-Fi que este computador e escaneie o QR Code abaixo com a câmera.
+              <p style={{ color: '#9CA3AF', fontSize: '0.88rem', marginBottom: '20px', maxWidth: '520px' }}>
+                Conecte seu smartphone ou qualquer outro PC na mesma rede (Wi-Fi ou Cabo) para acompanhar toda a telemetria ao vivo pelo navegador.
               </p>
 
               {/* QR Code Container */}
@@ -526,23 +602,31 @@ export default function App() {
               )}
 
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '0.72rem', color: '#6B7280', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Ou abra diretamente no navegador do seu smartphone:
+                <div style={{ fontSize: '0.72rem', color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Ou abra no navegador do celular ou de qualquer outro PC na mesma rede:
                 </div>
-                <div
+                <button
+                  onClick={handleCopyLink}
+                  title="Clique para copiar o link para a área de transferência"
                   style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: '1rem',
-                    color: '#00F0FF',
-                    background: 'rgba(13, 17, 23, 0.8)',
-                    display: 'inline-block',
-                    padding: '6px 16px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(0, 240, 255, 0.2)',
+                    fontSize: '0.95rem',
+                    color: copiedLink ? '#10B981' : '#00F0FF',
+                    background: copiedLink ? 'rgba(16, 185, 129, 0.12)' : 'rgba(13, 17, 23, 0.85)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '8px 18px',
+                    borderRadius: '8px',
+                    border: copiedLink ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(0, 240, 255, 0.35)',
+                    cursor: 'pointer',
+                    boxShadow: copiedLink ? '0 0 16px rgba(16, 185, 129, 0.2)' : '0 0 16px rgba(0, 240, 255, 0.1)',
+                    transition: 'all 0.25s',
                   }}
                 >
-                  {mobileInfo?.url || 'http://192.168.x.x:3890'}
-                </div>
+                  {copiedLink ? <Check size={16} color="#10B981" /> : <Copy size={16} color="#00F0FF" />}
+                  <span>{copiedLink ? 'Link Copiado!' : (mobileInfo?.url || 'http://192.168.100.85:3890')}</span>
+                </button>
               </div>
 
               <div style={{ display: 'flex', gap: '12px' }}>

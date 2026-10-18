@@ -90,4 +90,48 @@ describe('SystemCollector', () => {
     expect(metrics.temperatures.cpuMain).toBeNull();
     expect(metrics.temperatures.isEstimated).toBe(true);
   });
+
+  it('deve parsear árvore de dados do LibreHardwareMonitor corretamente', () => {
+    const collector = new SystemCollector({});
+    const mockTree = {
+      text: 'PC-ROOT',
+      children: [
+        {
+          text: 'AMD Ryzen 5 9600X',
+          children: [
+            {
+              text: 'Temperatures',
+              children: [
+                { text: 'Core (Tctl/Tdie)', Value: '52,4 °C' },
+                { text: 'CPU Package', Value: '51,8 °C' },
+              ],
+            },
+          ],
+        },
+        {
+          text: 'AMD Radeon RX 7600',
+          children: [
+            {
+              text: 'Temperatures',
+              children: [
+                { text: 'GPU Core', Value: '58,0 °C' },
+              ],
+            },
+            {
+              text: 'Fans',
+              children: [
+                { text: 'GPU Fan', Value: '1250 RPM' },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const parsed = collector._parseLhmTree(mockTree);
+    expect(parsed).toBeDefined();
+    expect(parsed.cpuTemp).toBe(52.4);
+    expect(parsed.gpuTemp).toBe(58.0);
+    expect(parsed.fanRpm).toBe(1250);
+  });
 });

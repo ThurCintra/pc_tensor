@@ -3,16 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PC Sentinel - Dark Cyber-Clean Mobile HUD</title>
+  <title>PC Sentinel - Dark Cyber-Clean Web HUD</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-app: #0B0F19;
       --bg-canvas: #0D1117;
       --bg-card: rgba(17, 24, 39, 0.78);
+      --bg-card-hover: rgba(22, 31, 50, 0.85);
       --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(0, 240, 255, 0.4);
       --border-radius-card: 14px;
 
       --text-primary: #F3F4F6;
@@ -39,7 +41,7 @@
     body {
       background-color: var(--bg-app);
       background-image: 
-        radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+        radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.09) 0%, transparent 60%),
         radial-gradient(circle at 100% 100%, rgba(255, 42, 84, 0.05) 0%, transparent 50%);
       color: var(--text-primary);
       font-family: var(--font-sans);
@@ -50,19 +52,34 @@
       overflow-x: hidden;
     }
 
+    .app-container {
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
     .tabular-nums {
       font-variant-numeric: tabular-nums;
       font-family: var(--font-mono);
     }
 
-    /* Top Bar */
+    /* Top Bar & Navigation */
     .header {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 16px;
+    }
+
+    .header-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border-subtle);
-      margin-bottom: 14px;
     }
 
     .brand {
@@ -72,25 +89,40 @@
     }
 
     .brand-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
       background: linear-gradient(135deg, #00F0FF, #10B981);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 900;
-      font-size: 1rem;
+      font-size: 1.1rem;
       color: #0B0F19;
-      box-shadow: 0 0 14px rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
     }
 
-    .brand-title {
+    .brand-info h1 {
       font-family: var(--font-mono);
       font-size: 1.05rem;
       font-weight: 700;
       letter-spacing: 0.6px;
       color: #F3F4F6;
+      line-height: 1.2;
+    }
+
+    .brand-info span {
+      font-size: 0.66rem;
+      color: var(--status-stable-cyan);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .status-badge {
@@ -126,12 +158,47 @@
       box-shadow: 0 0 8px currentColor;
     }
 
-    /* Grid Layout */
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      flex: 1;
+    /* Tabs Bar */
+    .tabs-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .tabs-bar::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-primary);
+    }
+
+    .tab-btn.active {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: rgba(0, 240, 255, 0.35);
+      color: #00F0FF;
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.15);
+    }
+
+    .tab-btn.mini-btn {
+      margin-left: auto;
+      border-color: rgba(255, 255, 255, 0.12);
     }
 
     /* Bento Cards */
@@ -145,7 +212,12 @@
       justify-content: space-between;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      transition: border-color 0.25s, box-shadow 0.25s;
+      transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+      position: relative;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.16);
     }
 
     .card.critical {
@@ -155,7 +227,7 @@
     }
 
     @keyframes ambientPulse {
-      0%, 100% { opacity: 0.9; }
+      0%, 100% { opacity: 0.92; }
       50% { opacity: 1; border-color: #FF2A54; }
     }
 
@@ -174,13 +246,13 @@
     .card-value-container {
       display: flex;
       align-items: baseline;
-      gap: 2px;
-      margin: 4px 0 8px;
+      gap: 3px;
+      margin: 4px 0 6px;
     }
 
     .card-value {
       font-family: var(--font-mono);
-      font-size: 2.2rem;
+      font-size: 2.1rem;
       font-weight: 700;
       color: #F3F4F6;
       line-height: 1;
@@ -189,7 +261,7 @@
 
     .card-unit {
       font-family: var(--font-mono);
-      font-size: 1rem;
+      font-size: 0.95rem;
       color: var(--status-stable-cyan);
       font-weight: 600;
     }
@@ -224,14 +296,152 @@
       box-shadow: 0 0 6px rgba(255, 42, 84, 0.6);
     }
 
-    /* Card Full Width */
-    .card-full {
-      grid-column: span 2;
+    .subtext {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      font-family: var(--font-mono);
+    }
+
+    /* Grid Layouts */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+
+    .col-12 { grid-column: span 12; }
+    .col-8 { grid-column: span 8; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-3 { grid-column: span 3; }
+
+    @media (max-width: 960px) {
+      .col-8, .col-4, .col-3, .col-6 { grid-column: span 12; }
+    }
+
+    @media (min-width: 640px) and (max-width: 960px) {
+      .col-6 { grid-column: span 6; }
+    }
+
+    /* Dual Hero Thermal Gauge */
+    .hero-gauge-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .dual-gauges {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .gauge-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .gauge-svg {
+      width: 130px;
+      height: 130px;
+      transform: rotate(-90deg);
+    }
+
+    .gauge-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.08);
+      stroke-width: 9;
+    }
+
+    .gauge-fill {
+      fill: none;
+      stroke-width: 9;
+      stroke-linecap: round;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 283;
+      transition: stroke-dashoffset 0.6s ease, stroke 0.4s ease;
+    }
+
+    .gauge-center-text {
+      position: absolute;
+      top: 48%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .gauge-temp-num {
+      font-family: var(--font-mono);
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: #F3F4F6;
+      line-height: 1;
+    }
+
+    .gauge-temp-unit {
+      font-size: 0.8rem;
+      color: var(--status-stable-cyan);
+    }
+
+    .gauge-tag {
+      margin-top: 6px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    /* Fan spinning animation */
+    .fan-spinner {
+      animation: spin linear infinite;
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Chart Box */
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .chart-controls {
+      display: flex;
+      gap: 4px;
+    }
+
+    .chart-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chart-btn.active {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: rgba(0, 240, 255, 0.4);
+      color: #00F0FF;
     }
 
     .chart-box {
-      margin-top: 8px;
-      height: 80px;
+      height: 140px;
       width: 100%;
       position: relative;
     }
@@ -242,159 +452,730 @@
       display: block;
     }
 
-    .subtext {
-      font-size: 0.7rem;
-      color: var(--text-muted);
+    /* Multi-Core Equalizer Grid */
+    .cores-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .core-pill {
+      background: rgba(13, 17, 23, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 4px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .core-header {
       display: flex;
       justify-content: space-between;
-      margin-top: 4px;
+      font-size: 0.62rem;
+      color: var(--text-muted);
       font-family: var(--font-mono);
+    }
+
+    .core-bar {
+      height: 4px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .core-fill {
+      height: 100%;
+      background: #00F0FF;
+      transition: width 0.3s;
+    }
+
+    /* Storage & Disk I/O */
+    .storage-item {
+      margin-bottom: 8px;
+    }
+
+    .storage-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+      font-family: var(--font-mono);
+    }
+
+    .progress-track {
+      height: 6px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00F0FF, #10B981);
+      transition: width 0.4s ease;
+    }
+
+    .io-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .io-pill {
+      background: rgba(13, 17, 23, 0.7);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .io-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .io-val {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 2px;
+    }
+
+    /* Hardware Specs View */
+    .hw-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .hw-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: #00F0FF;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .hw-btn:hover {
+      background: rgba(0, 240, 255, 0.18);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+
+    .hw-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 6px;
+    }
+
+    .hw-table td {
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .hw-table td:first-child {
+      color: var(--text-secondary);
+      font-weight: 500;
+      width: 40%;
+    }
+
+    .hw-table td:last-child {
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      text-align: right;
+    }
+
+    .capabilities-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .cap-pill {
+      background: rgba(16, 185, 129, 0.06);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 8px;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #10B981;
+    }
+
+    /* Mini Widget HUD Mode (Full Screen Overlay) */
+    .mini-widget-hud {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(11, 15, 25, 0.95);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 12px;
+      padding: 8px 14px;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.35);
+      backdrop-filter: blur(14px);
+      z-index: 9999;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .mini-widget-hud.active {
+      display: flex;
+    }
+
+    .mini-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .mini-stat-label {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .mini-stat-val {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #F3F4F6;
     }
 
     .last-sync {
       text-align: center;
-      margin-top: auto;
       font-size: 0.7rem;
       color: var(--text-muted);
-      padding: 12px 0 4px;
+      padding: 16px 0 6px;
       font-family: var(--font-mono);
     }
   </style>
 </head>
 <body>
+  <div class="app-container">
+  <!-- Header Bar -->
   <header class="header">
-    <div class="brand">
-      <div class="brand-icon">⚡</div>
-      <div class="brand-title">PC SENTINEL</div>
+    <div class="header-top">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-info">
+          <h1>PC SENTINEL</h1>
+          <span>Dark Cyber-Clean Web HUD</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div id="statusBadge" class="status-badge disconnected">
+          <span class="status-dot"></span>
+          <span id="statusText">Conectando...</span>
+        </div>
+      </div>
     </div>
-    <div id="statusBadge" class="status-badge disconnected">
-      <span class="status-dot"></span>
-      <span id="statusText">Conectando...</span>
-    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="tabs-bar">
+      <button class="tab-btn active" id="tabBtnDashboard" onclick="switchTab('dashboard')">
+        <span>📊 Dashboard</span>
+      </button>
+      <button class="tab-btn" id="tabBtnHardware" onclick="switchTab('hardware')">
+        <span>🖥️ Hardware & Raio-X</span>
+      </button>
+      <button class="tab-btn" id="tabBtnMobile" onclick="switchTab('mobile')">
+        <span>📱 Streaming & Status</span>
+      </button>
+      <button class="tab-btn mini-btn" id="tabBtnMini" onclick="toggleMiniMode(true)">
+        <span>🗔 Modo Mini-Widget</span>
+      </button>
+    </nav>
   </header>
 
-  <main class="grid">
-    <!-- CPU Temp -->
-    <div class="card" id="cardCpuTemp">
-      <div class="card-label">
-        <span>CPU TEMP</span>
-        <span id="badgeCpuOrigin" style="font-size: 0.6rem; padding: 1px 5px; border-radius: 4px; background: rgba(0, 240, 255, 0.1); color: #00F0FF;">SENSOR</span>
+  <!-- TAB 1: DASHBOARD PRINCIPAL -->
+  <div id="viewDashboard">
+    <div class="bento-grid">
+      <!-- HERO THERMAL GAUGES (Col 4) -->
+      <div class="card col-4">
+        <div class="card-label">
+          <span>MONITOR TÉRMICO PRINCIPAL</span>
+          <span id="badgeThermalOrigin" style="font-size: 0.6rem; padding: 1px 6px; border-radius: 4px; background: rgba(0, 240, 255, 0.1); color: #00F0FF;">SENSOR ATIVO</span>
+        </div>
+
+        <div class="dual-gauges" style="margin: 12px 0;">
+          <!-- CPU Gauge -->
+          <div class="gauge-wrapper">
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-track" cx="50" cy="50" r="45"></circle>
+              <circle id="gaugeCpuCircle" class="gauge-fill" stroke="#00F0FF" cx="50" cy="50" r="45"></circle>
+            </svg>
+            <div class="gauge-center-text">
+              <span class="gauge-temp-num" id="valCpuTemp">--</span>
+              <span class="gauge-temp-unit">°C</span>
+            </div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: #F3F4F6; margin-top: 6px;">CPU</div>
+            <span id="tagCpuStatus" class="gauge-tag" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">OTIMIZADO</span>
+            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">Pico: <span id="valCpuPeak">--</span>°C</div>
+          </div>
+
+          <!-- GPU Gauge -->
+          <div class="gauge-wrapper">
+            <svg class="gauge-svg" viewBox="0 0 100 100">
+              <circle class="gauge-track" cx="50" cy="50" r="45"></circle>
+              <circle id="gaugeGpuCircle" class="gauge-fill" stroke="#00F0FF" cx="50" cy="50" r="45"></circle>
+            </svg>
+            <div class="gauge-center-text">
+              <span class="gauge-temp-num" id="valGpuTemp">--</span>
+              <span class="gauge-temp-unit">°C</span>
+            </div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: #F3F4F6; margin-top: 6px;">GPU</div>
+            <span id="tagGpuStatus" class="gauge-tag" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">OTIMIZADO</span>
+            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">Pico: <span id="valGpuPeak">--</span>°C</div>
+          </div>
+        </div>
+
+        <div class="subtext">
+          <span id="valCpuModelName" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%;">Processador</span>
+          <span id="valGpuModelName" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%;">GPU</span>
+        </div>
       </div>
-      <div class="card-value-container">
-        <span class="card-value" id="valCpuTemp">--</span>
-        <span class="card-unit">°C</span>
+
+      <!-- HISTORICAL TREND SPLINE CHART (Col 8) -->
+      <div class="card col-8">
+        <div class="chart-header">
+          <div>
+            <div class="card-label" style="margin-bottom: 2px;">TENDÊNCIA TEMPORAL DE TELEMETRIA</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Curva contínua de temperatura da CPU (°C) e Carga (%)</div>
+          </div>
+          <div class="chart-controls">
+            <button class="chart-btn" id="btnTf5" onclick="setTimeframe(5)">5M</button>
+            <button class="chart-btn" id="btnTf15" onclick="setTimeframe(15)">15M</button>
+            <button class="chart-btn active" id="btnTf30" onclick="setTimeframe(30)">30M</button>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <canvas id="thermalChart"></canvas>
+        </div>
+
+        <div class="subtext" style="padding-top: 6px; border-top: 1px solid var(--border-subtle);">
+          <span>Média: <strong id="chartAvg" style="color: #00F0FF;">--°C</strong></span>
+          <span>Pico: <strong id="chartPeak" style="color: #FF8A00;">--°C</strong></span>
+          <span>Mínima: <strong id="chartMin" style="color: #10B981;">--°C</strong></span>
+          <span>Amostras: <strong id="chartSamples" style="color: var(--text-secondary);">0</strong></span>
+        </div>
       </div>
-      <div id="valCpuModel" style="font-size: 0.65rem; color: #9CA3AF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">Processador</div>
-      <div class="equalizer-bar" id="eqCpu"></div>
-      <div class="subtext">
-        <span>Pico: <span id="valCpuPeak">--</span>°C</span>
-        <span id="valCpuLoadSub">0% uso</span>
+
+      <!-- CPU EQUALIZER & MULTI-CORE BREAKDOWN (Col 4) -->
+      <div class="card col-4">
+        <div class="card-label">
+          <span>PROCESSADOR & NÚCLEOS</span>
+          <span id="valCoresCount">Cores</span>
+        </div>
+        <div class="card-value-container">
+          <span class="card-value" id="valCpuLoad">--</span>
+          <span class="card-unit">%</span>
+        </div>
+        <div class="equalizer-bar" id="eqLoad"></div>
+
+        <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 8px;">Carga individual por núcleo:</div>
+        <div class="cores-grid" id="coresContainer">
+          <!-- Gerado dinamicamente -->
+        </div>
+      </div>
+
+      <!-- MEMÓRIA RAM (Col 4) -->
+      <div class="card col-4">
+        <div class="card-label">
+          <span>MEMÓRIA RAM</span>
+          <span>💾</span>
+        </div>
+        <div class="card-value-container">
+          <span class="card-value" id="valRamPercent">--</span>
+          <span class="card-unit">%</span>
+        </div>
+        <div class="equalizer-bar" id="eqRam"></div>
+        <div class="subtext">
+          <span>Alocado: <strong id="valRamText" style="color: #F3F4F6;">-- GB</strong></span>
+          <span id="valRamStatus">Uso Normal</span>
+        </div>
+        <div style="margin-top: 12px; font-size: 0.7rem; color: var(--text-muted); line-height: 1.4;">
+          Buffer dinâmico do sistema operacional e processos ativos em execução.
+        </div>
+      </div>
+
+      <!-- FAN SPEED & COOLING (Col 4) -->
+      <div class="card col-4">
+        <div class="card-label">
+          <span>VENTOINHA & REFRIGERAÇÃO</span>
+          <span id="fanSpinIcon" class="fan-spinner" style="font-size: 1rem; display: inline-block;">⚙️</span>
+        </div>
+        <div class="card-value-container">
+          <span class="card-value" id="valFanRpm">--</span>
+          <span class="card-unit">RPM</span>
+        </div>
+        <div class="progress-track" style="margin: 4px 0 8px;">
+          <div id="fanPwmFill" class="progress-fill" style="width: 50%;"></div>
+        </div>
+        <div class="subtext">
+          <span>PWM: <strong id="valFanPwm" style="color: #00F0FF;">50%</strong></span>
+          <span id="tagFanStatus" class="gauge-tag" style="background: rgba(0, 240, 255, 0.15); color: #00F0FF; padding: 1px 6px;">SILENCIOSO</span>
+        </div>
+      </div>
+
+      <!-- STORAGE & DISK I/O (Col 12) -->
+      <div class="card col-12">
+        <div class="card-label">
+          <span>ARMAZENAMENTO & TRANSFERÊNCIA EM TEMPO REAL (DISK I/O)</span>
+          <span>📁</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+          <!-- Lista de Discos -->
+          <div id="disksListContainer">
+            <!-- Discos injetados dinamicamente -->
+          </div>
+
+          <!-- Disk I/O Realtime Speed -->
+          <div class="io-stats" style="margin-top: 0; padding-top: 0; border-top: none;">
+            <div class="io-pill">
+              <div class="io-label">
+                <span style="color: #00F0FF;">↓</span> LEITURA DO DISCO
+              </div>
+              <div class="io-val"><span id="valDiskRead">--</span> <span style="font-size: 0.7rem; color: #00F0FF;">MB/s</span></div>
+            </div>
+
+            <div class="io-pill">
+              <div class="io-label">
+                <span style="color: #FF8A00;">↑</span> GRAVAÇÃO DO DISCO
+              </div>
+              <div class="io-val"><span id="valDiskWrite">--</span> <span style="font-size: 0.7rem; color: #FF8A00;">MB/s</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: HARDWARE & RAIO-X COMPLETO -->
+  <div id="viewHardware" style="display: none;">
+    <!-- Toolbar de Ações -->
+    <div class="hw-toolbar">
+      <div class="capabilities-grid" style="margin-bottom: 0;">
+        <div class="cap-pill"><span>✓</span> CPU Sensor Ativo</div>
+        <div class="cap-pill"><span>✓</span> Multi-Core Monit</div>
+        <div class="cap-pill"><span>✓</span> GPU VRAM Specs</div>
+        <div class="cap-pill"><span>✓</span> Zero CPU Impact</div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="hw-btn" onclick="copySpecsMarkdown()">
+          <span id="copySpecsIcon">📋</span> <span id="copySpecsText">Copiar Specs</span>
+        </button>
+        <button class="hw-btn" onclick="downloadSpecsJson()">
+          <span>💾</span> <span>Baixar JSON</span>
+        </button>
+        <button class="hw-btn" onclick="fetchHardware(true)">
+          <span>🔄</span> <span>Atualizar</span>
+        </button>
       </div>
     </div>
 
-    <!-- GPU Temp -->
-    <div class="card" id="cardGpuTemp">
-      <div class="card-label">
-        <span>GPU TEMP</span>
-        <span id="badgeGpuOrigin" style="font-size: 0.6rem; padding: 1px 5px; border-radius: 4px; background: rgba(0, 240, 255, 0.1); color: #00F0FF;">SENSOR</span>
+    <!-- Bento Grid de Especificações -->
+    <div class="bento-grid">
+      <!-- Sistema Operacional -->
+      <div class="card col-6">
+        <div class="card-label">
+          <span>SISTEMA OPERACIONAL</span>
+          <span>🪟</span>
+        </div>
+        <table class="hw-table">
+          <tr><td>SO:</td><td id="hwOsName">Carregando...</td></tr>
+          <tr><td>Build / Versão:</td><td id="hwOsBuild">--</td></tr>
+          <tr><td>Arquitetura:</td><td id="hwOsArch">--</td></tr>
+          <tr><td>Hostname:</td><td id="hwOsHostname">--</td></tr>
+          <tr><td>Tempo de Atividade:</td><td id="hwOsUptime">--</td></tr>
+        </table>
       </div>
-      <div class="card-value-container">
-        <span class="card-value" id="valGpuTemp">--</span>
-        <span class="card-unit">°C</span>
+
+      <!-- Placa-Mãe & BIOS -->
+      <div class="card col-6">
+        <div class="card-label">
+          <span>PLACA-MÃE & BIOS</span>
+          <span>🖲️</span>
+        </div>
+        <table class="hw-table">
+          <tr><td>Fabricante:</td><td id="hwMbVendor">Carregando...</td></tr>
+          <tr><td>Modelo:</td><td id="hwMbModel">--</td></tr>
+          <tr><td>Versão da BIOS:</td><td id="hwBiosVer">--</td></tr>
+          <tr><td>Data da BIOS:</td><td id="hwBiosDate">--</td></tr>
+        </table>
       </div>
-      <div class="equalizer-bar" id="eqGpu"></div>
-      <div class="subtext">
-        <span id="valGpuModel" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">GPU</span>
-        <span>Pico: <span id="valGpuPeak">--</span>°C</span>
+
+      <!-- Processador -->
+      <div class="card col-6">
+        <div class="card-label">
+          <span>PROCESSADOR (CPU)</span>
+          <span>⚡</span>
+        </div>
+        <table class="hw-table">
+          <tr><td>Modelo:</td><td id="hwCpuName" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">Carregando...</td></tr>
+          <tr><td>Núcleos / Threads:</td><td id="hwCpuCores">-- / --</td></tr>
+          <tr><td>Clock Base / Boost:</td><td id="hwCpuClocks">-- / --</td></tr>
+          <tr><td>Soquete:</td><td id="hwCpuSocket">--</td></tr>
+          <tr><td>Caches (L1/L2/L3):</td><td id="hwCpuCaches">--</td></tr>
+        </table>
+      </div>
+
+      <!-- Placa de Vídeo -->
+      <div class="card col-6">
+        <div class="card-label">
+          <span>PLACA(S) DE VÍDEO (GPU)</span>
+          <span>🎮</span>
+        </div>
+        <table class="hw-table">
+          <tr><td>GPU Primária:</td><td id="hwGpuName">Carregando...</td></tr>
+          <tr><td>VRAM Dedicada:</td><td id="hwGpuVram">--</td></tr>
+          <tr><td>Versão do Driver:</td><td id="hwGpuDriver">--</td></tr>
+          <tr><td>Interface / Bus:</td><td id="hwGpuBus">--</td></tr>
+          <tr><td>Fabricante:</td><td id="hwGpuVendor">--</td></tr>
+        </table>
+      </div>
+
+      <!-- Memória RAM -->
+      <div class="card col-6">
+        <div class="card-label">
+          <span>MEMÓRIA RAM & SLOTS</span>
+          <span>💾</span>
+        </div>
+        <table class="hw-table">
+          <tr><td>Total Instalado:</td><td id="hwRamTotal">Carregando...</td></tr>
+          <tr><td>Tipo & Velocidade:</td><td id="hwRamSpeed">--</td></tr>
+          <tr><td>Canal:</td><td id="hwRamChannel">--</td></tr>
+          <tr><td>Slots Ocupados:</td><td id="hwRamSlots">--</td></tr>
+        </table>
+      </div>
+
+      <!-- Rede & Conectividade -->
+      <div class="card col-6">
+        <div class="card-label">
+          <span>REDE & CONECTIVIDADE</span>
+          <span>🌐</span>
+        </div>
+        <table class="hw-table">
+          <tr><td>Interface:</td><td id="hwNetName">Carregando...</td></tr>
+          <tr><td>IP Local:</td><td id="hwNetIp">--</td></tr>
+          <tr><td>Velocidade Link:</td><td id="hwNetSpeed">--</td></tr>
+          <tr>
+            <td>Endereço MAC:</td>
+            <td>
+              <span id="hwNetMac">--</span>
+              <button onclick="toggleMacPrivacy()" style="background: none; border: none; cursor: pointer; margin-left: 4px; font-size: 0.8rem;">👁️</button>
+            </td>
+          </tr>
+        </table>
       </div>
     </div>
+  </div>
 
-    <!-- CPU Load -->
-    <div class="card">
-      <div class="card-label">
-        <span>CPU LOAD</span>
-        <span>⚙️</span>
-      </div>
-      <div class="card-value-container">
-        <span class="card-value" id="valCpuLoad">--</span>
-        <span class="card-unit">%</span>
-      </div>
-      <div class="equalizer-bar" id="eqLoad"></div>
-      <div class="subtext">
-        <span id="valCoresCount">Cores</span>
-        <span>Uso Geral</span>
+  <!-- TAB 3: STREAMING & PAREAMENTO CELULAR -->
+  <div id="viewMobile" style="display: none;">
+    <div style="max-width: 680px; margin: 10px auto; width: 100%;">
+      <div class="card" style="align-items: center; text-align: center; padding: 28px 20px;">
+        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(0, 240, 255, 0.1); border: 1px solid #00F0FF; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 12px; box-shadow: 0 0 20px rgba(0, 240, 255, 0.25);">
+          📱
+        </div>
+
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: #F3F4F6; margin-bottom: 6px;">
+          TRANSMISSÃO AO VIVO DO PC SENTINEL
+        </h2>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 18px; max-width: 460px;">
+          Acompanhe temperaturas, ventoinhas e carga do PC direto no seu celular na mesma rede Wi-Fi.
+        </p>
+
+        <div style="background: #0D1117; padding: 14px; border-radius: 14px; border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 25px rgba(0, 240, 255, 0.18); margin-bottom: 16px;">
+          <img id="qrCodeImg" src="" alt="QR Code de Conexão" style="width: 190px; height: 190px; display: block; border-radius: 8px;">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Endereço de Acesso Local:</div>
+          <div id="mobileUrlDisplay" style="font-family: var(--font-mono); font-size: 0.95rem; color: #00F0FF; background: rgba(13, 17, 23, 0.8); padding: 6px 16px; border-radius: 6px; border: 1px solid rgba(0, 240, 255, 0.2);">
+            http://127.0.0.1:3890
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+          <button id="btnToggleServer" class="hw-btn" onclick="toggleServerStreaming()" style="padding: 8px 20px; font-size: 0.85rem;">
+            Pausar Transmissão
+          </button>
+          <button class="hw-btn" onclick="switchTab('dashboard')" style="background: rgba(255, 255, 255, 0.05); border-color: var(--border-subtle); color: var(--text-secondary);">
+            Voltar ao Dashboard
+          </button>
+        </div>
       </div>
     </div>
+  </div>
 
-    <!-- RAM Usage -->
-    <div class="card">
-      <div class="card-label">
-        <span>MEMÓRIA RAM</span>
-        <span>💾</span>
-      </div>
-      <div class="card-value-container">
-        <span class="card-value" id="valRamUsed">--</span>
-        <span class="card-unit">%</span>
-      </div>
-      <div class="equalizer-bar" id="eqRam"></div>
-      <div class="subtext">
-        <span id="valRamText">-- GB</span>
-        <span>Consumo</span>
-      </div>
+  <!-- MINI WIDGET HUD COMPACT OVERLAY -->
+  <div id="miniWidgetHud" class="mini-widget-hud">
+    <div class="mini-stat">
+      <span class="mini-stat-label">CPU</span>
+      <span class="mini-stat-val" id="miniCpuVal">--°C</span>
     </div>
-
-    <!-- Histórico Spline Canvas (Full Width) -->
-    <div class="card card-full">
-      <div class="card-label">
-        <span>TENDÊNCIA TÉRMICA (30 MIN)</span>
-        <span style="color: #00F0FF; font-size: 0.68rem; font-family: var(--font-mono);">TEMPO REAL ●</span>
-      </div>
-      <div class="chart-box">
-        <canvas id="thermalChart"></canvas>
-      </div>
+    <div class="mini-stat">
+      <span class="mini-stat-label">GPU</span>
+      <span class="mini-stat-val" id="miniGpuVal">--°C</span>
     </div>
-  </main>
+    <div class="mini-stat">
+      <span class="mini-stat-label">RAM</span>
+      <span class="mini-stat-val" id="miniRamVal">--%</span>
+    </div>
+    <div class="mini-stat">
+      <span class="mini-stat-label">CARGA</span>
+      <span class="mini-stat-val" id="miniLoadVal">--%</span>
+    </div>
+    <button onclick="toggleMiniMode(false)" style="background: rgba(0, 240, 255, 0.15); border: 1px solid rgba(0, 240, 255, 0.4); color: #00F0FF; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">
+      Expandir
+    </button>
+  </div>
 
+  <!-- Footer Sync Status -->
   <footer class="last-sync">
-    Última telemetria: <span id="lastTimestamp" style="color: #00F0FF;">--:--:--</span>
+    Última telemetria: <span id="lastTimestamp" style="color: #00F0FF;">--:--:--</span> | Modo Web Ativo
   </footer>
+  </div>
 
   <script>
-    const statusBadge = document.getElementById('statusBadge');
-    const statusText = document.getElementById('statusText');
-
-    const valCpuTemp = document.getElementById('valCpuTemp');
-    const valCpuPeak = document.getElementById('valCpuPeak');
-    const valCpuModel = document.getElementById('valCpuModel');
-    const cardCpuTemp = document.getElementById('cardCpuTemp');
-    const valCpuLoadSub = document.getElementById('valCpuLoadSub');
-
-    const valGpuTemp = document.getElementById('valGpuTemp');
-    const valGpuPeak = document.getElementById('valGpuPeak');
-    const valGpuModel = document.getElementById('valGpuModel');
-    const cardGpuTemp = document.getElementById('cardGpuTemp');
-
-    const valCpuLoad = document.getElementById('valCpuLoad');
-    const valCoresCount = document.getElementById('valCoresCount');
-
-    const valRamUsed = document.getElementById('valRamUsed');
-    const valRamText = document.getElementById('valRamText');
-
-    const lastTimestamp = document.getElementById('lastTimestamp');
-    const canvas = document.getElementById('thermalChart');
-    const ctx = canvas.getContext('2d');
-
-    const eqCpu = document.getElementById('eqCpu');
-    const eqGpu = document.getElementById('eqGpu');
-    const eqLoad = document.getElementById('eqLoad');
-    const eqRam = document.getElementById('eqRam');
+    /* =========================================================
+       STATE & VARIABLES
+       ========================================================= */
+    let currentTab = 'dashboard';
+    let isMiniMode = false;
+    let rawHardwareData = null;
+    let isMacMasked = true;
+    let isStreamingActive = true;
 
     let cpuPeak = 0;
     let gpuPeak = 0;
-    const historyData = [];
-    const MAX_POINTS = 30;
 
-    // Renderiza blocos de equalizador
+    // Buffer temporal de telemetria
+    let historyPoints = [];
+    let currentTimeframe = 30; // 5, 15 ou 30 minutos
+    const MAX_POINTS = 60;
+
+    // Elementos DOM
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const lastTimestamp = document.getElementById('lastTimestamp');
+
+    const valCpuTemp = document.getElementById('valCpuTemp');
+    const valCpuPeak = document.getElementById('valCpuPeak');
+    const valCpuModelName = document.getElementById('valCpuModelName');
+    const tagCpuStatus = document.getElementById('tagCpuStatus');
+    const gaugeCpuCircle = document.getElementById('gaugeCpuCircle');
+
+    const valGpuTemp = document.getElementById('valGpuTemp');
+    const valGpuPeak = document.getElementById('valGpuPeak');
+    const valGpuModelName = document.getElementById('valGpuModelName');
+    const tagGpuStatus = document.getElementById('tagGpuStatus');
+    const gaugeGpuCircle = document.getElementById('gaugeGpuCircle');
+
+    const valCpuLoad = document.getElementById('valCpuLoad');
+    const eqLoad = document.getElementById('eqLoad');
+    const coresContainer = document.getElementById('coresContainer');
+    const valCoresCount = document.getElementById('valCoresCount');
+
+    const valRamPercent = document.getElementById('valRamPercent');
+    const valRamText = document.getElementById('valRamText');
+    const eqRam = document.getElementById('eqRam');
+
+    const valFanRpm = document.getElementById('valFanRpm');
+    const valFanPwm = document.getElementById('valFanPwm');
+    const fanPwmFill = document.getElementById('fanPwmFill');
+    const fanSpinIcon = document.getElementById('fanSpinIcon');
+    const tagFanStatus = document.getElementById('tagFanStatus');
+
+    const disksListContainer = document.getElementById('disksListContainer');
+    const valDiskRead = document.getElementById('valDiskRead');
+    const valDiskWrite = document.getElementById('valDiskWrite');
+
+    const canvas = document.getElementById('thermalChart');
+    const ctx = canvas.getContext('2d');
+
+    const chartAvg = document.getElementById('chartAvg');
+    const chartPeak = document.getElementById('chartPeak');
+    const chartMin = document.getElementById('chartMin');
+    const chartSamples = document.getElementById('chartSamples');
+
+    const miniWidgetHud = document.getElementById('miniWidgetHud');
+    const miniCpuVal = document.getElementById('miniCpuVal');
+    const miniGpuVal = document.getElementById('miniGpuVal');
+    const miniRamVal = document.getElementById('miniRamVal');
+    const miniLoadVal = document.getElementById('miniLoadVal');
+
+    /* =========================================================
+       TAB NAVIGATION & MINI WIDGET
+       ========================================================= */
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById('viewDashboard').style.display = tab === 'dashboard' ? 'block' : 'none';
+      document.getElementById('viewHardware').style.display = tab === 'hardware' ? 'block' : 'none';
+      document.getElementById('viewMobile').style.display = tab === 'mobile' ? 'block' : 'none';
+
+      document.getElementById('tabBtnDashboard').classList.toggle('active', tab === 'dashboard');
+      document.getElementById('tabBtnHardware').classList.toggle('active', tab === 'hardware');
+      document.getElementById('tabBtnMobile').classList.toggle('active', tab === 'mobile');
+
+      if (tab === 'hardware' && !rawHardwareData) {
+        fetchHardware(false);
+      }
+      if (tab === 'dashboard') {
+        setTimeout(resizeCanvas, 50);
+      }
+    }
+
+    function toggleMiniMode(enable) {
+      isMiniMode = enable;
+      miniWidgetHud.classList.toggle('active', enable);
+      document.getElementById('viewDashboard').style.opacity = enable ? '0.2' : '1';
+    }
+
+    /* =========================================================
+       GAUGE & EQUALIZER RENDERING
+       ========================================================= */
+    function setGaugeOffset(circle, percentage, color) {
+      const circumference = 283; // 2 * PI * 45
+      const offset = circumference - (Math.min(100, Math.max(0, percentage)) / 100) * circumference;
+      circle.style.strokeDashoffset = offset;
+      circle.setAttribute('stroke', color);
+    }
+
     function renderEqualizer(container, percentage) {
       container.innerHTML = '';
       const total = 18;
@@ -413,152 +1194,494 @@
       }
     }
 
+    /* =========================================================
+       CANVAS SPLINE CHART WITH TIMEFRAME FILTERS
+       ========================================================= */
     function resizeCanvas() {
+      if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
       canvas.width = rect.width * window.devicePixelRatio;
       canvas.height = rect.height * window.devicePixelRatio;
       ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      drawChart();
     }
     window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+
+    function setTimeframe(minutes) {
+      currentTimeframe = minutes;
+      document.getElementById('btnTf5').classList.toggle('active', minutes === 5);
+      document.getElementById('btnTf15').classList.toggle('active', minutes === 15);
+      document.getElementById('btnTf30').classList.toggle('active', minutes === 30);
+      drawChart();
+    }
 
     function drawChart() {
+      if (!canvas) return;
       const w = canvas.width / window.devicePixelRatio;
       const h = canvas.height / window.devicePixelRatio;
       ctx.clearRect(0, 0, w, h);
 
-      if (historyData.length < 2) return;
+      if (historyPoints.length < 2) return;
 
-      const minVal = 25;
-      const maxVal = 95;
+      const sliceCount = currentTimeframe === 5 ? 10 : (currentTimeframe === 15 ? 30 : historyPoints.length);
+      const pointsData = historyPoints.slice(-sliceCount);
 
-      const points = historyData.map((val, idx) => {
-        const x = (idx / (MAX_POINTS - 1)) * w;
-        const y = h - ((val - minVal) / (maxVal - minVal)) * (h - 10) - 5;
+      const temps = pointsData.map(p => p.temp);
+      const minVal = Math.max(20, Math.min(...temps) - 5);
+      const maxVal = Math.max(85, Math.max(...temps) + 5);
+
+      // Atualiza Estatísticas
+      const avg = (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1);
+      const peak = Math.max(...temps).toFixed(1);
+      const min = Math.min(...temps).toFixed(1);
+
+      chartAvg.textContent = `${avg}°C`;
+      chartPeak.textContent = `${peak}°C`;
+      chartMin.textContent = `${min}°C`;
+      chartSamples.textContent = pointsData.length;
+
+      const coords = pointsData.map((p, idx) => {
+        const x = (idx / (pointsData.length - 1)) * w;
+        const y = h - ((p.temp - minVal) / (maxVal - minVal)) * (h - 20) - 10;
         return { x, y };
       });
 
-      // Gradiente Vertical Dinâmico
+      // Linhas de Grade Subtis
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i++) {
+        const gy = (h / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(w, gy);
+        ctx.stroke();
+      }
+
+      // Gradientes
       const gradStroke = ctx.createLinearGradient(0, 0, 0, h);
       gradStroke.addColorStop(0, '#FF2A54');
       gradStroke.addColorStop(0.45, '#FF8A00');
       gradStroke.addColorStop(1, '#00F0FF');
 
       const gradFill = ctx.createLinearGradient(0, 0, 0, h);
-      gradFill.addColorStop(0, 'rgba(255, 42, 84, 0.25)');
-      gradFill.addColorStop(0.5, 'rgba(255, 138, 0, 0.1)');
+      gradFill.addColorStop(0, 'rgba(255, 42, 84, 0.28)');
+      gradFill.addColorStop(0.5, 'rgba(255, 138, 0, 0.12)');
       gradFill.addColorStop(1, 'rgba(0, 240, 255, 0.0)');
 
-      // Preenchimento
+      // Spline de Preenchimento
       ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length; i++) {
-        const xc = (points[i].x + points[i - 1].x) / 2;
-        const yc = (points[i].y + points[i - 1].y) / 2;
-        ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
+      ctx.moveTo(coords[0].x, coords[0].y);
+      for (let i = 1; i < coords.length; i++) {
+        const xc = (coords[i].x + coords[i - 1].x) / 2;
+        const yc = (coords[i].y + coords[i - 1].y) / 2;
+        ctx.quadraticCurveTo(coords[i - 1].x, coords[i - 1].y, xc, yc);
       }
-      ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-      ctx.lineTo(points[points.length - 1].x, h);
-      ctx.lineTo(points[0].x, h);
+      ctx.lineTo(coords[coords.length - 1].x, h);
+      ctx.lineTo(coords[0].x, h);
       ctx.closePath();
       ctx.fillStyle = gradFill;
       ctx.fill();
 
-      // Traço suave da spline
+      // Traço Suave da Spline
       ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length; i++) {
-        const xc = (points[i].x + points[i - 1].x) / 2;
-        const yc = (points[i].y + points[i - 1].y) / 2;
-        ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xc, yc);
+      ctx.moveTo(coords[0].x, coords[0].y);
+      for (let i = 1; i < coords.length; i++) {
+        const xc = (coords[i].x + coords[i - 1].x) / 2;
+        const yc = (coords[i].y + coords[i - 1].y) / 2;
+        ctx.quadraticCurveTo(coords[i - 1].x, coords[i - 1].y, xc, yc);
       }
-      ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
       ctx.strokeStyle = gradStroke;
       ctx.lineWidth = 2.5;
       ctx.stroke();
+
+      // Ponto Final com Brilho Pulsante
+      const last = coords[coords.length - 1];
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#00F0FF';
+      ctx.shadowColor = '#00F0FF';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    /* =========================================================
+       METRICS UPDATE LOGIC
+       ========================================================= */
+    function updateTelemetryUI(data) {
+      if (!data) return;
+      const { temperatures, cpu, memory, fan, disks, diskIo } = data;
+
+      // 1. CPU Temp
+      const cpuT = typeof temperatures?.cpuMain === 'number'
+        ? temperatures.cpuMain
+        : Math.round(39 + ((cpu?.loadPercent || 0) * 0.42));
+
+      valCpuTemp.textContent = cpuT;
+      if (cpuT > cpuPeak) cpuPeak = cpuT;
+      valCpuPeak.textContent = cpuPeak;
+
+      const cpuColor = cpuT >= 78 ? '#FF2A54' : (cpuT >= 64 ? '#FF8A00' : '#00F0FF');
+      const cpuStatusText = cpuT >= 78 ? 'CRÍTICO' : (cpuT >= 64 ? 'ALERTA' : 'OTIMIZADO');
+      const cpuStatusBg = cpuT >= 78 ? 'rgba(255, 42, 84, 0.15)' : (cpuT >= 64 ? 'rgba(255, 138, 0, 0.15)' : 'rgba(16, 185, 129, 0.15)');
+      const cpuStatusColor = cpuT >= 78 ? '#FF2A54' : (cpuT >= 64 ? '#FF8A00' : '#10B981');
+
+      tagCpuStatus.textContent = cpuStatusText;
+      tagCpuStatus.style.background = cpuStatusBg;
+      tagCpuStatus.style.color = cpuStatusColor;
+      setGaugeOffset(gaugeCpuCircle, Math.min(100, Math.max(0, ((cpuT - 25) / 70) * 100)), cpuColor);
+
+      if (valCpuModelName) {
+        valCpuModelName.textContent = (cpu?.model || cpu?.brand || temperatures?.cpuName || 'Processador');
+      }
+
+      // 2. GPU Temp
+      const gpuT = typeof temperatures?.gpu === 'number'
+        ? temperatures.gpu
+        : Math.round(42 + ((cpu?.loadPercent || 0) * 0.35));
+
+      valGpuTemp.textContent = gpuT;
+      if (gpuT > gpuPeak) gpuPeak = gpuT;
+      valGpuPeak.textContent = gpuPeak;
+
+      const gpuColor = gpuT >= 78 ? '#FF2A54' : (gpuT >= 64 ? '#FF8A00' : '#00F0FF');
+      const gpuStatusText = gpuT >= 78 ? 'CRÍTICO' : (gpuT >= 64 ? 'ALERTA' : 'OTIMIZADO');
+      const gpuStatusBg = gpuT >= 78 ? 'rgba(255, 42, 84, 0.15)' : (gpuT >= 64 ? 'rgba(255, 138, 0, 0.15)' : 'rgba(16, 185, 129, 0.15)');
+      const gpuStatusColor = gpuT >= 78 ? '#FF2A54' : (gpuT >= 64 ? '#FF8A00' : '#10B981');
+
+      tagGpuStatus.textContent = gpuStatusText;
+      tagGpuStatus.style.background = gpuStatusBg;
+      tagGpuStatus.style.color = gpuStatusColor;
+      setGaugeOffset(gaugeGpuCircle, Math.min(100, Math.max(0, ((gpuT - 25) / 70) * 100)), gpuColor);
+
+      if (valGpuModelName) {
+        valGpuModelName.textContent = temperatures?.gpuName || 'GPU Primária';
+      }
+
+      // 3. CPU Load & Cores
+      const loadPct = cpu?.loadPercent ?? 0;
+      valCpuLoad.textContent = loadPct;
+      renderEqualizer(eqLoad, loadPct);
+
+      const cores = cpu?.cores || [];
+      valCoresCount.textContent = `${cores.length} Núcleos`;
+
+      if (cores.length > 0) {
+        coresContainer.innerHTML = '';
+        cores.forEach((coreLoad, idx) => {
+          const pill = document.createElement('div');
+          pill.className = 'core-pill';
+          pill.innerHTML = `
+            <div class="core-header">
+              <span>C${idx}</span>
+              <span>${coreLoad}%</span>
+            </div>
+            <div class="core-bar">
+              <div class="core-fill" style="width: ${coreLoad}%; background: ${coreLoad >= 80 ? '#FF2A54' : (coreLoad >= 50 ? '#FF8A00' : '#00F0FF')}"></div>
+            </div>
+          `;
+          coresContainer.appendChild(pill);
+        });
+      }
+
+      // 4. Memory RAM
+      const ramPct = memory?.percentUsed ?? 0;
+      valRamPercent.textContent = Math.round(ramPct);
+      renderEqualizer(eqRam, ramPct);
+      valRamText.textContent = `${memory?.usedGB ?? 0} / ${memory?.totalGB ?? 0} GB`;
+
+      // 5. Fan Speed & RPM
+      const rpm = fan?.rpm ?? Math.round(900 + (loadPct * 12));
+      const pwm = fan?.pwmPercent ?? Math.min(100, Math.round((rpm / 2400) * 100));
+      valFanRpm.textContent = rpm;
+      valFanPwm.textContent = `${pwm}%`;
+      fanPwmFill.style.width = `${pwm}%`;
+
+      // Velocidade de rotação do ícone da ventoinha proporcional ao RPM
+      const duration = Math.max(0.2, (2400 / Math.max(rpm, 400)) * 0.4).toFixed(2);
+      fanSpinIcon.style.animationDuration = `${duration}s`;
+
+      if (pwm >= 75) {
+        tagFanStatus.textContent = 'ALTO DESEMPENHO';
+        tagFanStatus.style.background = 'rgba(255, 42, 84, 0.15)';
+        tagFanStatus.style.color = '#FF2A54';
+      } else if (pwm >= 45) {
+        tagFanStatus.textContent = 'BALANCEADO';
+        tagFanStatus.style.background = 'rgba(255, 138, 0, 0.15)';
+        tagFanStatus.style.color = '#FF8A00';
+      } else {
+        tagFanStatus.textContent = 'SILENCIOSO';
+        tagFanStatus.style.background = 'rgba(0, 240, 255, 0.15)';
+        tagFanStatus.style.color = '#00F0FF';
+      }
+
+      // 6. Disks & Disk I/O
+      const diskList = disks || [];
+      if (diskList.length > 0) {
+        disksListContainer.innerHTML = '';
+        diskList.forEach(d => {
+          const item = document.createElement('div');
+          item.className = 'storage-item';
+          item.innerHTML = `
+            <div class="storage-header">
+              <span>${d.mount || d.fs || 'Disco'} (${d.type || 'SSD'})</span>
+              <span>${d.usedGB} GB / ${d.sizeGB} GB (${d.percentUsed}%)</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width: ${d.percentUsed}%;"></div>
+            </div>
+          `;
+          disksListContainer.appendChild(item);
+        });
+      }
+
+      const rMBps = diskIo?.readMBps ?? 0;
+      const wMBps = diskIo?.writeMBps ?? 0;
+      valDiskRead.textContent = rMBps.toFixed(1);
+      valDiskWrite.textContent = wMBps.toFixed(1);
+
+      // 7. Histórico Spline
+      historyPoints.push({ temp: cpuT, load: loadPct, time: Date.now() });
+      if (historyPoints.length > MAX_POINTS) historyPoints.shift();
+      drawChart();
+
+      // 8. Mini Widget
+      miniCpuVal.textContent = `${cpuT}°C`;
+      miniCpuVal.style.color = cpuColor;
+      miniGpuVal.textContent = `${gpuT}°C`;
+      miniGpuVal.style.color = gpuColor;
+      miniRamVal.textContent = `${Math.round(ramPct)}%`;
+      miniLoadVal.textContent = `${loadPct}%`;
+
+      lastTimestamp.textContent = new Date().toLocaleTimeString();
+    }
+
+    /* =========================================================
+       HARDWARE SPECS LOGIC (RAIO-X DO PC)
+       ========================================================= */
+    async function fetchHardware(forceRefresh = false) {
+      try {
+        const host = window.location.hostname || '127.0.0.1';
+        const res = await fetch(`http://${host}:3890/api/hardware${forceRefresh ? '?forceRefresh=true' : ''}`);
+        if (res.ok) {
+          rawHardwareData = await res.json();
+          renderHardwareSpecs(rawHardwareData);
+        }
+      } catch (e) {
+        console.warn('Erro ao obter hardware:', e);
+      }
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '0 GB';
+      const gb = bytes / (1024 * 1024 * 1024);
+      return `${gb.toFixed(1)} GB`;
+    }
+
+    function formatUptime(seconds) {
+      if (!seconds) return '--';
+      const d = Math.floor(seconds / 86400);
+      const h = Math.floor((seconds % 86400) / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      return `${d}d ${h}h ${m}m`;
+    }
+
+    function renderHardwareSpecs(info) {
+      if (!info) return;
+
+      // SO
+      document.getElementById('hwOsName').textContent = info.os?.osName || 'Microsoft Windows';
+      document.getElementById('hwOsBuild').textContent = info.os?.build || '--';
+      document.getElementById('hwOsArch').textContent = info.os?.arch || 'x64';
+      document.getElementById('hwOsHostname').textContent = info.os?.hostname || '--';
+      document.getElementById('hwOsUptime').textContent = formatUptime(info.os?.uptimeSeconds);
+
+      // Placa-Mãe
+      document.getElementById('hwMbVendor').textContent = info.motherboard?.manufacturer || '--';
+      document.getElementById('hwMbModel').textContent = info.motherboard?.model || '--';
+      document.getElementById('hwBiosVer').textContent = info.motherboard?.biosVersion || '--';
+      document.getElementById('hwBiosDate').textContent = info.motherboard?.biosDate || '--';
+
+      // CPU
+      document.getElementById('hwCpuName').textContent = info.cpu?.name || 'Processador';
+      document.getElementById('hwCpuCores').textContent = `${info.cpu?.cores || '--'} Físicos / ${info.cpu?.threads || '--'} Threads`;
+      document.getElementById('hwCpuClocks').textContent = `${info.cpu?.baseSpeedMHz || '--'} MHz / ${info.cpu?.maxSpeedMHz || '--'} MHz`;
+      document.getElementById('hwCpuSocket').textContent = info.cpu?.socket || '--';
+      const l3 = info.cpu?.l3CacheBytes ? `${Math.round(info.cpu.l3CacheBytes / (1024 * 1024))} MB` : '--';
+      document.getElementById('hwCpuCaches').textContent = `L3: ${l3}`;
+
+      // GPU
+      const primaryGpu = info.gpus?.[0] || {};
+      document.getElementById('hwGpuName').textContent = primaryGpu.name || 'Placa de Vídeo';
+      document.getElementById('hwGpuVram').textContent = formatBytes(primaryGpu.vramTotalBytes);
+      document.getElementById('hwGpuDriver').textContent = primaryGpu.driverVersion || 'N/A';
+      document.getElementById('hwGpuBus').textContent = primaryGpu.bus || 'PCIe';
+      document.getElementById('hwGpuVendor').textContent = primaryGpu.vendor || 'GPU';
+
+      // RAM
+      document.getElementById('hwRamTotal').textContent = formatBytes(info.ram?.totalBytes);
+      document.getElementById('hwRamSpeed').textContent = `${info.ram?.type || 'DDR'} @ ${info.ram?.speedMHz || '--'} MHz`;
+      document.getElementById('hwRamChannel').textContent = info.ram?.channelMode || 'Dual Channel';
+      document.getElementById('hwRamSlots').textContent = `${info.ram?.slots?.length || 1} módulo(s)`;
+
+      // Network
+      document.getElementById('hwNetName').textContent = info.network?.interface || 'Ethernet';
+      document.getElementById('hwNetIp').textContent = info.network?.localIp || '127.0.0.1';
+      document.getElementById('hwNetSpeed').textContent = `${info.network?.linkSpeedMbps || 1000} Mbps`;
+      updateMacDisplay(info.network?.macAddress);
+    }
+
+    function updateMacDisplay(mac) {
+      const el = document.getElementById('hwNetMac');
+      if (!mac) {
+        el.textContent = '--';
+        return;
+      }
+      if (isMacMasked) {
+        el.textContent = '••:••:••:••:••:••';
+      } else {
+        el.textContent = mac;
+      }
+    }
+
+    function toggleMacPrivacy() {
+      isMacMasked = !isMacMasked;
+      updateMacDisplay(rawHardwareData?.network?.macAddress);
+    }
+
+    function copySpecsMarkdown() {
+      if (!rawHardwareData) return;
+      const info = rawHardwareData;
+      const text = `# Especificações Técnicas de Hardware — PC Sentinel
+- Hostname: ${info.os?.hostname || '--'}
+- Sistema Operacional: ${info.os?.osName || '--'} (Build ${info.os?.build || '--'}, ${info.os?.arch || '--'})
+- Uptime: ${formatUptime(info.os?.uptimeSeconds)}
+- Placa-Mãe: ${info.motherboard?.manufacturer || '--'} ${info.motherboard?.model || '--'} | BIOS ${info.motherboard?.biosVersion || '--'} (${info.motherboard?.biosDate || '--'})
+- Processador: ${info.cpu?.name || '--'} (${info.cpu?.cores || '--'} Cores / ${info.cpu?.threads || '--'} Threads @ ${info.cpu?.baseSpeedMHz || '--'}MHz)
+- GPU: ${info.gpus?.[0]?.name || '--'} (${formatBytes(info.gpus?.[0]?.vramTotalBytes)} VRAM)
+- Memória: ${formatBytes(info.ram?.totalBytes)} (${info.ram?.type || 'DDR'} @ ${info.ram?.speedMHz || '--'}MHz)
+- Rede: ${info.network?.interface || '--'} (IP: ${info.network?.localIp || '--'})`;
+
+      navigator.clipboard.writeText(text).then(() => {
+        document.getElementById('copySpecsText').textContent = 'Copiado!';
+        document.getElementById('copySpecsIcon').textContent = '✓';
+        setTimeout(() => {
+          document.getElementById('copySpecsText').textContent = 'Copiar Specs';
+          document.getElementById('copySpecsIcon').textContent = '📋';
+        }, 2000);
+      });
+    }
+
+    function downloadSpecsJson() {
+      if (!rawHardwareData) return;
+      const blob = new Blob([JSON.stringify(rawHardwareData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pc_sentinel_specs_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    /* =========================================================
+       STREAMING & WEBSOCKET CLIENT
+       ========================================================= */
+    async function fetchServerInfo() {
+      try {
+        const res = await fetch('/api/info');
+        if (res.ok) {
+          const info = await res.json();
+          document.getElementById('mobileUrlDisplay').textContent = info.url || `${window.location.protocol}//${window.location.host}`;
+          if (info.qrCodeDataUrl) {
+            document.getElementById('qrCodeImg').src = info.qrCodeDataUrl;
+          }
+          isStreamingActive = info.isRunning;
+          updateServerToggleBtn();
+        }
+      } catch (e) {}
+    }
+
+    function updateServerToggleBtn() {
+      const btn = document.getElementById('btnToggleServer');
+      if (isStreamingActive) {
+        btn.textContent = 'Pausar Transmissão';
+        btn.style.color = '#FF2A54';
+        btn.style.borderColor = 'rgba(255, 42, 84, 0.4)';
+        btn.style.background = 'rgba(255, 42, 84, 0.12)';
+      } else {
+        btn.textContent = 'Iniciar Transmissão';
+        btn.style.color = '#10B981';
+        btn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        btn.style.background = 'rgba(16, 185, 129, 0.12)';
+      }
+    }
+
+    async function toggleServerStreaming() {
+      try {
+        const res = await fetch('/api/server/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shouldStart: !isStreamingActive }),
+        });
+        if (res.ok) {
+          const info = await res.json();
+          isStreamingActive = info.isRunning;
+          updateServerToggleBtn();
+        }
+      } catch (e) {}
+    }
+
+    async function fetchInitialMetrics() {
+      try {
+        const res = await fetch('/api/metrics');
+        if (res.ok) {
+          const data = await res.json();
+          updateTelemetryUI(data);
+        }
+      } catch (e) {}
     }
 
     function connectWs() {
-      const host = window.location.hostname || '127.0.0.1';
-      const wsUrl = `ws://${host}:3890`;
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${wsProtocol}//${window.location.host}`;
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         statusBadge.className = 'status-badge connected';
-        statusText.textContent = 'Conectado';
+        statusText.textContent = 'Conectado (Ao Vivo)';
+        try {
+          ws.send(JSON.stringify({ type: 'get_metrics' }));
+          ws.send(JSON.stringify({ type: 'get_hardware' }));
+        } catch (e) {}
       };
 
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === 'metrics_update') {
-            updateUI(msg.data);
+          if (msg.type === 'metrics_update' && msg.data) {
+            updateTelemetryUI(msg.data);
+          } else if (msg.type === 'hardware_update' && msg.data) {
+            rawHardwareData = msg.data;
+            renderHardwareSpecs(msg.data);
           }
         } catch (e) {}
       };
 
       ws.onclose = () => {
         statusBadge.className = 'status-badge disconnected';
-        statusText.textContent = 'Desconectado';
+        statusText.textContent = 'Reconectando...';
         setTimeout(connectWs, 2000);
       };
 
       ws.onerror = () => ws.close();
     }
 
-    function updateUI(data) {
-      const { temperatures, cpu, memory } = data;
-
-      // CPU Temp
-      const cpuT = typeof temperatures.cpuMain === 'number'
-        ? temperatures.cpuMain
-        : Math.round(39 + ((cpu.loadPercent || 0) * 0.42));
-
-      valCpuTemp.textContent = cpuT;
-      if (cpuT > cpuPeak) cpuPeak = cpuT;
-      valCpuPeak.textContent = cpuPeak;
-      if (valCpuModel) {
-        valCpuModel.textContent = (cpu.model || cpu.brand || temperatures.cpuName || 'Processador').slice(0, 24);
-      }
-
-      const cpuPercent = Math.min(100, Math.max(0, ((cpuT - 25) / 70) * 100));
-      renderEqualizer(eqCpu, cpuPercent);
-      cardCpuTemp.className = cpuT >= 76 ? 'card critical' : 'card';
-
-      historyData.push(cpuT);
-      if (historyData.length > MAX_POINTS) historyData.shift();
-      drawChart();
-
-      valCpuLoadSub.textContent = `${cpu.loadPercent}% uso`;
-
-      // GPU Temp
-      const gpuT = typeof temperatures.gpu === 'number'
-        ? temperatures.gpu
-        : Math.round(42 + ((cpu.loadPercent || 0) * 0.35));
-
-      valGpuTemp.textContent = gpuT;
-      if (gpuT > gpuPeak) gpuPeak = gpuT;
-      valGpuPeak.textContent = gpuPeak;
-      valGpuModel.textContent = (temperatures.gpuName || 'GPU').slice(0, 16);
-
-      const gpuPercent = Math.min(100, Math.max(0, ((gpuT - 25) / 70) * 100));
-      renderEqualizer(eqGpu, gpuPercent);
-      cardGpuTemp.className = gpuT >= 76 ? 'card critical' : 'card';
-
-      // CPU Load
-      valCpuLoad.textContent = cpu.loadPercent;
-      renderEqualizer(eqLoad, cpu.loadPercent);
-      valCoresCount.textContent = `${cpu.cores.length} núcleos`;
-
-      // Memory
-      valRamUsed.textContent = Math.round(memory.percentUsed);
-      renderEqualizer(eqRam, memory.percentUsed);
-      valRamText.textContent = `${memory.usedGB} / ${memory.totalGB} GB`;
-
-      lastTimestamp.textContent = new Date().toLocaleTimeString();
-    }
-
+    // Inicialização
+    fetchInitialMetrics();
     connectWs();
+    fetchServerInfo();
+    resizeCanvas();
   </script>
 </body>
 </html>

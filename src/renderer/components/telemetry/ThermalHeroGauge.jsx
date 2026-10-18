@@ -11,6 +11,8 @@ export function ThermalHeroGauge({
   cpuModel = 'AMD / Intel Processor',
   gpuModel = 'GPU Telemetry',
   isEstimated = false,
+  isCpuEstimated = undefined,
+  isGpuEstimated = undefined,
   className = '',
 }) {
   const [selectedTarget, setSelectedTarget] = useState('CPU'); // 'CPU' | 'GPU'
@@ -18,6 +20,9 @@ export function ThermalHeroGauge({
   const currentTemp = selectedTarget === 'CPU' ? cpuTemp : gpuTemp;
   const currentMax = selectedTarget === 'CPU' ? cpuMax : gpuMax;
   const currentModel = selectedTarget === 'CPU' ? cpuModel : gpuModel;
+  const currentIsEstimated = selectedTarget === 'CPU'
+    ? (typeof isCpuEstimated === 'boolean' ? isCpuEstimated : isEstimated)
+    : (typeof isGpuEstimated === 'boolean' ? isGpuEstimated : isEstimated);
 
   // Estado Térmico Semântico
   const status = currentTemp >= 76 ? 'critical' : currentTemp >= 56 ? 'warning' : 'stable';
@@ -281,14 +286,14 @@ export function ThermalHeroGauge({
             fontSize: '0.62rem',
             padding: '2px 7px',
             borderRadius: '6px',
-            background: isEstimated ? 'rgba(0, 240, 255, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-            color: isEstimated ? '#00F0FF' : '#10B981',
-            border: isEstimated ? '1px solid rgba(0, 240, 255, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)',
+            background: currentIsEstimated ? 'rgba(0, 240, 255, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+            color: currentIsEstimated ? '#00F0FF' : '#10B981',
+            border: currentIsEstimated ? '1px solid rgba(0, 240, 255, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)',
             fontWeight: 700,
             letterSpacing: '0.5px',
           }}
         >
-          {isEstimated ? 'ESTIMADO' : 'SENSOR'}
+          {currentIsEstimated ? 'ESTIMADO' : 'SENSOR'}
         </span>
       </div>
     </BentoCard>

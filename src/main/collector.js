@@ -1,10 +1,14 @@
 const os = require('os');
+const path = require('path');
+const http = require('http');
+const fs = require('fs');
+const { spawn } = require('child_process');
 
 /**
  * SystemCollector
  * Responsável por coletar e normalizar métricas de hardware, sensores e temperaturas.
- * Otimizado para alto desempenho com zero impacto de CPU, evitando criação contínua
- * de processos PowerShell/WMIC via cache inteligente e métricas nativas do Node.js.
+ * Otimizado para alto desempenho com zero impacto de CPU, integrando bridge C# nativo
+ * do LibreHardwareMonitor com suporte direto a AMD Ryzen (Zen 5) e AMD Radeon (RDNA3).
  */
 class SystemCollector {
   constructor(systemInfoModule = null) {
@@ -32,6 +36,169 @@ class SystemCollector {
 
     // Snapshot inicial para cálculo nativo diferencial de CPU (zero processos)
     this.prevCpuSnap = this.getCpuTimes();
+
+    // Bridge nativo LibreHardwareMonitor (C# streaming com suporte AMD Zen/RDNA3)
+    this.bridgeProcess = null;
+    this.latestBridgeData = null;
+    this.lastBridgeUpdate = 0;
+    this.latestLhmData = null;
+    this.lastLhmCheck = 0;
+    this.isBridgeActive = false;
+    this.isStopped = false;
+
+    if (!this.isCustomModule) {
+      this.initBridge();
+    }
+  }
+
+  initBridge() {
+    if (this.bridgeProcess || this.isCustomModule || this.isStopped) return;
+
+    const possiblePaths = [
+      path.join(__dirname, '../../tools/LibreHardwareMonitor/pc-sensor-bridge.exe'),
+      path.join(process.cwd(), 'tools/LibreHardwareMonitor/pc-sensor-bridge.exe'),
+      path.join(process.resourcesPath || '', 'tools/LibreHardwareMonitor/pc-sensor-bridge.exe'),
+    ];
+
+    let bridgeExe = null;
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        bridgeExe = p;
+        break;
+      }
+    }
+
+    if (!bridgeExe) return;
+
+    try {
+      this.bridgeProcess = spawn(bridgeExe, ['--stream'], {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
+
+      let buffer = '';
+
+      this.bridgeProcess.stdout.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // Mantém pedaço incompleto no buffer
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+              const data = JSON.parse(trimmed);
+              if (data && data.success) {
+                this.latestBridgeData = data;
+                this.lastBridgeUpdate = Date.now();
+                this.isBridgeActive = true;
+              }
+            } catch {}
+          }
+        }
+      });
+
+      this.bridgeProcess.on('error', () => {
+        this.bridgeProcess = null;
+        this.isBridgeActive = false;
+      });
+
+      this.bridgeProcess.on('exit', () => {
+        this.bridgeProcess = null;
+        this.isBridgeActive = false;
+        if (!this.isStopped) {
+          setTimeout(() => this.initBridge(), 6000);
+        }
+      });
+    } catch {
+      this.bridgeProcess = null;
+    }
+  }
+
+  async pollLhmWebServer() {
+    const now = Date.now();
+    if (now - this.lastLhmCheck < 2500) {
+      return this.latestLhmData;
+    }
+    this.lastLhmCheck = now;
+
+    return new Promise((resolve) => {
+      const req = http.get('http://127.0.0.1:8085/data.json', { timeout: 350 }, (res) => {
+        if (res.statusCode !== 200) {
+          resolve(this.latestLhmData);
+          return;
+        }
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(body);
+            const parsed = this._parseLhmTree(json);
+            if (parsed) {
+              this.latestLhmData = parsed;
+            }
+            resolve(this.latestLhmData);
+          } catch {
+            resolve(this.latestLhmData);
+          }
+        });
+      });
+
+      req.on('error', () => resolve(this.latestLhmData));
+      req.on('timeout', () => {
+        req.destroy();
+        resolve(this.latestLhmData);
+      });
+    });
+  }
+
+  _parseLhmTree(root) {
+    if (!root || !root.children) return null;
+    let cpuTemp = null;
+    let gpuTemp = null;
+    let fanRpm = null;
+
+    const walk = (node) => {
+      if (!node) return;
+      const text = (node.text || '').toLowerCase();
+
+      if (node.Value && typeof node.Value === 'string' && node.Value.includes('°C')) {
+        const val = parseFloat(node.Value.replace(',', '.'));
+        if (!isNaN(val) && val > 0) {
+          if (text.includes('tctl') || text.includes('package') || text.includes('cpu core')) {
+            if (cpuTemp === null || text.includes('tctl')) cpuTemp = val;
+          } else if (text.includes('gpu core') || (text.includes('gpu') && text.includes('temperature'))) {
+            if (gpuTemp === null) gpuTemp = val;
+          }
+        }
+      }
+
+      if (node.Value && typeof node.Value === 'string' && node.Value.includes('RPM')) {
+        const val = parseFloat(node.Value.replace(',', '.'));
+        if (!isNaN(val) && val > 0 && fanRpm === null) {
+          fanRpm = val;
+        }
+      }
+
+      if (node.children && Array.isArray(node.children)) {
+        for (const child of node.children) {
+          walk(child);
+        }
+      }
+    };
+
+    walk(root);
+    return { cpuTemp, gpuTemp, fanRpm };
+  }
+
+  stop() {
+    this.isStopped = true;
+    if (this.bridgeProcess) {
+      try {
+        this.bridgeProcess.kill();
+      } catch {}
+      this.bridgeProcess = null;
+    }
   }
 
   getCpuModel() {
@@ -115,9 +282,41 @@ class SystemCollector {
     const cpuMetrics = this.getNativeCpuLoad();
     const memMetrics = this.getNativeMemory();
 
-    // 2. GPU: Consulta pesada em Windows (cria de 5 a 8 processos powershell).
-    // O nome da GPU e especificações são estáticas. Consultamos a cada 60s ou usamos cache.
-    if (!this.cachedGfx || now - this.lastGfxCheck > 60000) {
+    // 2. Coleta de dados reais de sensores (Bridge C# nativo / LHM WebServer)
+    const bridgeValid = this.latestBridgeData && (now - this.lastBridgeUpdate < 4500);
+    const lhmData = await this.pollLhmWebServer();
+
+    let realCpuTemp = null;
+    let realGpuTemp = null;
+    let realGpuName = null;
+    let realFanRpm = null;
+
+    if (typeof lhmData?.cpuTemp === 'number' && lhmData.cpuTemp > 0) {
+      realCpuTemp = Number(lhmData.cpuTemp.toFixed(1));
+    } else if (bridgeValid && typeof this.latestBridgeData.cpu?.temp === 'number' && this.latestBridgeData.cpu.temp > 0) {
+      realCpuTemp = Number(this.latestBridgeData.cpu.temp.toFixed(1));
+    }
+
+    if (typeof lhmData?.gpuTemp === 'number' && lhmData.gpuTemp > 0) {
+      realGpuTemp = Number(lhmData.gpuTemp.toFixed(1));
+    } else if (bridgeValid && typeof this.latestBridgeData.gpu?.temp === 'number' && this.latestBridgeData.gpu.temp > 0) {
+      realGpuTemp = Number(this.latestBridgeData.gpu.temp.toFixed(1));
+    }
+
+    if (bridgeValid && this.latestBridgeData.gpu?.name && this.latestBridgeData.gpu.name !== 'GPU') {
+      realGpuName = this.latestBridgeData.gpu.name;
+    }
+
+    if (typeof lhmData?.fanRpm === 'number' && lhmData.fanRpm > 0) {
+      realFanRpm = Math.round(lhmData.fanRpm);
+    } else if (bridgeValid && typeof this.latestBridgeData.fanRpm === 'number' && this.latestBridgeData.fanRpm > 0) {
+      realFanRpm = Math.round(this.latestBridgeData.fanRpm);
+    } else if (bridgeValid && typeof this.latestBridgeData.gpu?.fanRpm === 'number' && this.latestBridgeData.gpu.fanRpm > 0) {
+      realFanRpm = Math.round(this.latestBridgeData.gpu.fanRpm);
+    }
+
+    // 3. GPU (consulta nativa fallback se não houver bridge)
+    if (!realGpuTemp && (!this.cachedGfx || now - this.lastGfxCheck > 60000)) {
       try {
         const gfxData = await si.graphics();
         if (gfxData && gfxData.controllers && gfxData.controllers.length > 0) {
@@ -137,8 +336,7 @@ class SystemCollector {
       this.lastGfxCheck = now;
     }
 
-    // 3. Discos (fsSize): Cria processos WMI. Informações de partição não mudam por segundo.
-    // Consulta espaçada a cada 30 segundos.
+    // 4. Discos (fsSize): Consulta espaçada a cada 30 segundos.
     if (!this.cachedDisks || this.cachedDisks.length === 0 || now - this.lastDisksCheck > 30000) {
       try {
         const fsData = await si.fsSize();
@@ -156,48 +354,54 @@ class SystemCollector {
       this.lastDisksCheck = now;
     }
 
-    // 4. Temperaturas da CPU: Em sistemas sem sensor WMI direto (retornando null),
-    // evita rodar powershell desnecessariamente a cada segundo.
+    // 5. Temperaturas da CPU (consulta WMI apenas se não houver dados reais do bridge)
     let tempData = this.cachedTemp;
-    const shouldCheckTemp =
-      this.hasWorkingTempSensor === null ||
-      (this.hasWorkingTempSensor === true && now - this.lastTempCheck > 3000) ||
-      (this.hasWorkingTempSensor === false && now - this.lastTempCheck > 60000);
+    if (!realCpuTemp) {
+      const shouldCheckTemp =
+        this.hasWorkingTempSensor === null ||
+        (this.hasWorkingTempSensor === true && now - this.lastTempCheck > 3000) ||
+        (this.hasWorkingTempSensor === false && now - this.lastTempCheck > 60000);
 
-    if (shouldCheckTemp) {
-      try {
-        tempData = await si.cpuTemperature();
-        this.cachedTemp = tempData;
-        if (typeof tempData.main === 'number' && !isNaN(tempData.main)) {
-          this.hasWorkingTempSensor = true;
-        } else if (this.hasWorkingTempSensor === null) {
-          this.hasWorkingTempSensor = false;
+      if (shouldCheckTemp) {
+        try {
+          tempData = await si.cpuTemperature();
+          this.cachedTemp = tempData;
+          if (typeof tempData.main === 'number' && !isNaN(tempData.main)) {
+            this.hasWorkingTempSensor = true;
+          } else if (this.hasWorkingTempSensor === null) {
+            this.hasWorkingTempSensor = false;
+          }
+        } catch {
+          if (this.hasWorkingTempSensor === null) {
+            this.hasWorkingTempSensor = false;
+          }
         }
-      } catch {
-        if (this.hasWorkingTempSensor === null) {
-          this.hasWorkingTempSensor = false;
-        }
+        this.lastTempCheck = now;
       }
-      this.lastTempCheck = now;
     }
 
-    let directCpuTemp = typeof tempData.main === 'number' && !isNaN(tempData.main)
-      ? Number(tempData.main.toFixed(1))
-      : null;
+    let directCpuTemp = realCpuTemp !== null
+      ? realCpuTemp
+      : (typeof tempData.main === 'number' && !isNaN(tempData.main) ? Number(tempData.main.toFixed(1)) : null);
 
-    let directGpuTemp = this.cachedGfx?.gpuTemp ?? null;
-    const isEstimated = directCpuTemp === null;
+    let directGpuTemp = realGpuTemp !== null
+      ? realGpuTemp
+      : (this.cachedGfx?.gpuTemp ?? null);
 
-    // Se o hardware não expõe sensor ACPI/WMI direto no SO, calcula modelo termodinâmico realista
-    if (isEstimated) {
-      const targetCpu = 39.0 + (cpuMetrics.loadPercent * 0.42);
-      this.currentCpuTemp += (targetCpu - this.currentCpuTemp) * 0.25;
-      const jitter = Math.sin(now / 1500) * 0.4;
+    const isCpuEstimated = directCpuTemp === null;
+    const isGpuEstimated = directGpuTemp === null;
+    const isEstimated = isCpuEstimated;
+
+    // Se o hardware não expõe sensor ACPI/WMI/Bridge no SO, calcula modelo termodinâmico realista
+    if (isCpuEstimated) {
+      const targetCpu = 32.0 + (cpuMetrics.loadPercent * 0.36);
+      this.currentCpuTemp += (targetCpu - this.currentCpuTemp) * 0.22;
+      const jitter = Math.sin(now / 1500) * 0.35;
       directCpuTemp = Number((this.currentCpuTemp + jitter).toFixed(1));
     }
 
-    if (directGpuTemp === null) {
-      const targetGpu = 42.0 + (cpuMetrics.loadPercent * 0.35);
+    if (isGpuEstimated) {
+      const targetGpu = 36.0 + (cpuMetrics.loadPercent * 0.32);
       this.currentGpuTemp += (targetGpu - this.currentGpuTemp) * 0.18;
       const gpuJitter = Math.cos(now / 1800) * 0.3;
       directGpuTemp = Number((this.currentGpuTemp + gpuJitter).toFixed(1));
@@ -207,15 +411,24 @@ class SystemCollector {
       ? Number(tempData.max.toFixed(1))
       : Number((directCpuTemp + 2.8).toFixed(1));
 
-    // Velocidade de ventoinha (Fan Speed) dinâmica proporcional ao estado térmico
-    const tempRatio = Math.max(0, Math.min(1, ((directCpuTemp - 35) / 55)));
-    const fanRpm = Math.round(780 + (tempRatio * 1620) + (Math.sin(now / 2400) * 30));
-    const pwmPercent = Math.min(100, Math.max(0, Math.round((fanRpm / 2400) * 100)));
+    // Velocidade de ventoinha (Fan Speed) dinâmica ou real via hardware bridge
+    let fanRpm = realFanRpm;
+    let pwmPercent = 50;
+
+    if (fanRpm !== null && fanRpm >= 0) {
+      pwmPercent = Math.min(100, Math.max(0, Math.round((fanRpm / 2400) * 100)));
+    } else {
+      const tempRatio = Math.max(0, Math.min(1, ((directCpuTemp - 35) / 55)));
+      fanRpm = Math.round(780 + (tempRatio * 1620) + (Math.sin(now / 2400) * 30));
+      pwmPercent = Math.min(100, Math.max(0, Math.round((fanRpm / 2400) * 100)));
+    }
 
     // Taxa estimada de atividade de I/O em disco
     const ioWave = (Math.sin(now / 1900) + 1) / 2;
     const readMBps = Number((2.8 + (ioWave * 24.5)).toFixed(1));
     const writeMBps = Number((1.4 + (ioWave * 12.2)).toFixed(1));
+
+    const gpuNameResolved = realGpuName || this.cachedGfx?.gpuName || 'GPU Primária';
 
     return {
       timestamp: now,
@@ -224,9 +437,15 @@ class SystemCollector {
         cpuMax: cpuMaxTemp,
         cores: tempData.cores && tempData.cores.length > 0 ? tempData.cores : [directCpuTemp],
         gpu: directGpuTemp,
-        gpuName: this.cachedGfx?.gpuName ?? 'GPU',
-        cpuName: this.cpuModel,
+        gpuName: gpuNameResolved,
+        gpuMemoryTemp: bridgeValid && typeof this.latestBridgeData.gpu?.memoryTemp === 'number' ? this.latestBridgeData.gpu.memoryTemp : null,
+        gpuHotspotTemp: bridgeValid && typeof this.latestBridgeData.gpu?.hotspotTemp === 'number' ? this.latestBridgeData.gpu.hotspotTemp : null,
+        gpuFanRpm: bridgeValid && typeof this.latestBridgeData.gpu?.fanRpm === 'number' ? this.latestBridgeData.gpu.fanRpm : null,
+        gpuPowerWatts: bridgeValid && typeof this.latestBridgeData.gpu?.powerWatts === 'number' ? this.latestBridgeData.gpu.powerWatts : null,
+        cpuName: (bridgeValid && this.latestBridgeData.cpu?.name) ? this.latestBridgeData.cpu.name : this.cpuModel,
         isEstimated: isEstimated,
+        isCpuEstimated: isCpuEstimated,
+        isGpuEstimated: isGpuEstimated,
       },
       cpu: {
         ...cpuMetrics,
@@ -239,6 +458,7 @@ class SystemCollector {
         rpm: fanRpm,
         pwmPercent,
         maxRpm: 2400,
+        isReal: realFanRpm !== null,
       },
       diskIo: {
         readMBps,
@@ -527,9 +747,9 @@ class SystemCollector {
         linkSpeedMbps: typeof activeNet?.speed === 'number' && activeNet.speed > 0 ? activeNet.speed : null,
       },
       capabilities: {
-        cpuTemperature: this.hasWorkingTempSensor === true,
-        gpuTemperature: Boolean(this.cachedGfx?.gpuTemp !== null),
-        gpuPower: false,
+        cpuTemperature: this.hasWorkingTempSensor === true || (this.latestBridgeData?.cpu?.temp != null && this.latestBridgeData.cpu.temp > 0),
+        gpuTemperature: Boolean(this.cachedGfx?.gpuTemp !== null || (this.latestBridgeData?.gpu?.temp != null && this.latestBridgeData.gpu.temp > 0)),
+        gpuPower: Boolean(this.latestBridgeData?.gpu?.powerWatts != null),
         perCoreLoad: true,
       },
     };

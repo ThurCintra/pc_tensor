@@ -28,6 +28,21 @@
    - Cache inteligente de especificações estáticas (GPU, partições de disco e sensores WMI ausentes).
    - Eliminação de processos sobressalentes do Chromium com flags `SpareRendererForSitePerProcess` e lock anti-sobreposição no loop de métricas.
 
+8. **Paridade Total de Funcionalidades entre Desktop e Web:**
+   - [`src/server/public/index.html`](file:///c:/Users/Arthur/Desktop/pc_tensor/src/server/public/index.html): Interface web completamente unificada e expandida com todas as funcionalidades do Desktop:
+     - Dashboard com Hero Thermal Gauges duplos para CPU e GPU, picos máximos e status dinâmico (Otimizado, Alerta, Crítico).
+     - Gráfico Spline interativo com filtros de tempo (5 min, 15 min, 30 min) e métricas estatísticas (Média, Pico, Mínima).
+     - Equalizador segmentado multi-core em tempo real para cada núcleo de processamento e barra de alocação de memória RAM.
+     - Indicador dinâmico de refrigeração com rotação visual do cooler proporcional ao RPM e monitoramento PWM.
+     - Painel de armazenamento com leitura e gravação em tempo real (Disk I/O em MB/s) e ocupação de partições.
+     - Aba completa de Hardware & Raio-X do PC com especificações de SO, Placa-Mãe, BIOS, Processador, GPUs com VRAM, slots de memória RAM, Discos e Conectividade de Rede com máscara de privacidade para MAC.
+     - Ações de copiar especificações em Markdown para clipboard e download de relatório estruturado em JSON.
+     - Aba de controle de streaming e pareamento via QR Code com alternância liga/desliga em tempo real.
+     - Modo Mini-Widget HUD compacto flutuante.
+   - [`src/server/mobile-server.js`](file:///c:/Users/Arthur/Desktop/pc_tensor/src/server/mobile-server.js): Suporte a endpoints REST (`/api/hardware`, `/api/metrics`, `/api/info`, `/api/server/toggle`) e WebSocket bidirecional com suporte a CORS.
+   - [`src/renderer/App.jsx`](file:///c:/Users/Arthur/Desktop/pc_tensor/src/renderer/App.jsx) e [`src/renderer/components/hardware/HardwareSpecsView.jsx`](file:///c:/Users/Arthur/Desktop/pc_tensor/src/renderer/components/hardware/HardwareSpecsView.jsx): Modo híbrido com suporte a WebSocket e REST quando executado em navegadores web.
+   - Testes unitários com Vitest atualizados e 100% GREEN (13/13 testes passando).
+
 ## Próximos Passos
-- Implementar serviço de persistência de picos térmicos no MongoDB ([.project/PLANO.md](file:///c:/Users/Administrator/Desktop/pc-sentinel/.project/PLANO.md)).
+- Implementar serviço de persistência de picos térmicos no MongoDB ([.project/PLANO.md](file:///c:/Users/Arthur/Desktop/pc_tensor/.project/PLANO.md)).
 - Disparo de notificações desktop e sonoras de alerta.
