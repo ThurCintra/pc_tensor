@@ -1,0 +1,101 @@
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
+const { SystemCollector } = require('./collector');
+const { MobileLiveServer } = require('../server/mobile-server');
+
+let mainWindow = null;
+let collector = null;
+let mobileServer = null;
+let metricsInterval = null;
+
+async function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1100,
+    height: 750,
+    minWidth: 900,
+    minHeight: 600,
+    backgroundColor: '#07090e',
+    title: 'PC Sentinel - Hardware & Thermal Telemetry',
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+    autoHideMenuBar: true,
+  });
+
+  // Em desenvolvimento, tenta conectar ao servidor Vite ou carrega index local
+  const devUrl = 'http://localhost:5173';
+  try {
+    await mainWindow.loadURL(devUrl);
+  } catch (e) {
+    // Fallback se o servidor vite ainda estiver subindo ou for build estático
+    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html')).catch(() => {
+      // Caso ainda não tenha build, exibe página de bootstrap
+      mainWindow.loadFile(path.join(__dirname, '../server/public/index.html'));
+    });
+  }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+function setupIpc() {
+  ipcMain.handle('metrics:snapshot', async () => {
+    return await collector.getMetricsSnapshot();
+  });
+
+  ipcMain.handle('mobile-server:get-info', async () => {
+    return await mobileServer.getServerInfo();
+  });
+
+  ipcMain.handle('mobile-server:toggle', async (event, shouldStart) => {
+    if (shouldStart) {
+      return await mobileServer.start();
+    } else {
+      await mobileServer.stop();
+      return await mobileServer.getServerInfo();
+    }
+  });
+}
+
+function startMetricsLoop() {
+  metricsInterval = setInterval(async () => {
+    try {
+      const metrics = await collector.getMetricsSnapshot();
+
+      // Envia para o processo Desktop (React)
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('metrics:update', metrics);
+      }
+
+      // Transmite ao vivo para os celulares conectados via WebSocket
+      mobileServer.broadcastMetrics(metrics);
+    } catch (err) {
+      console.error('Erro no loop de métricas:', err);
+    }
+  }, 1000); // Taxa de atualização: a cada 1 segundo
+}
+
+app.whenReady().then(async () => {
+  collector = new SystemCollector();
+  mobileServer = new MobileLiveServer({ port: 3890 });
+
+  // Inicia automaticamente o servidor mobile local
+  await mobileServer.start();
+
+  setupIpc();
+  await createWindow();
+  startMetricsLoop();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('window-all-closed', async () => {
+  if (metricsInterval) clearInterval(metricsInterval);
+  if (mobileServer) await mobileServer.stop();
+  if (process.platform !== 'darwin') app.quit();
+});

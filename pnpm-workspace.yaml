@@ -1,7 +1,0 @@
-packages:
-  - 'apps/backend'
-  - 'packages/*'
-  - 'tools/*'
-allowBuilds:
-  esbuild: true
-  argon2: true
