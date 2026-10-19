@@ -4,8 +4,10 @@ const { WebSocketServer, WebSocket } = require('ws');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const crypto = require('crypto');
 const { exec } = require('child_process');
 const QRCode = require('qrcode');
+const { ActionRouter } = require('./action-router');
 
 class MobileLiveServer {
   constructor(options = {}) {
@@ -19,11 +21,32 @@ class MobileLiveServer {
     this.isRunning = false;
     this.localIp = this.detectLocalIp();
 
+    // FASE 2: Autenticação por Token Efêmero de Sessão
+    this.sessionToken = options.sessionToken || crypto.randomUUID();
+    this.requireAuth = options.requireAuth ?? true;
+
+    // FASE 2: Roteador de Ações Seguras (Stream Deck)
+    this.actionRouter = options.actionRouter || new ActionRouter({ collector: this.collector });
+
     this.setupRoutes();
+
+    if (this.collector && typeof this.collector.on === 'function') {
+      this.collector.on('SESSION_REPORT_READY', (report) => {
+        this.broadcastSessionReport(report);
+      });
+    }
   }
 
   setCollector(collector) {
     this.collector = collector;
+    if (this.actionRouter) {
+      this.actionRouter.setCollector(collector);
+    }
+    if (this.collector && typeof this.collector.on === 'function') {
+      this.collector.on('SESSION_REPORT_READY', (report) => {
+        this.broadcastSessionReport(report);
+      });
+    }
   }
 
   detectLocalIp() {
@@ -124,6 +147,25 @@ class MobileLiveServer {
         return res.status(500).json({ error: err.message });
       }
     });
+
+    // Execução de Ações / Stream Deck (REST)
+    this.app.post('/api/action', async (req, res) => {
+      try {
+        const token = req.query.token || req.headers['x-session-token'] || req.headers['authorization']?.replace(/^Bearer\s+/i, '');
+        if (this.requireAuth && (!token || token !== this.sessionToken)) {
+          return res.status(401).json({
+            success: false,
+            error: 'UNAUTHORIZED',
+            message: 'Token de autenticação ausente ou inválido.',
+          });
+        }
+
+        const result = await this.actionRouter.handleAction(req.body);
+        return res.json(result);
+      } catch (err) {
+        return res.status(500).json({ success: false, error: 'SERVER_ERROR', message: err.message });
+      }
+    });
   }
 
   getMockHardwareInfo() {
@@ -206,20 +248,103 @@ class MobileLiveServer {
   async start() {
     if (this.isRunning) return this.getServerInfo();
 
-    this.server = http.createServer(this.app);
-    this.wss = new WebSocketServer({ server: this.server });
+    if (!this.sessionToken) {
+      this.sessionToken = crypto.randomUUID();
+    }
 
-    this.wss.on('connection', (ws) => {
+    const maxPortAttempts = 5;
+    let currentAttempt = 0;
+    let boundSuccessfully = false;
+
+    while (!boundSuccessfully && currentAttempt < maxPortAttempts) {
+      const targetPort = this.port + currentAttempt;
+      currentAttempt++;
+
+      const serverCandidate = http.createServer(this.app);
+      const wssCandidate = new WebSocketServer({ server: serverCandidate });
+
+      const bound = await new Promise((resolve) => {
+        serverCandidate.once('error', (err) => {
+          if (err.code === 'EADDRINUSE') {
+            console.warn(`[MobileLiveServer] Porta ${targetPort} já em uso. Tentando porta alternativa ${targetPort + 1}...`);
+            try { wssCandidate.close(); } catch {}
+            try { serverCandidate.close(); } catch {}
+            resolve(false);
+          } else {
+            console.error(`[MobileLiveServer] Erro ao vincular servidor na porta ${targetPort}:`, err);
+            try { wssCandidate.close(); } catch {}
+            try { serverCandidate.close(); } catch {}
+            resolve(false);
+          }
+        });
+
+        serverCandidate.listen(targetPort, '0.0.0.0', () => {
+          this.port = targetPort;
+          this.server = serverCandidate;
+          this.wss = wssCandidate;
+          this.isRunning = true;
+          this.setupWebSocketListeners(this.wss);
+          resolve(true);
+        });
+      });
+
+      if (bound) {
+        boundSuccessfully = true;
+        console.log(`[MobileLiveServer] Ouvindo em todas as interfaces de rede (0.0.0.0:${this.port}) - IP Local: ${this.localIp}`);
+        try {
+          exec(`netsh advfirewall firewall add rule name="PC Sentinel LAN (${this.port})" dir=in action=allow protocol=TCP localport=${this.port}`, () => {});
+        } catch (e) {}
+      }
+    }
+
+    if (!boundSuccessfully) {
+      console.warn(`[MobileLiveServer] Não foi possível vincular a nenhuma porta nas proximidades de ${this.port}.`);
+    }
+
+    return this.getServerInfo();
+  }
+
+  setupWebSocketListeners(wss) {
+    wss.on('connection', (ws, req) => {
+      let clientToken = null;
+      try {
+        if (req && req.url) {
+          const parsedUrl = new URL(req.url, `http://${req.headers?.host || 'localhost'}`);
+          clientToken = parsedUrl.searchParams.get('token');
+        }
+      } catch {}
+
+      if (!clientToken && req?.headers) {
+        clientToken = req.headers['x-session-token'] || req.headers['authorization']?.replace(/^Bearer\s+/i, '');
+      }
+
+      const isTokenValid = !this.requireAuth || (clientToken && clientToken === this.sessionToken);
+
+      if (this.requireAuth && !isTokenValid) {
+        try {
+          ws.send(JSON.stringify({
+            type: 'auth_error',
+            error: 'UNAUTHORIZED',
+            message: 'Acesso negado: token de autenticação ausente ou inválido.',
+          }));
+          ws.close(4001, 'Unauthorized');
+        } catch {}
+        return;
+      }
+
+      ws.isAuthenticated = true;
       this.clients.add(ws);
 
-      // Envia confirmação de boas-vindas
+      // Envia confirmação de boas-vindas com dados de autenticação
+      const serverUrl = `http://${this.localIp}:${this.port}/?token=${this.sessionToken}`;
       ws.send(JSON.stringify({ 
         type: 'connected', 
         message: 'Conectado ao PC Sentinel Mobile Stream',
         serverInfo: {
-          url: `http://${this.localIp}:${this.port}`,
+          url: serverUrl,
           localIp: this.localIp,
-          port: this.port
+          port: this.port,
+          authenticated: true,
         }
       }));
 
@@ -236,6 +361,33 @@ class MobileLiveServer {
       ws.on('message', async (data) => {
         try {
           const msg = JSON.parse(data.toString());
+
+          // FASE 2: Roteador de Comandos Bidirecionais (Mobile -> PC)
+          const isActionMsg = msg.type === 'action' || 
+                              msg.type === 'ACTION' || 
+                              ['KILL_PROCESS', 'SET_POWER_PLAN', 'BOOST_CLEANUP', 'MEDIA_AUDIO_CONTROL'].includes(msg.type);
+
+          if (isActionMsg) {
+            if (this.requireAuth && !ws.isAuthenticated) {
+              ws.send(JSON.stringify({
+                type: 'action_result',
+                requestId: msg.requestId,
+                success: false,
+                error: 'UNAUTHORIZED',
+                message: 'Cliente não autenticado para executar comandos remotos.',
+              }));
+              return;
+            }
+
+            const actionPayload = (msg.type === 'action' || msg.type === 'ACTION') ? msg : { ...msg, action: msg.type };
+            const result = await this.actionRouter.handleAction(actionPayload);
+            ws.send(JSON.stringify({
+              type: 'action_result',
+              ...result,
+            }));
+            return;
+          }
+
           if (msg.type === 'get_hardware') {
             const forceRefresh = !!msg.forceRefresh;
             let hwData = null;
@@ -265,23 +417,6 @@ class MobileLiveServer {
         this.clients.delete(ws);
       });
     });
-
-    await new Promise((resolve, reject) => {
-      this.server.listen(this.port, '0.0.0.0', () => {
-        this.isRunning = true;
-        console.log(`[MobileLiveServer] Ouvindo em todas as interfaces de rede (0.0.0.0:${this.port}) - IP Local: ${this.localIp}`);
-        
-        // Tenta registrar regra no Firewall do Windows (caso rode elevado)
-        try {
-          exec('netsh advfirewall firewall add rule name="PC Sentinel LAN (3890)" dir=in action=allow protocol=TCP localport=3890', () => {});
-        } catch (e) {}
-
-        resolve();
-      });
-      this.server.on('error', reject);
-    });
-
-    return this.getServerInfo();
   }
 
   async stop() {
@@ -321,8 +456,28 @@ class MobileLiveServer {
     }
   }
 
+  broadcastSessionReport(report) {
+    if (!this.isRunning || this.clients.size === 0) return;
+
+    const payload = JSON.stringify({
+      type: 'session_report',
+      data: report,
+    });
+
+    for (const client of this.clients) {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(payload);
+        } catch {}
+      }
+    }
+  }
+
   async getServerInfo() {
-    const mobileUrl = `http://${this.localIp}:${this.port}`;
+    const mobileUrl = this.sessionToken
+      ? `http://${this.localIp}:${this.port}/?token=${this.sessionToken}`
+      : `http://${this.localIp}:${this.port}`;
+
     let qrDataUrl = '';
     try {
       qrDataUrl = await QRCode.toDataURL(mobileUrl, {
@@ -341,10 +496,11 @@ class MobileLiveServer {
       port: this.port,
       localIp: this.localIp,
       url: mobileUrl,
+      sessionToken: this.sessionToken,
       qrCodeDataUrl: qrDataUrl,
       connectedClientsCount: this.clients.size,
     };
   }
 }
 
-module.exports = { MobileLiveServer };
+module.exports = { MobileLiveServer, ActionRouter };

@@ -134,4 +134,87 @@ describe('SystemCollector', () => {
     expect(parsed.gpuTemp).toBe(58.0);
     expect(parsed.fanRpm).toBe(1250);
   });
+
+  it('deve enriquecer o snapshot com métricas da FASE 1 (Rede, Swap, Gargalos e Benchmark)', async () => {
+    const mockSi = {
+      cpuTemperature: vi.fn().mockResolvedValue({ main: 60.0, cores: [60.0], max: 60.0 }),
+      currentLoad: vi.fn().mockResolvedValue({ currentLoad: 50.0, cpus: [{ load: 50.0 }] }),
+      mem: vi.fn().mockResolvedValue({
+        total: 16 * 1024 * 1024 * 1024,
+        used: 12 * 1024 * 1024 * 1024,
+        free: 4 * 1024 * 1024 * 1024,
+        swaptotal: 8 * 1024 * 1024 * 1024,
+        swapused: 2 * 1024 * 1024 * 1024,
+      }),
+      processes: vi.fn().mockResolvedValue({
+        list: [
+          { pid: 101, name: 'game.exe', cpu: 65, memRss: 2048 * 1024 },
+          { pid: 102, name: 'discord.exe', cpu: 5, memRss: 300 * 1024 },
+        ],
+      }),
+      graphics: vi.fn().mockResolvedValue({ controllers: [] }),
+      fsSize: vi.fn().mockResolvedValue([]),
+    };
+
+    const collector = new SystemCollector(mockSi);
+    const metrics = await collector.getMetricsSnapshot();
+
+    // Rede
+    expect(metrics.network).toBeDefined();
+    expect(metrics.network.packetLossPercent).toBeTypeOf('number');
+    expect(['MEASURING', 'EXCELLENT', 'GOOD', 'FAIR', 'POOR', 'DISCONNECTED']).toContain(metrics.network.status);
+    expect(metrics.network.target).toBe('1.1.1.1');
+
+    // Processos
+    expect(metrics.processes).toBeDefined();
+    expect(Array.isArray(metrics.processes)).toBe(true);
+
+    // Swap
+    expect(metrics.swap).toBeDefined();
+    expect(metrics.swap.totalMB).toBeTypeOf('number');
+    expect(metrics.swap.usedMB).toBeTypeOf('number');
+    expect(metrics.swap.percentUsed).toBeTypeOf('number');
+
+    // Gargalo Dinâmico
+    expect(metrics.bottleneck).toBeDefined();
+    expect(['BALANCED', 'CPU_BOUND', 'GPU_BOUND', 'VRAM_PRESSURE', 'RAM_SWAP_RISK']).toContain(metrics.bottleneck.state);
+
+    // Ring Buffer e Session Benchmark
+    expect(metrics.sessionBenchmark).toBeDefined();
+    expect(['IDLE', 'HIGH_LOAD', 'COOLDOWN']).toContain(metrics.sessionBenchmark.state);
+    expect(metrics.sessionBenchmark.ringStats).toBeDefined();
+
+    // Alerta de Degradação Térmica
+    expect(metrics.degradationAlert).toBeDefined();
+
+    collector.stop();
+  });
+
+  it('deve repassar o evento SESSION_REPORT_READY emitido pela máquina de benchmark', async () => {
+    const collector = new SystemCollector({});
+    let capturedReport = null;
+
+    collector.on('SESSION_REPORT_READY', (report) => {
+      capturedReport = report;
+    });
+
+    const testReport = {
+      sessionId: 'test_session_123',
+      timestamp: Date.now(),
+      durationSeconds: 180,
+      cpu: { peakTemp: 78.5, avgTemp: 71.2 },
+      gpu: { peakTemp: 72.0, avgTemp: 68.4 },
+      ram: { peakUsedGB: 11.5, avgUsedGB: 10.2 },
+      throttlingEventsCount: 0,
+      bottleneckDominant: 'BALANCED',
+    };
+
+    // Emite diretamente do sessionBenchmark interno
+    collector.sessionBenchmark.emit('SESSION_REPORT_READY', testReport);
+
+    expect(capturedReport).toBeDefined();
+    expect(capturedReport.sessionId).toBe('test_session_123');
+
+    collector.stop();
+  });
 });

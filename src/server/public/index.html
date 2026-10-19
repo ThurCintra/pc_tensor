@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PC Sentinel - Dark Cyber-Clean Web HUD</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0B0F19">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -678,6 +682,131 @@
       padding: 16px 0 6px;
       font-family: var(--font-mono);
     }
+
+    /* Alerta Térmico Háptico e Visual (>85°C) */
+    body.thermal-alert-pulsing {
+      box-shadow: inset 0 0 50px rgba(255, 42, 84, 0.75);
+      animation: thermalScreenFlash 1.2s infinite alternate ease-in-out;
+    }
+    @keyframes thermalScreenFlash {
+      from { box-shadow: inset 0 0 15px rgba(255, 42, 84, 0.35); }
+      to { box-shadow: inset 0 0 55px rgba(255, 42, 84, 0.9); }
+    }
+
+    /* Stream Deck Controls */
+    .stream-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .tactile-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(17, 24, 39, 0.85);
+      color: #F3F4F6;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+    .tactile-btn:active {
+      transform: scale(0.96);
+    }
+    .tactile-btn.primary {
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(16, 185, 129, 0.15));
+      border-color: rgba(0, 240, 255, 0.4);
+      color: #00F0FF;
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.15);
+    }
+    .tactile-btn.primary:active {
+      box-shadow: 0 0 24px rgba(0, 240, 255, 0.35);
+    }
+
+    .plan-btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .plan-btn {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(13, 17, 23, 0.7);
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .plan-btn.active {
+      border-color: #00F0FF;
+      background: rgba(0, 240, 255, 0.12);
+      color: #00F0FF;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+    }
+    .plan-btn:active {
+      transform: scale(0.96);
+    }
+
+    .media-btn-group {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .media-btn {
+      padding: 12px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(13, 17, 23, 0.7);
+      color: #F3F4F6;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .media-btn:active {
+      transform: scale(0.92);
+      background: rgba(0, 240, 255, 0.2);
+    }
+
+    .stream-proc-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+      font-size: 0.78rem;
+    }
+    .stream-proc-table td {
+      padding: 6px 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .btn-kill-proc {
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 42, 84, 0.4);
+      background: rgba(255, 42, 84, 0.12);
+      color: #FF2A54;
+      font-size: 0.68rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-kill-proc:active {
+      transform: scale(0.92);
+    }
   </style>
 </head>
 <body>
@@ -711,6 +840,9 @@
       </button>
       <button class="tab-btn" id="tabBtnMobile" onclick="switchTab('mobile')">
         <span>📱 Streaming & Status</span>
+      </button>
+      <button class="tab-btn" id="tabBtnStreamDeck" onclick="switchTab('streamdeck')">
+        <span>🕹️ Stream Deck</span>
       </button>
       <button class="tab-btn mini-btn" id="tabBtnMini" onclick="toggleMiniMode(true)">
         <span>🗔 Modo Mini-Widget</span>
@@ -1039,6 +1171,96 @@
           </button>
         </div>
       </div>
+  </div>
+
+  <!-- TAB 4: STREAM DECK CONTROLS -->
+  <div id="viewStreamDeck" style="display: none;">
+    <div class="stream-grid">
+      <!-- Boost Cleanup -->
+      <div class="card">
+        <div class="card-label">
+          <span>OTIMIZAÇÃO RÁPIDA</span>
+          <span id="boostFeedback" style="font-size: 0.65rem; color: #10B981; font-weight: 600;">PRONTO</span>
+        </div>
+        <p style="font-size: 0.76rem; color: var(--text-muted); margin: 4px 0 12px;">
+          Esvazia páginas em memória e encerra processos não essenciais.
+        </p>
+        <button class="tactile-btn primary" id="btnBoostCleanup" onclick="handleStreamDeckAction('BOOST_CLEANUP')">
+          <span>🚀 BOOST CLEANUP (Liberar RAM)</span>
+        </button>
+      </div>
+
+      <!-- Power Plan Switcher -->
+      <div class="card">
+        <div class="card-label">
+          <span>PLANO DE ENERGIA DO WINDOWS</span>
+          <span id="planFeedback" style="font-size: 0.65rem; color: #00F0FF; font-weight: 600;">ATIVO</span>
+        </div>
+        <div class="plan-btn-group">
+          <button class="plan-btn" id="planSaver" onclick="handleSetPowerPlan('SAVER')">🌱 Economia</button>
+          <button class="plan-btn" id="planBalanced" onclick="handleSetPowerPlan('BALANCED')">⚖️ Equilibrado</button>
+          <button class="plan-btn" id="planHigh" onclick="handleSetPowerPlan('HIGH_PERFORMANCE')">⚡ Alto Desemp.</button>
+          <button class="plan-btn" id="planUltimate" onclick="handleSetPowerPlan('ULTIMATE')">🔥 Desemp. Máximo</button>
+        </div>
+      </div>
+
+      <!-- Media & Audio Controls -->
+      <div class="card">
+        <div class="card-label">
+          <span>CONTROLES DE MÍDIA & ÁUDIO</span>
+          <span style="font-size: 0.65rem; color: #00F0FF; font-weight: 600;">REMOTO</span>
+        </div>
+        <div class="media-btn-group">
+          <button class="media-btn" title="Mudo / Desmudo" onclick="handleMediaAction('MUTE')">🔇</button>
+          <button class="media-btn" title="Diminuir Volume" onclick="handleMediaAction('VOLUME_DOWN')">🔉</button>
+          <button class="media-btn" title="Aumentar Volume" onclick="handleMediaAction('VOLUME_UP')">🔊</button>
+          <button class="media-btn" title="Play / Pausa" onclick="handleMediaAction('PLAY_PAUSE')">⏯️</button>
+        </div>
+      </div>
+
+      <!-- Network Latency & Stability -->
+      <div class="card">
+        <div class="card-label">
+          <span>ESTABILIDADE DE REDE</span>
+          <span id="streamNetStatus" style="font-size: 0.65rem; color: #10B981; font-weight: 600;">EXCELENTE</span>
+        </div>
+        <div style="display: flex; justify-content: space-around; margin: 10px 0; text-align: center;">
+          <div>
+            <div style="font-size: 0.65rem; color: var(--text-muted);">PING</div>
+            <div id="streamPingVal" style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: #00F0FF;">-- ms</div>
+          </div>
+          <div>
+            <div style="font-size: 0.65rem; color: var(--text-muted);">JITTER</div>
+            <div id="streamJitterVal" style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: #FF8A00;">-- ms</div>
+          </div>
+          <div>
+            <div style="font-size: 0.65rem; color: var(--text-muted);">PERDA</div>
+            <div id="streamLossVal" style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: #10B981;">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top 5 Processes Table in Stream Deck -->
+    <div class="card" style="margin-top: 14px;">
+      <div class="card-label">
+        <span>TOP 5 PROCESSOS (FINALIZADOR RÁPIDO)</span>
+        <span id="procActionFeedback" style="font-size: 0.65rem; color: #FF8A00; font-weight: 600;">CLIQUE PARA MATAR</span>
+      </div>
+      <table class="stream-proc-table">
+        <thead>
+          <tr style="color: var(--text-muted); font-size: 0.68rem; text-align: left;">
+            <th>PROCESSO</th>
+            <th>PID</th>
+            <th>CPU</th>
+            <th>RAM</th>
+            <th style="text-align: right;">AÇÃO</th>
+          </tr>
+        </thead>
+        <tbody id="streamDeckProcBody">
+          <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 12px;">Aguardando dados de telemetria...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -1147,10 +1369,12 @@
       document.getElementById('viewDashboard').style.display = tab === 'dashboard' ? 'block' : 'none';
       document.getElementById('viewHardware').style.display = tab === 'hardware' ? 'block' : 'none';
       document.getElementById('viewMobile').style.display = tab === 'mobile' ? 'block' : 'none';
+      document.getElementById('viewStreamDeck').style.display = tab === 'streamdeck' ? 'block' : 'none';
 
       document.getElementById('tabBtnDashboard').classList.toggle('active', tab === 'dashboard');
       document.getElementById('tabBtnHardware').classList.toggle('active', tab === 'hardware');
       document.getElementById('tabBtnMobile').classList.toggle('active', tab === 'mobile');
+      document.getElementById('tabBtnStreamDeck').classList.toggle('active', tab === 'streamdeck');
 
       if (tab === 'hardware' && !rawHardwareData) {
         fetchHardware(false);
@@ -1454,6 +1678,26 @@
       miniRamVal.textContent = `${Math.round(ramPct)}%`;
       miniLoadVal.textContent = `${loadPct}%`;
 
+      // 9. Alerta Térmico Háptico e Visual (>85°C)
+      checkThermalAlert(cpuT, gpuT);
+
+      // 10. Atualização do Stream Deck (Rede e Processos)
+      if (data.network) {
+        const net = data.network;
+        const netPing = document.getElementById('streamPingVal');
+        const netJitter = document.getElementById('streamJitterVal');
+        const netLoss = document.getElementById('streamLossVal');
+        const netStatus = document.getElementById('streamNetStatus');
+        if (netPing && typeof net.latencyMs === 'number') netPing.textContent = `${net.latencyMs.toFixed(0)} ms`;
+        if (netJitter && typeof net.jitterMs === 'number') netJitter.textContent = `${net.jitterMs.toFixed(1)} ms`;
+        if (netLoss && typeof net.packetLossPercent === 'number') netLoss.textContent = `${net.packetLossPercent.toFixed(0)}%`;
+        if (netStatus && net.status) netStatus.textContent = net.status.toUpperCase();
+      }
+
+      if (data.processes && Array.isArray(data.processes)) {
+        renderStreamDeckProcesses(data.processes);
+      }
+
       lastTimestamp.textContent = new Date().toLocaleTimeString();
     }
 
@@ -1642,10 +1886,174 @@
       } catch (e) {}
     }
 
+    /* =========================================================
+       REMOTE ACTIONS & STREAM DECK CONTROLS (FASE 2 & 4)
+       ========================================================= */
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionToken = urlParams.get('token') || '';
+    let activeWs = null;
+    let wakeLockSentinel = null;
+    let lastVibrateTime = 0;
+
+    // 1. Wake Lock API (Manter tela acesa no mobile)
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+        }
+      } catch (e) {
+        console.log('[MobileHUD] Wake Lock:', e.message);
+      }
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    });
+    requestWakeLock();
+
+    // 2. Alerta Háptico (Vibration API) e Borda Pulsante (>85°C)
+    function checkThermalAlert(cpuT, gpuT) {
+      const isOverheating = (cpuT && cpuT >= 85) || (gpuT && gpuT >= 85);
+      if (isOverheating) {
+        document.body.classList.add('thermal-alert-pulsing');
+        const now = Date.now();
+        if (now - lastVibrateTime > 10000) {
+          lastVibrateTime = now;
+          if ('vibrate' in navigator) {
+            navigator.vibrate([300, 100, 300]);
+          }
+        }
+      } else {
+        document.body.classList.remove('thermal-alert-pulsing');
+      }
+    }
+
+    // 3. Despacho de Comandos Bidirecionais
+    async function sendRemoteAction(action, params = {}) {
+      if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+        activeWs.send(JSON.stringify({
+          type: 'action',
+          action,
+          params,
+          token: sessionToken,
+        }));
+        return;
+      }
+      // Fallback REST API
+      try {
+        const res = await fetch('/api/action', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {}),
+          },
+          body: JSON.stringify({ action, params, token: sessionToken }),
+        });
+        const result = await res.json();
+        handleActionResultMessage({ action, ...result });
+      } catch (e) {
+        console.error('Falha ao enviar ação:', e);
+      }
+    }
+
+    function handleActionResultMessage(msg) {
+      if (msg.action === 'BOOST_CLEANUP') {
+        const badge = document.getElementById('boostFeedback');
+        if (badge) {
+          if (msg.success) {
+            const freed = msg.result?.freedRamMB || 0;
+            badge.textContent = `+${freed} MB LIBERADOS!`;
+            badge.style.color = '#10B981';
+          } else {
+            badge.textContent = 'FALHA NO BOOST';
+            badge.style.color = '#FF2A54';
+          }
+          setTimeout(() => {
+            badge.textContent = 'PRONTO';
+            badge.style.color = '#10B981';
+          }, 4000);
+        }
+      } else if (msg.action === 'SET_POWER_PLAN') {
+        const badge = document.getElementById('planFeedback');
+        if (badge) {
+          badge.textContent = msg.success ? 'PLANO APLICADO!' : 'FALHA AO ALTERAR';
+          badge.style.color = msg.success ? '#00F0FF' : '#FF2A54';
+          setTimeout(() => {
+            badge.textContent = 'ATIVO';
+            badge.style.color = '#00F0FF';
+          }, 3000);
+        }
+      } else if (msg.action === 'KILL_PROCESS') {
+        const badge = document.getElementById('procActionFeedback');
+        if (badge) {
+          badge.textContent = msg.success ? 'PROCESSO ENCERRADO!' : (msg.error || 'ERRO');
+          badge.style.color = msg.success ? '#10B981' : '#FF2A54';
+          setTimeout(() => {
+            badge.textContent = 'CLIQUE PARA MATAR';
+            badge.style.color = '#FF8A00';
+          }, 3500);
+        }
+      }
+    }
+
+    function handleStreamDeckAction(action, params = {}) {
+      sendRemoteAction(action, params);
+    }
+
+    function handleSetPowerPlan(plan) {
+      document.querySelectorAll('.plan-btn').forEach(btn => btn.classList.remove('active'));
+      const btnMap = {
+        SAVER: 'planSaver',
+        BALANCED: 'planBalanced',
+        HIGH_PERFORMANCE: 'planHigh',
+        ULTIMATE: 'planUltimate',
+      };
+      if (btnMap[plan]) {
+        document.getElementById(btnMap[plan])?.classList.add('active');
+      }
+      sendRemoteAction('SET_POWER_PLAN', { plan });
+    }
+
+    function handleMediaAction(command) {
+      sendRemoteAction('MEDIA_AUDIO_CONTROL', { command });
+    }
+
+    function handleKillProc(pid, name) {
+      if (confirm(`Deseja realmente encerrar ${name} (PID ${pid})?`)) {
+        sendRemoteAction('KILL_PROCESS', { pid, processName: name });
+      }
+    }
+
+    function renderStreamDeckProcesses(processes) {
+      const tbody = document.getElementById('streamDeckProcBody');
+      if (!tbody) return;
+      if (!processes || processes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 10px;">Sem processos de alto consumo</td></tr>';
+        return;
+      }
+      tbody.innerHTML = processes.slice(0, 5).map(proc => {
+        const cpu = typeof proc.cpuPercent === 'number' ? proc.cpuPercent.toFixed(1) : '0';
+        const mem = typeof proc.memMB === 'number' ? proc.memMB.toFixed(0) : '0';
+        return `
+          <tr>
+            <td style="font-weight: 600; color: #F3F4F6; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${proc.name}</td>
+            <td style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem;">${proc.pid}</td>
+            <td style="font-family: var(--font-mono); font-weight: 700; color: ${proc.cpuPercent > 30 ? '#FF8A00' : '#00F0FF'};">${cpu}%</td>
+            <td style="font-family: var(--font-mono); color: var(--text-secondary);">${mem} MB</td>
+            <td style="text-align: right;">
+              <button class="btn-kill-proc" onclick="handleKillProc(${proc.pid}, '${proc.name}')">Matar</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
     function connectWs() {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${wsProtocol}//${window.location.host}`;
+      const wsUrl = `${wsProtocol}//${window.location.host}${sessionToken ? `?token=${encodeURIComponent(sessionToken)}` : ''}`;
       const ws = new WebSocket(wsUrl);
+      activeWs = ws;
 
       ws.onopen = () => {
         statusBadge.className = 'status-badge connected';
@@ -1664,6 +2072,8 @@
           } else if (msg.type === 'hardware_update' && msg.data) {
             rawHardwareData = msg.data;
             renderHardwareSpecs(msg.data);
+          } else if (msg.type === 'action_result') {
+            handleActionResultMessage(msg);
           }
         } catch (e) {}
       };

@@ -3,6 +3,12 @@ const path = require('path');
 const http = require('http');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const EventEmitter = require('events');
+
+const { NetworkMonitor } = require('./network-monitor');
+const { ProcessMonitor, detectBottleneck } = require('./process-monitor');
+const { SessionBenchmark, RingBuffer } = require('./session-benchmark');
+const { ThermalHistoryStore } = require('./thermal-history');
 
 /**
  * SystemCollector
@@ -10,10 +16,12 @@ const { spawn } = require('child_process');
  * Otimizado para alto desempenho com zero impacto de CPU, integrando bridge C# nativo
  * do LibreHardwareMonitor com suporte direto a AMD Ryzen (Zen 5) e AMD Radeon (RDNA3).
  */
-class SystemCollector {
-  constructor(systemInfoModule = null) {
+class SystemCollector extends EventEmitter {
+  constructor(systemInfoModule = null, options = {}) {
+    super();
     this.si = systemInfoModule;
     this.isCustomModule = !!systemInfoModule;
+    this.options = options || {};
 
     // Cache inteligente de dados estáticos/lentos para evitar chamadas de processo CLI
     this.cachedGfx = null;
@@ -46,8 +54,38 @@ class SystemCollector {
     this.isBridgeActive = false;
     this.isStopped = false;
 
+    // FASE 1: Submódulos de Telemetria Expandida, Ring Buffer e Histórico
+    this.networkMonitor = this.options.networkMonitor || new NetworkMonitor({
+      autoStart: false,
+      host: this.options.networkHost || '1.1.1.1',
+      intervalMs: this.options.networkIntervalMs || 4000,
+    });
+
+    this.processMonitor = this.options.processMonitor || new ProcessMonitor(systemInfoModule);
+    this.sessionBenchmark = this.options.sessionBenchmark || new SessionBenchmark(this.options.benchmark || {});
+    this.thermalHistory = this.options.thermalHistory || new ThermalHistoryStore(this.options.thermalDbPath);
+
+    this.lastThermalSampleRecord = 0;
+    this.lastDegradationCheck = 0;
+    this.cachedDegradationResult = null;
+
+    // Repassa eventos de sessão concluída e salva no SQLite
+    this.sessionBenchmark.on('SESSION_REPORT_READY', (report) => {
+      try {
+        if (this.thermalHistory) {
+          this.thermalHistory.saveSessionReport(report);
+        }
+      } catch (err) {
+        console.error('[SystemCollector] Erro ao salvar sessão no histórico térmico:', err);
+      }
+      this.emit('SESSION_REPORT_READY', report);
+    });
+
     if (!this.isCustomModule) {
       this.initBridge();
+      if (this.options.autoStartNetwork !== false) {
+        this.networkMonitor.start();
+      }
     }
   }
 
@@ -193,6 +231,12 @@ class SystemCollector {
 
   stop() {
     this.isStopped = true;
+    if (this.networkMonitor) {
+      this.networkMonitor.stop();
+    }
+    if (this.thermalHistory) {
+      this.thermalHistory.close();
+    }
     if (this.bridgeProcess) {
       try {
         this.bridgeProcess.kill();
@@ -430,6 +474,62 @@ class SystemCollector {
 
     const gpuNameResolved = realGpuName || this.cachedGfx?.gpuName || 'GPU Primária';
 
+    // 6. FASE 1: Processos, Swap, Gargalos, Rede e Ring Buffer
+    const [topProcesses, swapMetrics] = await Promise.all([
+      this.processMonitor.getTopProcesses().catch(() => []),
+      this.processMonitor.getSwapMetrics().catch(() => ({ totalMB: 0, usedMB: 0, percentUsed: 0 })),
+    ]);
+
+    const networkMetrics = this.networkMonitor ? this.networkMonitor.getMetrics() : {
+      latencyMs: 0,
+      jitterMs: 0,
+      packetLossPercent: 0,
+      host: '1.1.1.1',
+      status: 'idle',
+    };
+
+    const gpuLoadVal = (bridgeValid && typeof this.latestBridgeData.gpu?.load === 'number')
+      ? this.latestBridgeData.gpu.load
+      : null;
+
+    const vramPercentVal = (bridgeValid && this.latestBridgeData.gpu?.vramTotal && this.latestBridgeData.gpu?.vramUsed)
+      ? Number(((this.latestBridgeData.gpu.vramUsed / this.latestBridgeData.gpu.vramTotal) * 100).toFixed(1))
+      : null;
+
+    const bottleneck = ProcessMonitor.detectBottleneck({
+      cpuLoad: cpuMetrics.loadPercent,
+      gpuLoad: gpuLoadVal,
+      ramPercent: memMetrics.percentUsed,
+      swapPercent: swapMetrics.percentUsed,
+      vramPercent: vramPercentVal,
+    });
+
+    const sessionState = this.sessionBenchmark.feedSample({
+      timestamp: now,
+      cpuTemp: directCpuTemp,
+      gpuTemp: directGpuTemp,
+      cpuLoad: cpuMetrics.loadPercent,
+      gpuLoad: gpuLoadVal,
+      ramPercent: memMetrics.percentUsed,
+      ramUsedGB: memMetrics.usedGB,
+      bottleneck,
+    });
+
+    // Registra agregados térmicos diários com espaçamento inteligente
+    if (now - this.lastThermalSampleRecord > 15000) {
+      this.lastThermalSampleRecord = now;
+      const isIdle = cpuMetrics.loadPercent < 35;
+      if (directCpuTemp !== null && directCpuTemp > 0) {
+        this.thermalHistory.recordDailyAggregate(directCpuTemp, isIdle);
+      }
+    }
+
+    // Consulta degradação térmica em repouso (cacheada para 10 minutos)
+    if (!this.cachedDegradationResult || now - this.lastDegradationCheck > 600000) {
+      this.lastDegradationCheck = now;
+      this.cachedDegradationResult = this.thermalHistory.checkThermalDegradation();
+    }
+
     return {
       timestamp: now,
       temperatures: {
@@ -453,7 +553,17 @@ class SystemCollector {
         brand: this.cpuModel,
       },
       memory: memMetrics,
+      swap: swapMetrics,
       disks: this.cachedDisks,
+      network: networkMetrics,
+      processes: topProcesses,
+      bottleneck,
+      sessionBenchmark: {
+        state: sessionState.state,
+        ringStats: sessionState.ringStats,
+        lastReport: sessionState.lastReport,
+      },
+      degradationAlert: this.cachedDegradationResult,
       fan: {
         rpm: fanRpm,
         pwmPercent,
@@ -509,6 +619,43 @@ class SystemCollector {
       percentUsed: Number((disk.use || 0).toFixed(1)),
     }));
 
+    const [topProcesses, swapMetrics] = await Promise.all([
+      this.processMonitor.getTopProcesses().catch(() => []),
+      this.processMonitor.getSwapMetrics().catch(() => ({ totalMB: 0, usedMB: 0, percentUsed: 0 })),
+    ]);
+
+    const networkMetrics = this.networkMonitor ? this.networkMonitor.getMetrics() : {
+      latencyMs: 0,
+      jitterMs: 0,
+      packetLossPercent: 0,
+      host: '1.1.1.1',
+      status: 'idle',
+    };
+
+    const cpuLoadVal = Number((loadData.currentLoad || 0).toFixed(1));
+    const bottleneck = ProcessMonitor.detectBottleneck({
+      cpuLoad: cpuLoadVal,
+      gpuLoad: null,
+      ramPercent: percentUsed,
+      swapPercent: swapMetrics.percentUsed,
+      vramPercent: null,
+    });
+
+    const sessionState = this.sessionBenchmark.feedSample({
+      timestamp: Date.now(),
+      cpuTemp: cpuMainTemp,
+      gpuTemp,
+      cpuLoad: cpuLoadVal,
+      gpuLoad: null,
+      ramPercent: percentUsed,
+      ramUsedGB: usedGB,
+      bottleneck,
+    });
+
+    if (!this.cachedDegradationResult) {
+      this.cachedDegradationResult = this.thermalHistory.checkThermalDegradation();
+    }
+
     return {
       timestamp: Date.now(),
       temperatures: {
@@ -521,7 +668,7 @@ class SystemCollector {
         isEstimated: cpuMainTemp === null,
       },
       cpu: {
-        loadPercent: Number((loadData.currentLoad || 0).toFixed(1)),
+        loadPercent: cpuLoadVal,
         cores: (loadData.cpus || []).map((c) => Number((c.load || 0).toFixed(1))),
         model: this.cpuModel,
         brand: this.cpuModel,
@@ -531,7 +678,17 @@ class SystemCollector {
         usedGB,
         percentUsed,
       },
+      swap: swapMetrics,
       disks,
+      network: networkMetrics,
+      processes: topProcesses,
+      bottleneck,
+      sessionBenchmark: {
+        state: sessionState.state,
+        ringStats: sessionState.ringStats,
+        lastReport: sessionState.lastReport,
+      },
+      degradationAlert: this.cachedDegradationResult,
       fan: {
         rpm: 1200,
         pwmPercent: 50,
@@ -751,6 +908,10 @@ class SystemCollector {
         gpuTemperature: Boolean(this.cachedGfx?.gpuTemp !== null || (this.latestBridgeData?.gpu?.temp != null && this.latestBridgeData.gpu.temp > 0)),
         gpuPower: Boolean(this.latestBridgeData?.gpu?.powerWatts != null),
         perCoreLoad: true,
+        networkMonitoring: true,
+        processMonitoring: true,
+        bottleneckDetection: true,
+        thermalDegradationHistory: true,
       },
     };
 
@@ -759,4 +920,12 @@ class SystemCollector {
   }
 }
 
-module.exports = { SystemCollector };
+module.exports = {
+  SystemCollector,
+  NetworkMonitor,
+  ProcessMonitor,
+  detectBottleneck,
+  SessionBenchmark,
+  RingBuffer,
+  ThermalHistoryStore,
+};

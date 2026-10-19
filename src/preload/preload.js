@@ -22,4 +22,14 @@ contextBridge.exposeInMainWorld('sentinelAPI', {
 
   // Inventário completo e estático de hardware (Raio-X do PC)
   getHardwareInfo: (forceRefresh) => ipcRenderer.invoke('hardware:info', forceRefresh),
+
+  // FASE 4: Execução de ações do Stream Deck (Kill, Boost, Planos de Energia, Mídia)
+  executeAction: (action, params = {}) => ipcRenderer.invoke('action:execute', { action, ...params }),
+
+  // FASE 4: Recebe relatórios pós-sessão de benchmark emitidos pelo backend
+  onSessionReport: (callback) => {
+    const subscription = (event, report) => callback(report);
+    ipcRenderer.on('session:report', subscription);
+    return () => ipcRenderer.removeListener('session:report', subscription);
+  },
 });

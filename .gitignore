@@ -26,3 +26,9 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 *.pdb
+
+# Local SQLite / JSON databases
+*.db
+*.db-shm
+*.db-wal
+thermal_history.json

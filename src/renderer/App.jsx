@@ -14,7 +14,10 @@ import {
   Server,
   Cpu,
   Copy,
-  Check
+  Check,
+  Gamepad2,
+  Terminal,
+  EyeOff
 } from 'lucide-react';
 
 import { BentoCard } from './components/ui/BentoCard';
@@ -23,6 +26,10 @@ import { ThermalSplineChart } from './components/telemetry/ThermalSplineChart';
 import { EqualizerCard } from './components/telemetry/EqualizerBar';
 import { FanSpeedCard } from './components/telemetry/FanSpeedCard';
 import { StorageCard } from './components/telemetry/StorageCard';
+import { BottleneckCard } from './components/telemetry/BottleneckCard';
+import { NetworkCard } from './components/telemetry/NetworkCard';
+import { ProcessListCard } from './components/telemetry/ProcessListCard';
+import { SessionReportModal } from './components/telemetry/SessionReportModal';
 import { MiniWidget } from './components/widget/MiniWidget';
 import { HardwareSpecsView } from './components/hardware/HardwareSpecsView';
 
@@ -30,6 +37,8 @@ export default function App() {
   const [metrics, setMetrics] = useState(null);
   const [mobileInfo, setMobileInfo] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [viewPreset, setViewPreset] = useState('GAMING'); // 'GAMING' | 'DEV' | 'STEALTH'
+  const [sessionReport, setSessionReport] = useState(null);
   const [isMobileServerRunning, setIsMobileServerRunning] = useState(true);
   const [isMiniMode, setIsMiniMode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -73,8 +82,16 @@ export default function App() {
         handleNewMetrics(data);
       });
 
+      let unsubSession = null;
+      if (window.sentinelAPI.onSessionReport) {
+        unsubSession = window.sentinelAPI.onSessionReport((report) => {
+          setSessionReport(report);
+        });
+      }
+
       return () => {
         if (unsubscribe) unsubscribe();
+        if (unsubSession) unsubSession();
       };
     } else {
       // Modo Web: Conecta ao WebSocket do backend Sentinel e consulta REST APIs
@@ -115,6 +132,16 @@ export default function App() {
           disks: [{ mount: 'C:', sizeGB: 1000, usedGB: 460, percentUsed: 46 }],
           fan: { rpm: 1150 + dummyLoad * 14, pwmPercent: 48 + Math.round(dummyLoad * 0.4), maxRpm: 2400 },
           diskIo: { readMBps: 18.4, writeMBps: 6.2 },
+          bottleneck: { state: 'BALANCED', reason: 'Tudo operando dentro dos parâmetros ideais' },
+          network: { latencyMs: 14, jitterMs: 1.2, packetLossPercent: 0, status: 'EXCELLENT' },
+          processes: [
+            { pid: 4820, name: 'Cyberpunk2077.exe', cpuPercent: 42.5, memMB: 4800 },
+            { pid: 1092, name: 'Discord.exe', cpuPercent: 4.2, memMB: 480 },
+            { pid: 8124, name: 'chrome.exe', cpuPercent: 3.8, memMB: 1250 },
+            { pid: 6140, name: 'Code.exe', cpuPercent: 2.1, memMB: 650 },
+            { pid: 2190, name: 'Spotify.exe', cpuPercent: 1.2, memMB: 280 },
+          ],
+          swap: { totalMB: 8192, usedMB: 1240, percentUsed: 15.1 },
         };
         handleNewMetrics(mockData);
       }, 1200);
@@ -129,6 +156,8 @@ export default function App() {
                 receivedLiveStream = true;
                 if (mockTimer) clearInterval(mockTimer);
                 handleNewMetrics(msg.data);
+              } else if (msg.type === 'SESSION_REPORT_READY' && msg.report) {
+                setSessionReport(msg.report);
               }
             } catch (e) {}
           };
@@ -226,7 +255,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${viewPreset === 'STEALTH' ? 'stealth-mode' : ''}`}>
       {/* Sidebar Técnica Dark Cyber-Clean */}
       <aside className="sidebar">
         {/* Brand Header */}
@@ -405,7 +434,7 @@ export default function App() {
         {activeTab === 'dashboard' && (
           <>
             {/* Barra de Status e Cabeçalho do Dashboard */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#F3F4F6', letterSpacing: '0.5px' }}>
                   TELEMETRIA EM TEMPO REAL
@@ -415,7 +444,83 @@ export default function App() {
                 </p>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {/* Seletor de Presets de Layout Dinâmico */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(11, 15, 25, 0.75)',
+                    padding: '3px',
+                    borderRadius: '10px',
+                    border: '1px solid #1F2937',
+                  }}
+                >
+                  <button
+                    onClick={() => setViewPreset('GAMING')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '5px 10px',
+                      borderRadius: '7px',
+                      border: 'none',
+                      background: viewPreset === 'GAMING' ? 'rgba(0, 240, 255, 0.15)' : 'transparent',
+                      color: viewPreset === 'GAMING' ? '#00F0FF' : '#9CA3AF',
+                      fontWeight: 600,
+                      fontSize: '0.74rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Gamepad2 size={13} />
+                    <span>GAMING</span>
+                  </button>
+
+                  <button
+                    onClick={() => setViewPreset('DEV')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '5px 10px',
+                      borderRadius: '7px',
+                      border: 'none',
+                      background: viewPreset === 'DEV' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                      color: viewPreset === 'DEV' ? '#10B981' : '#9CA3AF',
+                      fontWeight: 600,
+                      fontSize: '0.74rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <Terminal size={13} />
+                    <span>DEV / WORK</span>
+                  </button>
+
+                  <button
+                    onClick={() => setViewPreset('STEALTH')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '5px 10px',
+                      borderRadius: '7px',
+                      border: 'none',
+                      background: viewPreset === 'STEALTH' ? 'rgba(156, 163, 175, 0.2)' : 'transparent',
+                      color: viewPreset === 'STEALTH' ? '#F3F4F6' : '#9CA3AF',
+                      fontWeight: 600,
+                      fontSize: '0.74rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <EyeOff size={13} />
+                    <span>STEALTH</span>
+                  </button>
+                </div>
+
                 <span
                   style={{
                     display: 'flex',
@@ -424,7 +529,7 @@ export default function App() {
                     background: 'rgba(16, 185, 129, 0.08)',
                     border: '1px solid rgba(16, 185, 129, 0.3)',
                     color: '#10B981',
-                    padding: '4px 10px',
+                    padding: '5px 12px',
                     borderRadius: '9999px',
                     fontSize: '0.75rem',
                     fontWeight: 600,
@@ -436,48 +541,143 @@ export default function App() {
               </div>
             </div>
 
-            {/* Bento Grid Principal: 12 Colunas */}
-            <div className="bento-grid">
-              {/* Zona 1 (3 colunas): Hero Thermal Gauge */}
-              <ThermalHeroGauge
-                cpuTemp={cpuTemp}
-                gpuTemp={gpuTemp}
-                cpuMax={cpuMax}
-                gpuMax={gpuMax}
-                cpuModel={cpuModelName}
-                gpuModel={metrics?.temperatures?.gpuName || 'GPU Primária'}
-                isEstimated={isEstimated}
-                isCpuEstimated={isCpuEstimated}
-                isGpuEstimated={isGpuEstimated}
-              />
+            {/* Layout GAMING: Foco Máximo em Térmica, Gargalo e Latência de Rede */}
+            {viewPreset === 'GAMING' && (
+              <div className="bento-grid">
+                <ThermalHeroGauge
+                  className="bento-col-4"
+                  cpuTemp={cpuTemp}
+                  gpuTemp={gpuTemp}
+                  cpuMax={cpuMax}
+                  gpuMax={gpuMax}
+                  cpuModel={cpuModelName}
+                  gpuModel={metrics?.temperatures?.gpuName || 'GPU Primária'}
+                  isEstimated={isEstimated}
+                  isCpuEstimated={isCpuEstimated}
+                  isGpuEstimated={isGpuEstimated}
+                />
 
-              {/* Zona 2 (6 colunas): Gráfico de Tendência Temporal 30 Minutos */}
-              <ThermalSplineChart
-                history={history}
-                currentTemp={cpuTemp}
-                currentLoad={cpuLoad}
-              />
+                <ThermalSplineChart
+                  className="bento-col-5"
+                  history={history}
+                  currentTemp={cpuTemp}
+                  currentLoad={cpuLoad}
+                />
 
-              {/* Zona 3 (3 colunas): Cartões Secundários */}
-              <div className="bento-col-3" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <BottleneckCard
+                  className="bento-col-3"
+                  bottleneck={metrics?.bottleneck}
+                  cpuLoad={cpuLoad}
+                  gpuLoad={metrics?.gpu?.loadPercent ?? null}
+                  ramPercent={ramPercent}
+                />
+
+                <NetworkCard
+                  className="bento-col-4"
+                  network={metrics?.network}
+                />
+
+                <FanSpeedCard
+                  className="bento-col-4"
+                  rpm={fanRpm}
+                  pwmPercent={pwmPercent}
+                />
+
+                <StorageCard
+                  className="bento-col-4"
+                  disks={disks}
+                  diskIo={diskIo}
+                />
+              </div>
+            )}
+
+            {/* Layout DEV / WORK: Foco em Processos, Swap e Equalizador de Núcleos */}
+            {viewPreset === 'DEV' && (
+              <div className="bento-grid">
+                <ProcessListCard
+                  className="bento-col-6"
+                  processes={metrics?.processes || []}
+                  swap={metrics?.swap}
+                />
+
                 <EqualizerCard
+                  className="bento-col-6"
                   cpuLoad={cpuLoad}
                   cpuModel={cpuModelName}
                   cores={metrics?.cpu?.cores || []}
                   memory={memory}
                 />
 
-                <FanSpeedCard
-                  rpm={fanRpm}
-                  pwmPercent={pwmPercent}
+                <BottleneckCard
+                  className="bento-col-4"
+                  bottleneck={metrics?.bottleneck}
+                  cpuLoad={cpuLoad}
+                  gpuLoad={metrics?.gpu?.loadPercent ?? null}
+                  ramPercent={ramPercent}
+                />
+
+                <NetworkCard
+                  className="bento-col-4"
+                  network={metrics?.network}
                 />
 
                 <StorageCard
+                  className="bento-col-4"
                   disks={disks}
                   diskIo={diskIo}
                 />
               </div>
-            </div>
+            )}
+
+            {/* Layout STEALTH: Minimalista, Silencioso e de Baixo Contraste */}
+            {viewPreset === 'STEALTH' && (
+              <div className="bento-grid">
+                <ThermalHeroGauge
+                  className="bento-col-3"
+                  cpuTemp={cpuTemp}
+                  gpuTemp={gpuTemp}
+                  cpuMax={cpuMax}
+                  gpuMax={gpuMax}
+                  cpuModel={cpuModelName}
+                  gpuModel={metrics?.temperatures?.gpuName || 'GPU Primária'}
+                  isEstimated={isEstimated}
+                  isCpuEstimated={isCpuEstimated}
+                  isGpuEstimated={isGpuEstimated}
+                />
+
+                <EqualizerCard
+                  className="bento-col-3"
+                  cpuLoad={cpuLoad}
+                  cpuModel={cpuModelName}
+                  cores={metrics?.cpu?.cores || []}
+                  memory={memory}
+                />
+
+                <ProcessListCard
+                  className="bento-col-3"
+                  processes={metrics?.processes || []}
+                  swap={metrics?.swap}
+                />
+
+                <NetworkCard
+                  className="bento-col-3"
+                  network={metrics?.network}
+                />
+
+                <ThermalSplineChart
+                  className="bento-col-8"
+                  history={history}
+                  currentTemp={cpuTemp}
+                  currentLoad={cpuLoad}
+                />
+
+                <StorageCard
+                  className="bento-col-4"
+                  disks={disks}
+                  diskIo={diskIo}
+                />
+              </div>
+            )}
 
             {/* Cartão de Atalho Rápido para Streaming no Smartphone */}
             <BentoCard
@@ -667,6 +867,14 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Modal Cyberpunk de Relatório de Sessão Térmica */}
+      {sessionReport && (
+        <SessionReportModal
+          report={sessionReport}
+          onClose={() => setSessionReport(null)}
+        />
+      )}
     </div>
   );
 }
