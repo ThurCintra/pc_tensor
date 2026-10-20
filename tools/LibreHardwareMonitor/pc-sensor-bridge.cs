@@ -121,7 +121,7 @@ namespace PCSentinelBridge
                 }
             }
 
-            // 2. Extração de dados da GPU via LibreHardwareMonitor
+            // 2. Extração de dados da GPU via LibreHardwareMonitor e AMD ADL PMLog
             foreach (var hardware in _computer.Hardware)
             {
                 if (hardware.HardwareType == HardwareType.GpuAmd ||
@@ -129,8 +129,15 @@ namespace PCSentinelBridge
                     hardware.HardwareType == HardwareType.GpuIntel)
                 {
                     hardware.Update();
-                    if (!string.IsNullOrEmpty(hardware.Name))
-                        gpuName = hardware.Name;
+                    string hwName = hardware.Name ?? "GPU";
+                    bool isApu = hwName.IndexOf("Graphics", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                 hwName.IndexOf("APU", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                    // Se não for APU (é GPU dedicada como RX 7600), prioriza para métricas de GPU principal
+                    if (!isApu || gpuName == "GPU")
+                    {
+                        gpuName = hwName;
+                    }
 
                     foreach (var sensor in hardware.Sensors)
                     {
@@ -140,62 +147,70 @@ namespace PCSentinelBridge
 
                         if (sensor.SensorType == SensorType.Temperature && val > 0)
                         {
-                            if (sName.Contains("core") || sName.Contains("gpu core") || sName.Contains("edge"))
+                            if (isApu)
                             {
-                                if (!gpuTemp.HasValue || sName.Contains("core"))
-                                    gpuTemp = val;
+                                // Sensores térmicos no silício da CPU
+                                if (!cpuTemp.HasValue || cpuTemp.Value <= 0)
+                                {
+                                    cpuTemp = val;
+                                }
                             }
-                            else if (sName.Contains("hot spot") || sName.Contains("hotspot"))
+                            else
                             {
-                                gpuHotspot = val;
-                            }
-                            else if (sName.Contains("memory") || sName.Contains("vram"))
-                            {
-                                gpuMemTemp = val;
-                            }
-                            else if (sName.Contains("soc") || sName.Contains("vr soc"))
-                            {
-                                if (!gpuTemp.HasValue)
-                                    gpuTemp = val;
-                                if (!gpuHotspot.HasValue)
+                                if (sName.Contains("core") || sName.Contains("gpu core") || sName.Contains("edge"))
+                                {
+                                    if (!gpuTemp.HasValue || sName.Contains("core"))
+                                        gpuTemp = val;
+                                }
+                                else if (sName.Contains("hot spot") || sName.Contains("hotspot"))
+                                {
                                     gpuHotspot = val;
-                            }
-                            else if (!gpuTemp.HasValue)
-                            {
-                                gpuTemp = val;
-                            }
-                        }
-                        else if (sensor.SensorType == SensorType.Fan && val >= 0)
-                        {
-                            gpuFanRpm = val;
-                            if (!fanRpm.HasValue || val > 0)
-                                fanRpm = val;
-                        }
-                        else if (sensor.SensorType == SensorType.Load)
-                        {
-                            if (sName.Contains("core") || sName.Contains("d3d 3d") || sName.Contains("gpu"))
-                            {
-                                if (!gpuLoad.HasValue || sName.Contains("core"))
-                                    gpuLoad = val;
+                                }
+                                else if (sName.Contains("memory") || sName.Contains("vram"))
+                                {
+                                    gpuMemTemp = val;
+                                }
+                                else if (sName.Contains("soc") || sName.Contains("vr soc"))
+                                {
+                                    if (!gpuTemp.HasValue) gpuTemp = val;
+                                    if (!gpuHotspot.HasValue) gpuHotspot = val;
+                                }
+                                else if (!gpuTemp.HasValue)
+                                {
+                                    gpuTemp = val;
+                                }
                             }
                         }
-                        else if (sensor.SensorType == SensorType.Power && val >= 0)
+                        else if (!isApu)
                         {
-                            if (sName.Contains("core") || sName.Contains("package") || sName.Contains("asic") || sName.Contains("total"))
+                            if (sensor.SensorType == SensorType.Fan && val >= 0)
                             {
-                                if (!gpuPower.HasValue || sName.Contains("asic") || sName.Contains("total"))
-                                    gpuPower = val;
+                                gpuFanRpm = val;
+                                if (!fanRpm.HasValue || val > 0) fanRpm = val;
+                            }
+                            else if (sensor.SensorType == SensorType.Load)
+                            {
+                                if (sName.Contains("core") || sName.Contains("d3d 3d") || sName.Contains("gpu"))
+                                {
+                                    if (!gpuLoad.HasValue || sName.Contains("core")) gpuLoad = val;
+                                }
+                            }
+                            else if (sensor.SensorType == SensorType.Power && val >= 0)
+                            {
+                                if (sName.Contains("core") || sName.Contains("package") || sName.Contains("asic") || sName.Contains("total"))
+                                {
+                                    if (!gpuPower.HasValue || sName.Contains("asic") || sName.Contains("total")) gpuPower = val;
+                                }
                             }
                         }
                     }
 
-                    // Para AMD Radeon / APU: Consulta Direta ao PMLog da AMD (ADL)
-                    // Este é o método oficial usado pelo AMD Adrenalin que fornece temperatura exata de CPU e GPU!
+                    // Consulta Direta ao PMLog da AMD (ADL) oficial usado pelo AMD Adrenalin
                     if (hardware.HardwareType == HardwareType.GpuAmd)
                     {
                         try
                         {
-                            QueryAmdPMLog(hardware, ref cpuTemp, ref gpuTemp, ref gpuHotspot, ref gpuLoad, ref gpuPower, ref gpuFanRpm);
+                            QueryAmdPMLog(hardware, isApu, ref cpuTemp, ref gpuTemp, ref gpuHotspot, ref gpuLoad, ref gpuPower, ref gpuFanRpm);
                         }
                         catch { }
                     }
@@ -231,6 +246,7 @@ namespace PCSentinelBridge
 
         private static void QueryAmdPMLog(
             IHardware amdGpuHardware,
+            bool isApu,
             ref float? cpuTemp,
             ref float? gpuTemp,
             ref float? gpuHotspot,
@@ -272,6 +288,15 @@ namespace PCSentinelBridge
             Array sensorsArray = sensorsField.GetValue(outputInstance) as Array;
             if (sensorsArray == null) return;
 
+            float? adlCpuTemp = null;
+            float? adlSocTemp = null;
+            float? adlGfxTemp = null;
+            float? adlEdgeTemp = null;
+            float? adlHotspotTemp = null;
+            float? adlLoad = null;
+            float? adlPower = null;
+            float? adlFanRpm = null;
+
             // ADLPMLogSensors índices constantes oficiais AMD ADL:
             // 8: ADL_PMLOG_TEMPERATURE_EDGE
             // 14: ADL_PMLOG_FAN_RPM
@@ -283,6 +308,7 @@ namespace PCSentinelBridge
             // 30: ADL_PMLOG_GFX_POWER
             // 32: ADL_PMLOG_TEMPERATURE_CPU
             // 33: ADL_PMLOG_CPU_POWER
+            // 73: ADL_PMLOG_BOARD_POWER
             for (int i = 0; i < sensorsArray.Length; i++)
             {
                 object item = sensorsArray.GetValue(i);
@@ -297,39 +323,79 @@ namespace PCSentinelBridge
                 int rawVal = Convert.ToInt32(valField.GetValue(item));
                 if (!supported || rawVal <= 0) continue;
 
-                if (i == 32) // ADL_PMLOG_TEMPERATURE_CPU (Temperatura real da CPU lida pelo AMD Adrenalin!)
+                if (i == 32)
                 {
-                    cpuTemp = rawVal;
+                    adlCpuTemp = rawVal;
                 }
-                else if (i == 28) // ADL_PMLOG_TEMPERATURE_GFX (Temperatura real da GPU lida pelo AMD Adrenalin!)
+                else if (i == 29)
                 {
-                    gpuTemp = rawVal;
+                    adlSocTemp = rawVal;
                 }
-                else if (i == 8 && !gpuTemp.HasValue) // ADL_PMLOG_TEMPERATURE_EDGE
+                else if (i == 28)
                 {
-                    gpuTemp = rawVal;
+                    adlGfxTemp = rawVal;
                 }
-                else if (i == 29) // ADL_PMLOG_TEMPERATURE_SOC
+                else if (i == 8)
                 {
-                    if (!gpuHotspot.HasValue) gpuHotspot = rawVal;
-                    if (!gpuTemp.HasValue) gpuTemp = rawVal;
+                    adlEdgeTemp = rawVal;
                 }
-                else if (i == 27) // ADL_PMLOG_TEMPERATURE_HOTSPOT
+                else if (i == 27)
                 {
-                    gpuHotspot = rawVal;
+                    adlHotspotTemp = rawVal;
                 }
-                else if (i == 19 && !gpuLoad.HasValue) // ADL_PMLOG_INFO_ACTIVITY_GFX
+                else if (i == 19)
                 {
-                    gpuLoad = rawVal;
+                    adlLoad = rawVal;
                 }
-                else if (i == 23 && !gpuPower.HasValue) // ADL_PMLOG_ASIC_POWER
+                else if (i == 23 || i == 73)
                 {
-                    gpuPower = rawVal;
+                    adlPower = rawVal;
                 }
-                else if (i == 14 && !gpuFanRpm.HasValue) // ADL_PMLOG_FAN_RPM
+                else if (i == 14)
                 {
-                    gpuFanRpm = rawVal;
+                    adlFanRpm = rawVal;
                 }
+            }
+
+            if (isApu)
+            {
+                // Temperatura física do processador AMD Ryzen através da sua iGPU / SoC
+                if (!cpuTemp.HasValue || cpuTemp.Value <= 0)
+                {
+                    if (adlCpuTemp.HasValue && adlCpuTemp.Value > 0)
+                        cpuTemp = adlCpuTemp.Value;
+                    else if (adlSocTemp.HasValue && adlSocTemp.Value > 0)
+                        cpuTemp = adlSocTemp.Value;
+                    else if (adlGfxTemp.HasValue && adlGfxTemp.Value > 0)
+                        cpuTemp = adlGfxTemp.Value;
+                }
+            }
+            else
+            {
+                // GPU dedicada (AMD Radeon RX 7600)
+                if (adlCpuTemp.HasValue && adlCpuTemp.Value > 0 && (!cpuTemp.HasValue || cpuTemp.Value <= 0))
+                {
+                    cpuTemp = adlCpuTemp.Value;
+                }
+
+                if (adlEdgeTemp.HasValue && adlEdgeTemp.Value > 0)
+                    gpuTemp = adlEdgeTemp.Value;
+                else if (adlGfxTemp.HasValue && adlGfxTemp.Value > 0)
+                    gpuTemp = adlGfxTemp.Value;
+
+                if (adlHotspotTemp.HasValue && adlHotspotTemp.Value > 0)
+                    gpuHotspot = adlHotspotTemp.Value;
+                else if (adlSocTemp.HasValue && adlSocTemp.Value > 0 && !gpuHotspot.HasValue)
+                    gpuHotspot = adlSocTemp.Value;
+
+                if (adlLoad.HasValue && (!gpuLoad.HasValue || adlLoad.Value > 0))
+                    gpuLoad = adlLoad.Value;
+
+                if (adlPower.HasValue && (!gpuPower.HasValue || adlPower.Value > 0))
+                    gpuPower = adlPower.Value;
+
+                if (adlFanRpm.HasValue && (!gpuFanRpm.HasValue || adlFanRpm.Value > 0))
+                    gpuFanRpm = adlFanRpm.Value;
             }
         }
 

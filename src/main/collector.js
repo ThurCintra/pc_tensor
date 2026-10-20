@@ -335,16 +335,16 @@ class SystemCollector extends EventEmitter {
     let realGpuName = null;
     let realFanRpm = null;
 
-    if (typeof lhmData?.cpuTemp === 'number' && lhmData.cpuTemp > 0) {
-      realCpuTemp = Number(lhmData.cpuTemp.toFixed(1));
-    } else if (bridgeValid && typeof this.latestBridgeData.cpu?.temp === 'number' && this.latestBridgeData.cpu.temp > 0) {
+    if (bridgeValid && typeof this.latestBridgeData.cpu?.temp === 'number' && this.latestBridgeData.cpu.temp > 0) {
       realCpuTemp = Number(this.latestBridgeData.cpu.temp.toFixed(1));
+    } else if (typeof lhmData?.cpuTemp === 'number' && lhmData.cpuTemp > 0) {
+      realCpuTemp = Number(lhmData.cpuTemp.toFixed(1));
     }
 
-    if (typeof lhmData?.gpuTemp === 'number' && lhmData.gpuTemp > 0) {
-      realGpuTemp = Number(lhmData.gpuTemp.toFixed(1));
-    } else if (bridgeValid && typeof this.latestBridgeData.gpu?.temp === 'number' && this.latestBridgeData.gpu.temp > 0) {
+    if (bridgeValid && typeof this.latestBridgeData.gpu?.temp === 'number' && this.latestBridgeData.gpu.temp > 0) {
       realGpuTemp = Number(this.latestBridgeData.gpu.temp.toFixed(1));
+    } else if (typeof lhmData?.gpuTemp === 'number' && lhmData.gpuTemp > 0) {
+      realGpuTemp = Number(lhmData.gpuTemp.toFixed(1));
     }
 
     if (bridgeValid && this.latestBridgeData.gpu?.name && this.latestBridgeData.gpu.name !== 'GPU') {

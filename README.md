@@ -98,35 +98,50 @@ graph TD
 
 ## 🚀 Como Executar o Projeto
 
-### Pré-requisitos
+### Modo 1-Clique (Recomendado)
+
+O projeto conta com o script unificado **`iniciar.bat`**, que realiza todo o ciclo de vida automaticamente:
+- **Primeira execução:** Instala todas as dependências (`npm install`), compila a interface (`npm run build`), libera a porta 3890 no Firewall e sincroniza o driver de hardware.
+- **Próximas execuções:** Verifica automaticamente se há atualizações no GitHub (`git pull`), valida dependências e inicia o sistema com privilégios de Administrador para leitura direta dos diodos térmicos AMD/Intel.
+
+Basta dar **duplo clique** no arquivo:
+```cmd
+iniciar.bat
+```
+
+---
+
+### Execução Manual via Terminal
+
+#### Pré-requisitos
 - **Windows 10 ou 11 (x64)**
 - **Node.js 18+** instalado
 - **Git** instalado
 
-### 1. Clonar o Repositório
+#### 1. Clonar o Repositório
 ```bash
 git clone https://github.com/ThurCintra/pc_tensor.git
 cd pc_tensor
 ```
 
-### 2. Instalar as Dependências
+#### 2. Instalar as Dependências
 ```bash
 npm install
 ```
 
-### 3. Executar em Modo de Desenvolvimento
+#### 3. Executar em Modo de Desenvolvimento
 ```bash
 npm run dev
 ```
 > O comando acima inicia simultaneamente o servidor Vite com Hot Reload na porta `5173` e a aplicação Electron conectada ao collector de telemetria.
 
-### 4. Executar os Testes Automatizados
+#### 4. Executar os Testes Automatizados
 ```bash
 npm test
 ```
 > Executa a suíte completa de 45 testes unitários via Vitest cobrindo collector, monitor de processos, bridge de sensores, roteador de ações do Stream Deck e servidor mobile.
 
-### 5. Gerar o Instalador de Produção (.exe)
+#### 5. Gerar o Instalador de Produção (.exe)
 ```bash
 npm run dist:installer
 ```
