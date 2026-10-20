@@ -100,4 +100,22 @@ describe('ActionRouter', () => {
     expect(resUnknown.success).toBe(false);
     expect(resUnknown.error).toBe('UNKNOWN_ACTION');
   });
+
+  it('deve aceitar parâmetros aninhados no objeto params', async () => {
+    const router = new ActionRouter();
+
+    const resKill = await router.handleAction({
+      action: 'KILL_PROCESS',
+      params: { pid: 4, processName: 'System' },
+    });
+    expect(resKill.success).toBe(false);
+    expect(resKill.error).toBe('INVALID_PID');
+
+    const resPlan = await router.handleAction({
+      action: 'SET_POWER_PLAN',
+      params: { plan: 'SUPER_OVERCLOCK_9999' },
+    });
+    expect(resPlan.success).toBe(false);
+    expect(resPlan.error).toBe('UNKNOWN_PLAN');
+  });
 });

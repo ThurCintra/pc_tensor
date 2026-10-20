@@ -88,6 +88,8 @@ class ActionRouter {
     const action = payload.action || payload.type;
     const requestId = payload.requestId || null;
 
+    const params = payload.params || {};
+
     if (!action) {
       return {
         success: false,
@@ -99,17 +101,26 @@ class ActionRouter {
 
     try {
       switch (action.toUpperCase()) {
-        case 'KILL_PROCESS':
-          return await this.killProcess(payload.pid, payload.name, requestId);
+        case 'KILL_PROCESS': {
+          const pid = payload.pid !== undefined ? payload.pid : params.pid;
+          const name = payload.name || payload.processName || params.name || params.processName;
+          return await this.killProcess(pid, name, requestId);
+        }
 
-        case 'SET_POWER_PLAN':
-          return await this.setPowerPlan(payload.plan || payload.guid, requestId);
+        case 'SET_POWER_PLAN': {
+          const plan = payload.plan || payload.guid || params.plan || params.guid;
+          return await this.setPowerPlan(plan, requestId);
+        }
 
-        case 'BOOST_CLEANUP':
-          return await this.boostCleanup(payload.targets, requestId);
+        case 'BOOST_CLEANUP': {
+          const targets = payload.targets || params.targets;
+          return await this.boostCleanup(targets, requestId);
+        }
 
-        case 'MEDIA_AUDIO_CONTROL':
-          return await this.mediaAudioControl(payload.command, requestId);
+        case 'MEDIA_AUDIO_CONTROL': {
+          const command = payload.command || params.command;
+          return await this.mediaAudioControl(command, requestId);
+        }
 
         default:
           return {

@@ -17,7 +17,8 @@ import {
   Check,
   Gamepad2,
   Terminal,
-  EyeOff
+  EyeOff,
+  AlertTriangle
 } from 'lucide-react';
 
 import { BentoCard } from './components/ui/BentoCard';
@@ -39,6 +40,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [viewPreset, setViewPreset] = useState('GAMING'); // 'GAMING' | 'DEV' | 'STEALTH'
   const [sessionReport, setSessionReport] = useState(null);
+  const [dismissedDegradation, setDismissedDegradation] = useState(false);
   const [isMobileServerRunning, setIsMobileServerRunning] = useState(true);
   const [isMiniMode, setIsMiniMode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -540,6 +542,48 @@ export default function App() {
                 </span>
               </div>
             </div>
+
+            {/* Banner Preventivo de Degradação Térmica */}
+            {metrics?.degradationAlert?.hasDegradation && !dismissedDegradation && (
+              <div
+                style={{
+                  background: 'rgba(255, 42, 84, 0.12)',
+                  border: '1px solid rgba(255, 42, 84, 0.45)',
+                  borderRadius: '10px',
+                  padding: '10px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  boxShadow: '0 0 20px rgba(255, 42, 84, 0.2)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <AlertTriangle color="#FF2A54" size={18} />
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FF2A54' }}>
+                      ALERTA PREVENTIVO DE DEGRADAÇÃO TÉRMICA (+{metrics.degradationAlert.delta}°C acima da baseline)
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: '#E5E7EB', marginTop: '2px' }}>
+                      {metrics.degradationAlert.recommendation || 'Possível acúmulo de poeira nos dissipadores ou ressecamento da pasta térmica.'}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDismissedDegradation(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#9CA3AF',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Dispensar
+                </button>
+              </div>
+            )}
 
             {/* Layout GAMING: Foco Máximo em Térmica, Gargalo e Latência de Rede */}
             {viewPreset === 'GAMING' && (

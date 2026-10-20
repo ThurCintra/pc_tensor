@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PC Sentinel - Dark Cyber-Clean Web HUD</title>
   <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" type="image/png" href="/icon-192.png">
   <meta name="theme-color" content="#0B0F19">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2092,6 +2094,15 @@
     connectWs();
     fetchServerInfo();
     resizeCanvas();
+
+    // Registro do Service Worker (PWA Offline / Instalação)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.log('[SW] Registro ignorado:', err.message);
+        });
+      });
+    }
   </script>
 </body>
 </html>
