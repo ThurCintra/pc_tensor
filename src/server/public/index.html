@@ -1538,6 +1538,24 @@
     function updateTelemetryUI(data) {
       if (!data) return;
       const { temperatures, cpu, memory, fan, disks, diskIo } = data;
+      const isCpuEst = Boolean(temperatures?.isCpuEstimated ?? temperatures?.isEstimated);
+      const isGpuEst = Boolean(temperatures?.isGpuEstimated ?? temperatures?.isEstimated);
+
+      // Origem do Monitor Térmico
+      const badgeThermal = document.getElementById('badgeThermalOrigin');
+      if (badgeThermal) {
+        if (isCpuEst && isGpuEst) {
+          badgeThermal.textContent = 'ESTIMADO';
+          badgeThermal.style.background = 'rgba(0, 240, 255, 0.12)';
+          badgeThermal.style.color = '#00F0FF';
+          badgeThermal.style.border = '1px solid rgba(0, 240, 255, 0.25)';
+        } else {
+          badgeThermal.textContent = 'SENSOR REAL';
+          badgeThermal.style.background = 'rgba(16, 185, 129, 0.12)';
+          badgeThermal.style.color = '#10B981';
+          badgeThermal.style.border = '1px solid rgba(16, 185, 129, 0.25)';
+        }
+      }
 
       // 1. CPU Temp
       const cpuT = typeof temperatures?.cpuMain === 'number'
@@ -1549,9 +1567,9 @@
       valCpuPeak.textContent = cpuPeak;
 
       const cpuColor = cpuT >= 78 ? '#FF2A54' : (cpuT >= 64 ? '#FF8A00' : '#00F0FF');
-      const cpuStatusText = cpuT >= 78 ? 'CRÍTICO' : (cpuT >= 64 ? 'ALERTA' : 'OTIMIZADO');
-      const cpuStatusBg = cpuT >= 78 ? 'rgba(255, 42, 84, 0.15)' : (cpuT >= 64 ? 'rgba(255, 138, 0, 0.15)' : 'rgba(16, 185, 129, 0.15)');
-      const cpuStatusColor = cpuT >= 78 ? '#FF2A54' : (cpuT >= 64 ? '#FF8A00' : '#10B981');
+      const cpuStatusText = isCpuEst ? 'ESTIMADO' : (cpuT >= 78 ? 'CRÍTICO' : (cpuT >= 64 ? 'ALERTA' : 'OTIMIZADO'));
+      const cpuStatusBg = isCpuEst ? 'rgba(0, 240, 255, 0.12)' : (cpuT >= 78 ? 'rgba(255, 42, 84, 0.15)' : (cpuT >= 64 ? 'rgba(255, 138, 0, 0.15)' : 'rgba(16, 185, 129, 0.15)'));
+      const cpuStatusColor = isCpuEst ? '#00F0FF' : (cpuT >= 78 ? '#FF2A54' : (cpuT >= 64 ? '#FF8A00' : '#10B981'));
 
       tagCpuStatus.textContent = cpuStatusText;
       tagCpuStatus.style.background = cpuStatusBg;
@@ -1572,9 +1590,9 @@
       valGpuPeak.textContent = gpuPeak;
 
       const gpuColor = gpuT >= 78 ? '#FF2A54' : (gpuT >= 64 ? '#FF8A00' : '#00F0FF');
-      const gpuStatusText = gpuT >= 78 ? 'CRÍTICO' : (gpuT >= 64 ? 'ALERTA' : 'OTIMIZADO');
-      const gpuStatusBg = gpuT >= 78 ? 'rgba(255, 42, 84, 0.15)' : (gpuT >= 64 ? 'rgba(255, 138, 0, 0.15)' : 'rgba(16, 185, 129, 0.15)');
-      const gpuStatusColor = gpuT >= 78 ? '#FF2A54' : (gpuT >= 64 ? '#FF8A00' : '#10B981');
+      const gpuStatusText = isGpuEst ? 'ESTIMADO' : (gpuT >= 78 ? 'CRÍTICO' : (gpuT >= 64 ? 'ALERTA' : 'OTIMIZADO'));
+      const gpuStatusBg = isGpuEst ? 'rgba(0, 240, 255, 0.12)' : (gpuT >= 78 ? 'rgba(255, 42, 84, 0.15)' : (gpuT >= 64 ? 'rgba(255, 138, 0, 0.15)' : 'rgba(16, 185, 129, 0.15)'));
+      const gpuStatusColor = isGpuEst ? '#00F0FF' : (gpuT >= 78 ? '#FF2A54' : (gpuT >= 64 ? '#FF8A00' : '#10B981'));
 
       tagGpuStatus.textContent = gpuStatusText;
       tagGpuStatus.style.background = gpuStatusBg;

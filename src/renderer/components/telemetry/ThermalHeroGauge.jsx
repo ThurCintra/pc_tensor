@@ -277,11 +277,12 @@ export function ThermalHeroGauge({
             {currentModel}
           </span>
           <span style={{ fontSize: '0.65rem', color: '#6B7280' }}>
-            {status === 'critical' ? 'Sob Carga Crítica' : status === 'warning' ? 'Carga Elevada' : 'Arrefecimento Ideal'}
+            {currentIsEstimated ? 'Modelo Térmico Dinâmico' : (status === 'critical' ? 'Sob Carga Crítica' : status === 'warning' ? 'Carga Elevada' : 'Arrefecimento Ideal')}
           </span>
         </div>
 
         <span
+          title={currentIsEstimated ? 'Temperatura estimada dinamicamente com base na carga e inércia térmica' : 'Sensor físico de hardware coletado em tempo real'}
           style={{
             fontSize: '0.62rem',
             padding: '2px 7px',
@@ -293,7 +294,7 @@ export function ThermalHeroGauge({
             letterSpacing: '0.5px',
           }}
         >
-          {currentIsEstimated ? 'ESTIMADO' : 'SENSOR'}
+          {currentIsEstimated ? 'ESTIMADO' : 'SENSOR REAL'}
         </span>
       </div>
     </BentoCard>

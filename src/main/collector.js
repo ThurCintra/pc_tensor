@@ -203,10 +203,10 @@ class SystemCollector extends EventEmitter {
       if (node.Value && typeof node.Value === 'string' && node.Value.includes('°C')) {
         const val = parseFloat(node.Value.replace(',', '.'));
         if (!isNaN(val) && val > 0) {
-          if (text.includes('tctl') || text.includes('package') || text.includes('cpu core')) {
+          if (text.includes('tctl') || text.includes('package') || text.includes('cpu core') || text.includes('cpu total')) {
             if (cpuTemp === null || text.includes('tctl')) cpuTemp = val;
-          } else if (text.includes('gpu core') || (text.includes('gpu') && text.includes('temperature'))) {
-            if (gpuTemp === null) gpuTemp = val;
+          } else if (text.includes('gpu core') || (text.includes('gpu') && text.includes('temperature')) || text.includes('gpu vr soc') || text.includes('gpu soc')) {
+            if (gpuTemp === null || text.includes('gpu core')) gpuTemp = val;
           }
         }
       }
@@ -424,34 +424,35 @@ class SystemCollector extends EventEmitter {
       }
     }
 
-    let directCpuTemp = realCpuTemp !== null
-      ? realCpuTemp
-      : (typeof tempData.main === 'number' && !isNaN(tempData.main) ? Number(tempData.main.toFixed(1)) : null);
+    // Se não houver sensor físico real verificado do bridge, marca como estimado
+    // (no Windows, MSAcpi_ThermalZoneTemperature do WMI frequentemente é estático/fictício e não reflete os núcleos)
+    let directCpuTemp = realCpuTemp;
+    let isCpuEstimated = directCpuTemp === null;
 
     let directGpuTemp = realGpuTemp !== null
       ? realGpuTemp
       : (this.cachedGfx?.gpuTemp ?? null);
+    let isGpuEstimated = directGpuTemp === null;
 
-    const isCpuEstimated = directCpuTemp === null;
-    const isGpuEstimated = directGpuTemp === null;
-    const isEstimated = isCpuEstimated;
+    const isEstimated = isCpuEstimated || isGpuEstimated;
+    this.hasWorkingTempSensor = !isCpuEstimated;
 
-    // Se o hardware não expõe sensor ACPI/WMI/Bridge no SO, calcula modelo termodinâmico realista
+    // Se o hardware não expõe sensor físico verificado no SO, calcula modelo termodinâmico realista baseado em carga
     if (isCpuEstimated) {
-      const targetCpu = 32.0 + (cpuMetrics.loadPercent * 0.36);
+      const targetCpu = 38.0 + (cpuMetrics.loadPercent * 0.42);
       this.currentCpuTemp += (targetCpu - this.currentCpuTemp) * 0.22;
       const jitter = Math.sin(now / 1500) * 0.35;
       directCpuTemp = Number((this.currentCpuTemp + jitter).toFixed(1));
     }
 
     if (isGpuEstimated) {
-      const targetGpu = 36.0 + (cpuMetrics.loadPercent * 0.32);
+      const targetGpu = 40.0 + (cpuMetrics.loadPercent * 0.35);
       this.currentGpuTemp += (targetGpu - this.currentGpuTemp) * 0.18;
       const gpuJitter = Math.cos(now / 1800) * 0.3;
       directGpuTemp = Number((this.currentGpuTemp + gpuJitter).toFixed(1));
     }
 
-    const cpuMaxTemp = typeof tempData.max === 'number' && !isNaN(tempData.max)
+    const cpuMaxTemp = (!isCpuEstimated && typeof tempData.max === 'number' && !isNaN(tempData.max))
       ? Number(tempData.max.toFixed(1))
       : Number((directCpuTemp + 2.8).toFixed(1));
 
@@ -535,7 +536,7 @@ class SystemCollector extends EventEmitter {
       temperatures: {
         cpuMain: directCpuTemp,
         cpuMax: cpuMaxTemp,
-        cores: tempData.cores && tempData.cores.length > 0 ? tempData.cores : [directCpuTemp],
+        cores: (!isCpuEstimated && tempData.cores && tempData.cores.length > 0) ? tempData.cores : [directCpuTemp],
         gpu: directGpuTemp,
         gpuName: gpuNameResolved,
         gpuMemoryTemp: bridgeValid && typeof this.latestBridgeData.gpu?.memoryTemp === 'number' ? this.latestBridgeData.gpu.memoryTemp : null,
@@ -666,6 +667,8 @@ class SystemCollector extends EventEmitter {
         gpuName: gpuName,
         cpuName: this.cpuModel,
         isEstimated: cpuMainTemp === null,
+        isCpuEstimated: cpuMainTemp === null,
+        isGpuEstimated: gpuTemp === null,
       },
       cpu: {
         loadPercent: cpuLoadVal,

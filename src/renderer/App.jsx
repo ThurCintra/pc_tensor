@@ -224,9 +224,9 @@ export default function App() {
   // Extração e normalização de telemetria
   const cpuLoad = metrics?.cpu?.loadPercent ?? 0;
   const ramPercent = metrics?.memory?.percentUsed ?? 0;
-  const isEstimated = metrics?.temperatures?.isEstimated ?? false;
-  const isCpuEstimated = metrics?.temperatures?.isCpuEstimated ?? isEstimated;
-  const isGpuEstimated = metrics?.temperatures?.isGpuEstimated ?? false;
+  const isCpuEstimated = metrics?.temperatures?.isCpuEstimated ?? metrics?.temperatures?.isEstimated ?? true;
+  const isGpuEstimated = metrics?.temperatures?.isGpuEstimated ?? metrics?.temperatures?.isEstimated ?? true;
+  const isEstimated = metrics?.temperatures?.isEstimated ?? (isCpuEstimated || isGpuEstimated);
   const cpuTemp = typeof metrics?.temperatures?.cpuMain === 'number'
     ? metrics.temperatures.cpuMain
     : Number((39 + (cpuLoad * 0.42)).toFixed(1));
