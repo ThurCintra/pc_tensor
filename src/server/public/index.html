@@ -341,7 +341,7 @@
 
     .dual-gauges {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
       align-items: center;
     }
@@ -352,11 +352,15 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
+      width: 100%;
+      min-width: 0;
     }
 
     .gauge-svg {
-      width: 130px;
-      height: 130px;
+      width: 100%;
+      max-width: 130px;
+      height: auto;
+      aspect-ratio: 1 / 1;
       transform: rotate(-90deg);
     }
 
@@ -698,7 +702,7 @@
     /* Stream Deck Controls */
     .stream-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
       gap: 14px;
       margin-top: 8px;
     }
@@ -735,7 +739,7 @@
 
     .plan-btn-group {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
       margin-top: 8px;
     }
@@ -750,6 +754,9 @@
       cursor: pointer;
       transition: all 0.15s ease;
       text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .plan-btn.active {
       border-color: #00F0FF;
@@ -763,7 +770,7 @@
 
     .media-btn-group {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
       margin-top: 8px;
     }
@@ -785,8 +792,15 @@
       background: rgba(0, 240, 255, 0.2);
     }
 
+    .stream-proc-container {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
     .stream-proc-table {
       width: 100%;
+      min-width: 280px;
       border-collapse: collapse;
       margin-top: 6px;
       font-size: 0.78rem;
@@ -808,6 +822,49 @@
     }
     .btn-kill-proc:active {
       transform: scale(0.92);
+    }
+
+    /* Mobile Breakpoints & Fluid Adjustments */
+    @media (max-width: 600px) {
+      body {
+        padding: 10px 8px;
+      }
+      .card {
+        padding: 12px 10px;
+      }
+      .header {
+        margin-bottom: 12px;
+      }
+      .tabs-bar {
+        gap: 4px;
+      }
+      .tab-btn {
+        padding: 6px 10px;
+        font-size: 0.76rem;
+      }
+      .gauge-temp-num {
+        font-size: 1.45rem;
+      }
+      .stream-grid {
+        gap: 10px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .dual-gauges {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .brand-info h1 {
+        font-size: 0.95rem;
+      }
+      .media-btn-group {
+        gap: 4px;
+      }
+      .media-btn {
+        padding: 10px 4px;
+        font-size: 0.95rem;
+      }
     }
   </style>
 </head>
@@ -1249,20 +1306,22 @@
         <span>TOP 5 PROCESSOS (FINALIZADOR RÁPIDO)</span>
         <span id="procActionFeedback" style="font-size: 0.65rem; color: #FF8A00; font-weight: 600;">CLIQUE PARA MATAR</span>
       </div>
-      <table class="stream-proc-table">
-        <thead>
-          <tr style="color: var(--text-muted); font-size: 0.68rem; text-align: left;">
-            <th>PROCESSO</th>
-            <th>PID</th>
-            <th>CPU</th>
-            <th>RAM</th>
-            <th style="text-align: right;">AÇÃO</th>
-          </tr>
-        </thead>
-        <tbody id="streamDeckProcBody">
-          <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 12px;">Aguardando dados de telemetria...</td></tr>
-        </tbody>
-      </table>
+      <div class="stream-proc-container">
+        <table class="stream-proc-table">
+          <thead>
+            <tr style="color: var(--text-muted); font-size: 0.68rem; text-align: left;">
+              <th>PROCESSO</th>
+              <th>PID</th>
+              <th>CPU</th>
+              <th>RAM</th>
+              <th style="text-align: right;">AÇÃO</th>
+            </tr>
+          </thead>
+          <tbody id="streamDeckProcBody">
+            <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 12px;">Aguardando dados de telemetria...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 

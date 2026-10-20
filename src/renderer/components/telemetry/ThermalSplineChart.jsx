@@ -97,12 +97,12 @@ export function ThermalSplineChart({
 
   return (
     <BentoCard
-      className={`bento-col-6 ${className}`}
+      className={className || 'bento-col-6'}
       style={{
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        minHeight: '380px',
+        minHeight: '340px',
       }}
     >
       {/* Topo: Header com Insights e Legenda */}
@@ -112,6 +112,8 @@ export function ThermalSplineChart({
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: '10px',
+          flexWrap: 'wrap',
+          gap: '8px',
         }}
       >
         <div>

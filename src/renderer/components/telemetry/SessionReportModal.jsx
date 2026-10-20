@@ -57,11 +57,13 @@ export function SessionReportModal({ report, onClose }) {
         style={{
           width: '100%',
           maxWidth: '560px',
+          maxHeight: '90vh',
           background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(11, 15, 25, 0.98))',
           border: '1px solid rgba(0, 240, 255, 0.35)',
           borderRadius: '16px',
           boxShadow: '0 0 40px rgba(0, 240, 255, 0.15)',
-          overflow: 'hidden',
+          overflowY: 'auto',
+          overflowX: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           animation: 'fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -76,6 +78,7 @@ export function SessionReportModal({ report, onClose }) {
             alignItems: 'center',
             justifyContent: 'space-between',
             background: 'rgba(0, 240, 255, 0.04)',
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -124,7 +127,7 @@ export function SessionReportModal({ report, onClose }) {
         {/* Corpo do Relatório */}
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Duração & Gargalo Dominante */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
             <div style={{ background: 'rgba(11, 15, 25, 0.7)', border: '1px solid #1F2937', borderRadius: '10px', padding: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#9CA3AF', fontSize: '0.72rem' }}>
                 <Clock size={13} color="#00F0FF" /> Duração da Carga
@@ -145,7 +148,7 @@ export function SessionReportModal({ report, onClose }) {
           </div>
 
           {/* Temperaturas de CPU e GPU */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
             {/* CPU */}
             <div style={{ background: 'rgba(11, 15, 25, 0.7)', border: '1px solid #1F2937', borderRadius: '10px', padding: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#9CA3AF', fontSize: '0.72rem' }}>
@@ -174,7 +177,7 @@ export function SessionReportModal({ report, onClose }) {
           </div>
 
           {/* RAM Pico e Throttling */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
             <div style={{ background: 'rgba(11, 15, 25, 0.7)', border: '1px solid #1F2937', borderRadius: '10px', padding: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#9CA3AF', fontSize: '0.72rem' }}>
                 <HardDrive size={13} color="#10B981" /> Pico de RAM
@@ -203,8 +206,10 @@ export function SessionReportModal({ report, onClose }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
+            flexWrap: 'wrap',
             gap: '12px',
             background: 'rgba(11, 15, 25, 0.6)',
+            flexShrink: 0,
           }}
         >
           <button

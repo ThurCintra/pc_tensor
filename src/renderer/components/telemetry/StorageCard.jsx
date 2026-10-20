@@ -14,7 +14,7 @@ export function StorageCard({
   return (
     <BentoCard className={className} style={{ padding: '14px 18px', gap: '10px' }}>
       {/* Topo: Título e Taxas de Leitura / Escrita (I/O) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <HardDrive size={15} color="#00F0FF" />
           <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#E2E8F0', letterSpacing: '0.5px' }}>

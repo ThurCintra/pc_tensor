@@ -53,7 +53,7 @@ export function BottleneckCard({ bottleneck = null, cpuLoad = 0, gpuLoad = null,
   return (
     <BentoCard className={className} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {/* Cabeçalho do Card */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div
             style={{

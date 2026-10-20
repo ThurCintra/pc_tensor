@@ -261,22 +261,11 @@ export default function App() {
       {/* Sidebar Técnica Dark Cyber-Clean */}
       <aside className="sidebar">
         {/* Brand Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px' }}>
-          <div
-            style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '9px',
-              background: 'linear-gradient(135deg, #00F0FF, #10B981)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 16px rgba(0, 240, 255, 0.3)',
-            }}
-          >
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">
             <Activity color="#0B0F19" size={20} strokeWidth={2.5} />
           </div>
-          <div>
+          <div className="sidebar-brand-text">
             <h1
               style={{
                 fontSize: '1.05rem',
@@ -295,138 +284,75 @@ export default function App() {
         </div>
 
         {/* Navegação entre Módulos */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+        <nav className="sidebar-nav">
           <button
             onClick={() => setActiveTab('dashboard')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: activeTab === 'dashboard' ? '1px solid rgba(0, 240, 255, 0.35)' : '1px solid transparent',
-              background: activeTab === 'dashboard' ? 'rgba(0, 240, 255, 0.1)' : 'transparent',
-              color: activeTab === 'dashboard' ? '#00F0FF' : '#9CA3AF',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.84rem',
-              textAlign: 'left',
-              transition: 'all 0.2s',
-            }}
+            className={`sidebar-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+            title="Dashboard Principal"
           >
-            <Gauge size={16} />
+            <Gauge size={18} style={{ flexShrink: 0 }} />
             <span>Dashboard Principal</span>
           </button>
 
           <button
             onClick={() => setActiveTab('hardware')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: activeTab === 'hardware' ? '1px solid rgba(0, 240, 255, 0.35)' : '1px solid transparent',
-              background: activeTab === 'hardware' ? 'rgba(0, 240, 255, 0.1)' : 'transparent',
-              color: activeTab === 'hardware' ? '#00F0FF' : '#9CA3AF',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.84rem',
-              textAlign: 'left',
-              transition: 'all 0.2s',
-            }}
+            className={`sidebar-btn ${activeTab === 'hardware' ? 'active' : ''}`}
+            title="Hardware & Sistema"
           >
-            <Cpu size={16} />
+            <Cpu size={18} style={{ flexShrink: 0 }} />
             <span>Hardware & Sistema</span>
           </button>
 
           <button
             onClick={() => setActiveTab('mobile')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: activeTab === 'mobile' ? '1px solid rgba(0, 240, 255, 0.35)' : '1px solid transparent',
-              background: activeTab === 'mobile' ? 'rgba(0, 240, 255, 0.1)' : 'transparent',
-              color: activeTab === 'mobile' ? '#00F0FF' : '#9CA3AF',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.84rem',
-              textAlign: 'left',
-              transition: 'all 0.2s',
-            }}
+            className={`sidebar-btn ${activeTab === 'mobile' ? 'active' : ''}`}
+            title="Transmissão Celular"
           >
-            <Smartphone size={16} />
+            <Smartphone size={18} style={{ flexShrink: 0 }} />
             <span>Transmissão Celular</span>
           </button>
 
           {/* Botão de Alternância para o Modo Mini-Widget */}
           <button
             onClick={() => handleToggleMiniWidget(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              color: '#9CA3AF',
-              cursor: 'pointer',
-              fontWeight: 500,
-              fontSize: '0.82rem',
-              textAlign: 'left',
-              marginTop: '4px',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#F3F4F6';
-              e.currentTarget.style.borderColor = 'rgba(0, 240, 255, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#9CA3AF';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-            }}
+            className="sidebar-btn"
+            title="Modo Mini-Widget"
           >
-            <Minimize2 size={16} color="#00F0FF" />
+            <Minimize2 size={18} color="#00F0FF" style={{ flexShrink: 0 }} />
             <span>Modo Mini-Widget</span>
           </button>
         </nav>
 
         {/* Status do Servidor Mobile na Sidebar */}
-        <div
-          style={{
-            background: 'rgba(17, 24, 39, 0.7)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: '10px',
-            padding: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '0.68rem', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              STREAM LOCAL
-            </span>
-            {isMobileServerRunning ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#10B981', fontWeight: 700 }}>
-                <Radio size={11} /> ATIVO
-              </span>
-            ) : (
-              <span style={{ fontSize: '0.7rem', color: '#FF2A54', fontWeight: 700 }}>PARADO</span>
-            )}
+        <div className="sidebar-footer" title={`Stream Local: ${isMobileServerRunning ? 'ATIVO' : 'PARADO'}`}>
+          <div className="sidebar-footer-icon" style={{ display: 'none' }}>
+            <Radio size={16} color={isMobileServerRunning ? '#10B981' : '#FF2A54'} />
           </div>
-          <div
-            style={{
-              fontSize: '0.72rem',
-              color: '#9CA3AF',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            {mobileInfo?.url || 'http://127.0.0.1:3890'}
+          <div className="sidebar-footer-text">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span style={{ fontSize: '0.68rem', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                STREAM LOCAL
+              </span>
+              {isMobileServerRunning ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#10B981', fontWeight: 700 }}>
+                  <Radio size={11} /> ATIVO
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.7rem', color: '#FF2A54', fontWeight: 700 }}>PARADO</span>
+              )}
+            </div>
+            <div
+              style={{
+                fontSize: '0.72rem',
+                color: '#9CA3AF',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              {mobileInfo?.url || 'http://127.0.0.1:3890'}
+            </div>
           </div>
         </div>
       </aside>
@@ -729,6 +655,8 @@ export default function App() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '14px',
                 padding: '16px 22px',
                 background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.85), rgba(11, 15, 25, 0.95))',
                 border: '1px solid rgba(0, 240, 255, 0.18)',
@@ -866,6 +794,8 @@ export default function App() {
                     cursor: 'pointer',
                     boxShadow: copiedLink ? '0 0 16px rgba(16, 185, 129, 0.2)' : '0 0 16px rgba(0, 240, 255, 0.1)',
                     transition: 'all 0.25s',
+                    maxWidth: '100%',
+                    wordBreak: 'break-all',
                   }}
                 >
                   {copiedLink ? <Check size={16} color="#10B981" /> : <Copy size={16} color="#00F0FF" />}
@@ -873,7 +803,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <button
                   onClick={handleToggleMobileServer}
                   style={{

@@ -97,7 +97,7 @@ export function EqualizerCard({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: `repeat(${Math.min(cores.length, 6)}, 1fr)`,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(36px, 1fr))',
               gap: '4px',
               marginTop: '8px',
             }}

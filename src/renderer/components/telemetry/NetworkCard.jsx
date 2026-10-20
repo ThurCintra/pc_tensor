@@ -88,7 +88,7 @@ export function NetworkCard({ network = null, className = '' }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
           gap: '8px',
           marginTop: '2px',
         }}

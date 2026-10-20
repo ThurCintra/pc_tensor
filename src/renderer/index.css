@@ -89,18 +89,89 @@ body {
   height: 100vh;
   width: 100vw;
   background: var(--bg-app);
+  overflow: hidden;
 }
 
-/* Sidebar Técnica Compacta */
+/* Sidebar Técnica Responsiva */
 .sidebar {
-  width: 250px;
-  min-width: 250px;
+  width: 240px;
+  min-width: 240px;
   background: rgba(13, 17, 23, 0.95);
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   padding: 20px 16px;
   z-index: 10;
+  transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.sidebar-logo {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #00F0FF, #10B981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+
+.sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #9CA3AF;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.84rem;
+  text-align: left;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sidebar-btn:hover {
+  color: #F3F4F6;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-btn.active {
+  border-color: rgba(0, 240, 255, 0.35);
+  background: rgba(0, 240, 255, 0.1);
+  color: #00F0FF;
+}
+
+.sidebar-footer {
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: auto;
 }
 
 .main-content {
@@ -111,6 +182,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 /* Bento Grid Principal: 12 Colunas */
@@ -134,17 +206,115 @@ body {
 .bento-col-11 { grid-column: span 11; }
 .bento-col-12 { grid-column: span 12; }
 
+/* Breakpoint 1: Laptop / Telas Médias (<= 1280px) */
 @media (max-width: 1280px) {
-  .bento-col-4 {
+  .bento-col-3,
+  .bento-col-4,
+  .bento-col-5 {
     grid-column: span 6;
+  }
+  .bento-col-8 {
+    grid-column: span 12;
+  }
+  .bento-grid {
+    gap: 14px;
   }
 }
 
-@media (max-width: 900px) {
+/* Breakpoint 2: Tablet Landscape / Telas Compactas (<= 1024px) */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .sidebar {
+    width: 68px;
+    min-width: 68px;
+    padding: 16px 8px;
+    align-items: center;
+  }
+  .sidebar-brand {
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .sidebar-brand-text,
+  .sidebar-btn span,
+  .sidebar-footer-text {
+    display: none !important;
+  }
+  .sidebar-nav {
+    width: 100%;
+    align-items: center;
+  }
+  .sidebar-btn {
+    justify-content: center;
+    padding: 12px;
+    width: 100%;
+  }
+  .sidebar-footer {
+    padding: 8px 4px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .sidebar-footer-icon {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Breakpoint 3: Tablet Portrait / Split Screen (<= 860px) */
+@media (max-width: 860px) {
   .bento-col-3,
   .bento-col-4,
-  .bento-col-6 {
+  .bento-col-5,
+  .bento-col-6,
+  .bento-col-8 {
     grid-column: span 12;
+  }
+}
+
+/* Breakpoint 4: Mobile / Janela Estreita (<= 768px) */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    background: rgba(11, 15, 25, 0.98);
+  }
+  .sidebar-brand {
+    margin-bottom: 0;
+  }
+  .sidebar-brand-text span {
+    display: none;
+  }
+  .sidebar-nav {
+    flex-direction: row;
+    flex: none;
+    gap: 6px;
+  }
+  .sidebar-btn {
+    padding: 6px 10px;
+    font-size: 0.76rem;
+    gap: 6px;
+  }
+  .sidebar-footer {
+    display: none !important;
+  }
+  .main-content {
+    padding: 12px;
+    gap: 12px;
+  }
+  .bento-card {
+    padding: 14px;
   }
 }
 

@@ -62,13 +62,13 @@ export function ThermalHeroGauge({
     <BentoCard
       isCritical={status === 'critical'}
       status={status}
-      className={`bento-col-3 ${className}`}
+      className={className || 'bento-col-4'}
       style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
-        minHeight: '380px',
+        minHeight: '340px',
       }}
     >
       {/* Topo do Cartão: Toggle Rápido CPU / GPU */}
@@ -79,6 +79,8 @@ export function ThermalHeroGauge({
           alignItems: 'center',
           justifyContent: 'space-between',
           marginBottom: '8px',
+          flexWrap: 'wrap',
+          gap: '6px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -137,15 +139,19 @@ export function ThermalHeroGauge({
       <div
         style={{
           position: 'relative',
-          width: size,
-          height: size,
+          width: '100%',
+          maxWidth: `${size}px`,
+          aspectRatio: '1 / 1',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           margin: 'auto 0',
         }}
       >
-        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}
+        >
           <defs>
             <linearGradient id="hero-grad-stable" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#00F0FF" />

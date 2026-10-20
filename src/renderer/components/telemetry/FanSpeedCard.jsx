@@ -68,7 +68,7 @@ export function FanSpeedCard({
 
   return (
     <BentoCard className={className} style={{ padding: '14px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         {/* Lado Esquerdo: Ícone da Hélice e Título */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <PropellerSvg

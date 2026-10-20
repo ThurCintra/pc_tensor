@@ -147,7 +147,7 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
                   >
                     {idx + 1}
                   </span>
-                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
                     <span
                       style={{
                         fontSize: '0.78rem',
@@ -156,7 +156,6 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        maxWidth: '130px',
                       }}
                       title={proc.name}
                     >
@@ -168,7 +167,7 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                   {/* CPU % */}
                   <div style={{ textAlign: 'right', minWidth: '46px' }}>
                     <span
