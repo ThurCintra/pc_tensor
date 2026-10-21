@@ -12,44 +12,56 @@ export function StorageCard({
     : [{ mount: 'C:', sizeGB: 950, usedGB: 460, percentUsed: 48 }];
 
   return (
-    <BentoCard className={className} style={{ padding: '14px 18px', gap: '10px' }}>
+    <BentoCard className={className} style={{ padding: '14px 16px', gap: '10px' }}>
       {/* Topo: Título e Taxas de Leitura / Escrita (I/O) */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <HardDrive size={15} color="#00F0FF" />
-          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#E2E8F0', letterSpacing: '0.5px' }}>
-            ARMAZENAMENTO
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: 'var(--border-radius-sm)',
+              background: 'var(--bg-inset)',
+              border: '1px solid var(--border-hairline)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <HardDrive size={14} />
+          </div>
+          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+            Armazenamento & I/O
           </span>
         </div>
 
-        {/* Indicadores I/O (Read / Write) com LEDs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.68rem' }} className="tabular-nums">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+        {/* Indicadores I/O (Read / Write) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.72rem' }} className="tabular-nums">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span
               style={{
                 width: '5px',
                 height: '5px',
                 borderRadius: '50%',
-                background: '#00F0FF',
-                boxShadow: '0 0 6px #00F0FF',
+                background: 'var(--color-nominal)',
               }}
             />
-            <ArrowDown size={11} color="#00F0FF" />
-            <span style={{ color: '#9CA3AF' }}>{diskIo.readMBps} MB/s</span>
+            <ArrowDown size={11} color="var(--text-muted)" />
+            <span style={{ color: 'var(--text-secondary)' }}>{diskIo.readMBps} MB/s</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span
               style={{
                 width: '5px',
                 height: '5px',
                 borderRadius: '50%',
-                background: '#10B981',
-                boxShadow: '0 0 6px #10B981',
+                background: 'var(--color-elevated)',
               }}
             />
-            <ArrowUp size={11} color="#10B981" />
-            <span style={{ color: '#9CA3AF' }}>{diskIo.writeMBps} MB/s</span>
+            <ArrowUp size={11} color="var(--text-muted)" />
+            <span style={{ color: 'var(--text-secondary)' }}>{diskIo.writeMBps} MB/s</span>
           </div>
         </div>
       </div>
@@ -58,12 +70,16 @@ export function StorageCard({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {displayDisks.slice(0, 2).map((disk, idx) => {
           const usedPct = Math.round(disk.percentUsed || (disk.usedGB / (disk.sizeGB || 1)) * 100);
-          const barColor = usedPct >= 85 ? '#FF2A54' : usedPct >= 70 ? '#FF8A00' : '#00F0FF';
+          const barColor = usedPct >= 85 
+            ? 'var(--color-critical)' 
+            : usedPct >= 70 
+            ? 'var(--color-elevated)' 
+            : 'var(--color-nominal)';
 
           return (
-            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#9CA3AF' }}>
-                <span style={{ fontWeight: 600, color: '#F3F4F6' }}>
+            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                   {disk.mount || disk.fs || `Disco ${idx + 1}`}
                 </span>
                 <span className="tabular-nums">
@@ -72,14 +88,15 @@ export function StorageCard({
                 </span>
               </div>
 
-              {/* Barra de Progresso Arredondada */}
+              {/* Barra de Ocupação */}
               <div
                 style={{
                   width: '100%',
-                  height: '5px',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  borderRadius: '3px',
+                  height: '4px',
+                  background: 'var(--bg-inset)',
+                  borderRadius: '2px',
                   overflow: 'hidden',
+                  border: '1px solid var(--border-hairline)',
                 }}
               >
                 <div
@@ -87,9 +104,8 @@ export function StorageCard({
                     width: `${Math.min(100, Math.max(0, usedPct))}%`,
                     height: '100%',
                     background: barColor,
-                    borderRadius: '3px',
-                    boxShadow: `0 0 8px ${barColor}66`,
-                    transition: 'width 0.3s ease',
+                    borderRadius: '1px',
+                    transition: 'width 0.25s ease',
                   }}
                 />
               </div>

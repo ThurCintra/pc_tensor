@@ -1,47 +1,29 @@
-import React, { useRef } from 'react';
+import React from 'react';
 
 /**
  * BentoCard Component
- * Implementa superfície translúcida Dark Cyber-Clean com Radial Spotlight Hover
- * e ambient glow em estado crítico.
+ * Módulo estrutural de precisão com borda hairline e indicador discreto de estado.
  */
 export function BentoCard({
   children,
   className = '',
   isCritical = false,
-  status = 'stable', // 'stable' | 'warning' | 'critical'
+  status = 'stable', // 'stable' | 'nominal' | 'warning' | 'critical'
   style = {},
   ...props
 }) {
-  const cardRef = useRef(null);
+  const isWarn = status === 'warning';
+  const isCrit = isCritical || status === 'critical';
 
-  const handleMouseMove = (e) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    cardRef.current.style.setProperty('--mouse-x', `${x}px`);
-    cardRef.current.style.setProperty('--mouse-y', `${y}px`);
-  };
-
-  const handleMouseLeave = () => {
-    if (!cardRef.current) return;
-    cardRef.current.style.setProperty('--mouse-x', `-500px`);
-    cardRef.current.style.setProperty('--mouse-y', `-500px`);
-  };
-
-  const statusClass = isCritical || status === 'critical' 
+  const statusClass = isCrit 
     ? 'is-critical' 
-    : status === 'warning' 
+    : isWarn 
     ? 'is-warning' 
     : '';
 
   return (
     <div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className={`bento-card ${statusClass} ${className}`}
+      className={`bento-card ${statusClass} ${className}`.trim()}
       style={style}
       {...props}
     >

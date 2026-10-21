@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { BentoCard } from '../ui/BentoCard';
-import { TrendingUp, Clock } from 'lucide-react';
+import { Activity, Clock } from 'lucide-react';
 
 /**
- * Utilitário para construir Monotone Cubic Spline (Curva Suavizada)
+ * Utilitário para construir Monotone Cubic Spline (Curva Suavizada de Osciloscópio)
  */
 function getSplinePath(points) {
   if (!points || points.length === 0) return '';
@@ -34,7 +34,6 @@ export function ThermalSplineChart({
 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
-  // Garante ao menos dados para preencher a linha se o app acabou de abrir
   const dataPoints = useMemo(() => {
     if (history.length >= 2) return history;
     const base = currentTemp || 42;
@@ -48,17 +47,16 @@ export function ThermalSplineChart({
     ];
   }, [history, currentTemp, currentLoad]);
 
-  // Dimensões do SVG do gráfico
   const svgWidth = 600;
   const svgHeight = 220;
-  const padding = { top: 20, right: 20, bottom: 30, left: 35 };
+  const padding = { top: 18, right: 18, bottom: 26, left: 36 };
 
   const plotWidth = svgWidth - padding.left - padding.right;
   const plotHeight = svgHeight - padding.top - padding.bottom;
 
-  // Escalas: Temperatura de 20°C a 95°C
+  // Escala fixa: 20°C a 100°C
   const minTemp = 20;
-  const maxTemp = 95;
+  const maxTemp = 100;
 
   const tempPoints = useMemo(() => {
     return dataPoints.map((pt, i) => {
@@ -69,7 +67,6 @@ export function ThermalSplineChart({
     });
   }, [dataPoints, plotWidth, plotHeight, padding.left, padding.top]);
 
-  // Pontos de carga (0% a 100%)
   const loadPoints = useMemo(() => {
     return dataPoints.map((pt, i) => {
       const x = padding.left + (i / Math.max(1, dataPoints.length - 1)) * plotWidth;
@@ -82,7 +79,6 @@ export function ThermalSplineChart({
   const splineD = useMemo(() => getSplinePath(tempPoints), [tempPoints]);
   const loadSplineD = useMemo(() => getSplinePath(loadPoints), [loadPoints]);
 
-  // Área fechada para o gradiente de preenchimento
   const areaD = useMemo(() => {
     if (!splineD || tempPoints.length === 0) return '';
     const last = tempPoints[tempPoints.length - 1];
@@ -105,102 +101,91 @@ export function ThermalSplineChart({
         minHeight: '340px',
       }}
     >
-      {/* Topo: Header com Insights e Legenda */}
+      {/* Topo: Identificação e Legenda Técnica */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '10px',
+          marginBottom: '8px',
           flexWrap: 'wrap',
           gap: '8px',
         }}
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <TrendingUp size={16} color="#00F0FF" />
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#F3F4F6', letterSpacing: '0.5px' }}>
-              TENDÊNCIA TEMPORAL
-            </h3>
-            <span
+            <div
               style={{
+                width: '26px',
+                height: '26px',
+                borderRadius: 'var(--border-radius-sm)',
+                background: 'var(--bg-inset)',
+                border: '1px solid var(--border-hairline)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                fontSize: '0.68rem',
-                color: '#6B7280',
-                background: 'rgba(255, 255, 255, 0.04)',
-                padding: '2px 8px',
-                borderRadius: '4px',
+                justifyContent: 'center',
+                color: 'var(--text-secondary)',
               }}
             >
-              <Clock size={11} /> 30 min
-            </span>
+              <Activity size={15} />
+            </div>
+            <div>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Histórico Temporal
+              </span>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                Janela deslizante contínua de 30 minutos
+              </div>
+            </div>
           </div>
-          <p style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: '2px' }}>
-            Dinâmica térmica contínua sincronizada com a carga do processador
-          </p>
         </div>
 
-        {/* Legenda de Cores */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.72rem' }}>
+        {/* Legenda Calibrada */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.74rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span
               style={{
                 width: '12px',
-                height: '3px',
-                borderRadius: '2px',
-                background: 'linear-gradient(90deg, #00F0FF, #FF8A00, #FF2A54)',
+                height: '2px',
+                background: 'var(--color-nominal)',
               }}
             />
-            <span style={{ color: '#9CA3AF' }}>Temp (°C)</span>
+            <span style={{ color: 'var(--text-secondary)' }}>Temperatura</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span
               style={{
                 width: '12px',
                 height: '2px',
-                borderTop: '2px dashed #10B981',
+                borderTop: '2px dashed var(--text-muted)',
               }}
             />
-            <span style={{ color: '#9CA3AF' }}>Carga CPU (%)</span>
+            <span style={{ color: 'var(--text-muted)' }}>Carga (%)</span>
           </div>
         </div>
       </div>
 
-      {/* Área Central: SVG Canvas com Gradiente Vertical no Eixo Y */}
-      <div style={{ position: 'relative', width: '100%', height: '240px' }}>
+      {/* Área Gráfica com Grade Técnica de Precisão */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '240px',
+          background: 'var(--bg-inset)',
+          borderRadius: 'var(--border-radius-inner)',
+          border: '1px solid var(--border-hairline)',
+          overflow: 'hidden',
+          padding: '6px',
+        }}
+      >
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
           preserveAspectRatio="none"
           style={{ width: '100%', height: '100%', overflow: 'visible' }}
           onMouseLeave={() => setHoverIndex(null)}
         >
-          <defs>
-            {/* Gradiente Vertical Dinâmico no Eixo Y (Regra 3.2 da especificação):
-                0% (Topo / >76°C): Vermelho-Rubi (#FF2A54)
-                45% (Meio / 56°C–75°C): Laranja-Neon (#FF8A00)
-                100% (Base / <=55°C): Azul-Ciano (#00F0FF) */}
-            <linearGradient id="vertical-y-stroke" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF2A54" />
-              <stop offset="45%" stopColor="#FF8A00" />
-              <stop offset="100%" stopColor="#00F0FF" />
-            </linearGradient>
-
-            {/* Gradiente da Área Preenchida Translúcida (opacity: 0.25 no topo a 0.0 na base) */}
-            <linearGradient id="vertical-y-area" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF2A54" stopOpacity="0.25" />
-              <stop offset="45%" stopColor="#FF8A00" stopOpacity="0.12" />
-              <stop offset="100%" stopColor="#00F0FF" stopOpacity="0.0" />
-            </linearGradient>
-
-            <filter id="spline-glow" x="-10%" y="-10%" width="120%" height="120%">
-              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="rgba(0, 240, 255, 0.4)" />
-            </filter>
-          </defs>
-
-          {/* Grid Horizontal Discreto */}
-          {[90, 75, 55, 35].map((tempLvl) => {
+          {/* Linhas de Grade de Referência */}
+          {[80, 60, 40].map((tempLvl) => {
             const y = padding.top + (1 - (tempLvl - minTemp) / (maxTemp - minTemp)) * plotHeight;
             return (
               <g key={tempLvl}>
@@ -209,14 +194,14 @@ export function ThermalSplineChart({
                   y1={y}
                   x2={svgWidth - padding.right}
                   y2={y}
-                  stroke="rgba(255, 255, 255, 0.05)"
-                  strokeDasharray="3 3"
+                  stroke="var(--border-hairline)"
+                  strokeDasharray="2 3"
                 />
                 <text
-                  x={padding.left - 6}
+                  x={padding.left - 8}
                   y={y + 3}
                   textAnchor="end"
-                  fill="#4B5563"
+                  fill="var(--text-dim)"
                   fontSize="9"
                   fontFamily="var(--font-mono)"
                 >
@@ -226,114 +211,122 @@ export function ThermalSplineChart({
             );
           })}
 
-          {/* Área Translúcida Preenchida */}
-          {areaD && <path d={areaD} fill="url(#vertical-y-area)" />}
+          {/* Área Translúcida Unicolor Suave (Sem gradientes artificiais multicoloridos) */}
+          {areaD && (
+            <path
+              d={areaD}
+              fill="var(--color-nominal)"
+              fillOpacity="0.05"
+            />
+          )}
 
-          {/* Curva Secundária de Carga CPU (%) */}
+          {/* Curva de Carga CPU em linha tracejada discreta */}
           {loadSplineD && (
             <path
               d={loadSplineD}
               fill="none"
-              stroke="#10B981"
-              strokeWidth="1.5"
-              strokeDasharray="4 4"
-              opacity="0.6"
+              stroke="var(--text-muted)"
+              strokeWidth="1.2"
+              strokeDasharray="3 3"
+              opacity="0.5"
             />
           )}
 
-          {/* Curva Principal de Temperatura com Gradiente Vertical no Eixo Y */}
+          {/* Curva Principal de Temperatura com traço nítido */}
           {splineD && (
             <path
               d={splineD}
               fill="none"
-              stroke="url(#vertical-y-stroke)"
-              strokeWidth="2.5"
+              stroke="var(--color-nominal)"
+              strokeWidth="1.8"
               strokeLinecap="round"
-              filter="url(#spline-glow)"
-              style={{ transition: 'd 0.3s ease' }}
+              strokeLinejoin="round"
             />
           )}
 
-          {/* Zonas de Interação / Hover nos pontos */}
+          {/* Zonas Interativas de Hover */}
           {tempPoints.map((pt, i) => (
-            <circle
-              key={i}
-              cx={pt.x}
-              cy={pt.y}
-              r={hoverIndex === i ? 5 : 3}
-              fill={hoverIndex === i ? '#F3F4F6' : 'url(#vertical-y-stroke)'}
-              stroke="#0B0F19"
-              strokeWidth="2"
-              style={{ cursor: 'pointer', transition: 'r 0.15s ease' }}
-              onMouseEnter={() => setHoverIndex(i)}
-            />
+            <g key={i}>
+              <rect
+                x={pt.x - 10}
+                y={padding.top}
+                width={20}
+                height={plotHeight}
+                fill="transparent"
+                style={{ cursor: 'crosshair' }}
+                onMouseEnter={() => setHoverIndex(i)}
+              />
+              {hoverIndex === i && (
+                <>
+                  <line
+                    x1={pt.x}
+                    y1={padding.top}
+                    x2={pt.x}
+                    y2={padding.top + plotHeight}
+                    stroke="var(--border-subtle)"
+                    strokeWidth="1"
+                    strokeDasharray="2 2"
+                  />
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={3.5}
+                    fill="var(--bg-card)"
+                    stroke="var(--color-nominal)"
+                    strokeWidth={2}
+                  />
+                </>
+              )}
+            </g>
           ))}
-
-          {/* Linha vertical Guia quando em Hover */}
-          {activePoint && hoverIndex !== null && (
-            <line
-              x1={activePoint.x}
-              y1={padding.top}
-              x2={activePoint.x}
-              y2={padding.top + plotHeight}
-              stroke="rgba(0, 240, 255, 0.3)"
-              strokeDasharray="2 2"
-            />
-          )}
         </svg>
 
-        {/* Tooltip Dinâmico */}
+        {/* Mini Tooltip de Leitura no Hover */}
         {activePoint && (
           <div
             style={{
               position: 'absolute',
-              top: '8px',
+              top: '10px',
               right: '12px',
-              background: 'rgba(17, 24, 39, 0.92)',
+              background: 'var(--bg-card)',
               border: '1px solid var(--border-subtle)',
-              borderRadius: '8px',
-              padding: '6px 10px',
+              borderRadius: 'var(--border-radius-sm)',
+              padding: '4px 8px',
               display: 'flex',
-              gap: '12px',
-              fontSize: '0.74rem',
-              backdropFilter: 'blur(8px)',
+              alignItems: 'center',
+              gap: '10px',
+              fontSize: '0.72rem',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-mono)',
               pointerEvents: 'none',
             }}
           >
-            <div>
-              <span style={{ color: '#6B7280', fontSize: '0.65rem' }}>TEMP</span>
-              <div style={{ color: '#F3F4F6', fontWeight: 700 }} className="tabular-nums">
-                {activePoint.temp}°C
-              </div>
-            </div>
-            <div style={{ borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '8px' }}>
-              <span style={{ color: '#6B7280', fontSize: '0.65rem' }}>CARGA</span>
-              <div style={{ color: '#10B981', fontWeight: 700 }} className="tabular-nums">
-                {activePoint.load}%
-              </div>
-            </div>
+            <span>
+              T: <strong style={{ color: 'var(--color-nominal)' }}>{activePoint.temp}°C</strong>
+            </span>
+            <span style={{ color: 'var(--border-subtle)' }}>|</span>
+            <span>
+              Carga: <strong style={{ color: 'var(--text-secondary)' }}>{Math.round(activePoint.load || 0)}%</strong>
+            </span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>({activePoint.time})</span>
           </div>
         )}
       </div>
 
-      {/* Rodapé: Resumo e Marcadores Temporais */}
+      {/* Rodapé com Amostragem */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderTop: '1px solid var(--border-subtle)',
-          paddingTop: '8px',
-          marginTop: '4px',
-          fontSize: '0.72rem',
-          color: '#6B7280',
+          marginTop: '8px',
+          fontSize: '0.7rem',
+          color: 'var(--text-muted)',
           fontFamily: 'var(--font-mono)',
         }}
       >
-        <span>-30 min</span>
-        <span>-20 min</span>
-        <span>-10 min</span>
-        <span style={{ color: '#00F0FF', fontWeight: 600 }}>Tempo Real ●</span>
+        <span>Amostragem: 1.2s</span>
+        <span>Buffer: {dataPoints.length} pontos</span>
       </div>
     </BentoCard>
   );

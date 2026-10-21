@@ -5,7 +5,7 @@ import { Cpu, HardDrive } from 'lucide-react';
 
 /**
  * SegmentedBar Component
- * Renderiza blocos discretos de 4px separados por 2px no estilo equalizador de áudio
+ * Renderiza blocos discretos calibrados de precisão mecânica, sem neon glow.
  */
 export function SegmentedBar({ value = 0, totalSegments = 28 }) {
   const activeCount = Math.round((Math.max(0, Math.min(100, value)) / 100) * totalSegments);
@@ -17,20 +17,21 @@ export function SegmentedBar({ value = 0, totalSegments = 28 }) {
         alignItems: 'center',
         gap: '2px',
         width: '100%',
-        height: '8px',
+        height: '6px',
+        padding: '2px 0',
       }}
     >
       {Array.from({ length: totalSegments }).map((_, index) => {
         const isActive = index < activeCount;
         const segmentPercentage = (index / totalSegments) * 100;
 
-        // Regra de cores da especificação:
-        // Ciano até 60%, Laranja entre 60% e 85%, Vermelho acima de 85%
-        let activeColor = '#00F0FF';
+        // Escala sóbria de instrumentação:
+        // Nominal (<65%): Mint, Elevado (65%-85%): Amber, Crítico (>85%): Vermilion
+        let activeColor = 'var(--color-nominal)';
         if (segmentPercentage >= 85) {
-          activeColor = '#FF2A54';
-        } else if (segmentPercentage >= 60) {
-          activeColor = '#FF8A00';
+          activeColor = 'var(--color-critical)';
+        } else if (segmentPercentage >= 65) {
+          activeColor = 'var(--color-elevated)';
         }
 
         return (
@@ -40,9 +41,8 @@ export function SegmentedBar({ value = 0, totalSegments = 28 }) {
               flex: 1,
               height: '100%',
               borderRadius: '1px',
-              backgroundColor: isActive ? activeColor : 'rgba(255, 255, 255, 0.07)',
-              boxShadow: isActive ? `0 0 6px ${activeColor}55` : 'none',
-              transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
+              backgroundColor: isActive ? activeColor : 'var(--bg-chip)',
+              transition: 'background-color 0.12s ease',
             }}
           />
         );
@@ -60,16 +60,30 @@ export function EqualizerCard({
 }) {
   return (
     <BentoCard className={className} style={{ gap: '14px' }}>
-      {/* Seção CPU */}
+      {/* Seção Carga do Processador */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Cpu size={15} color="#00F0FF" />
-            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#E2E8F0', letterSpacing: '0.5px' }}>
-              CPU LOAD
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: 'var(--border-radius-sm)',
+                background: 'var(--bg-inset)',
+                border: '1px solid var(--border-hairline)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <Cpu size={14} />
+            </div>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Carga do Processador
             </span>
           </div>
-          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#00F0FF' }} className="tabular-nums">
+          <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }} className="tabular-nums">
             <NumberTicker value={Math.round(cpuLoad)} />%
           </span>
         </div>
@@ -77,20 +91,20 @@ export function EqualizerCard({
         {cpuModel && (
           <div
             style={{
-              fontSize: '0.68rem',
-              color: '#9CA3AF',
-              marginBottom: '6px',
+              fontSize: '0.7rem',
+              color: 'var(--text-muted)',
+              marginBottom: '8px',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              fontWeight: 500,
+              fontWeight: 400,
             }}
           >
             {cpuModel}
           </div>
         )}
 
-        <SegmentedBar value={cpuLoad} totalSegments={30} />
+        <SegmentedBar value={cpuLoad} totalSegments={32} />
 
         {/* Detalhamento compacto dos núcleos */}
         {cores && cores.length > 0 && (
@@ -99,26 +113,30 @@ export function EqualizerCard({
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(36px, 1fr))',
               gap: '4px',
-              marginTop: '8px',
+              marginTop: '10px',
             }}
           >
-            {cores.slice(0, 12).map((coreLoad, i) => (
+            {cores.slice(0, 16).map((coreLoad, i) => (
               <div
                 key={i}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  borderRadius: '4px',
+                  background: 'var(--bg-inset)',
+                  border: '1px solid var(--border-hairline)',
+                  borderRadius: 'var(--border-radius-sm)',
                   padding: '3px 4px',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '0.58rem', color: '#6B7280' }}>C{i + 1}</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>C{i + 1}</div>
                 <div
                   style={{
-                    fontSize: '0.66rem',
+                    fontSize: '0.68rem',
                     fontWeight: 600,
-                    color: coreLoad >= 80 ? '#FF2A54' : coreLoad >= 50 ? '#FF8A00' : '#9CA3AF',
+                    color: coreLoad >= 85 
+                      ? 'var(--color-critical)' 
+                      : coreLoad >= 65 
+                      ? 'var(--color-elevated)' 
+                      : 'var(--text-secondary)',
                   }}
                   className="tabular-nums"
                 >
@@ -130,25 +148,39 @@ export function EqualizerCard({
         )}
       </div>
 
-      {/* Divisor */}
-      <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
+      {/* Divisor Hairline */}
+      <div style={{ height: '1px', background: 'var(--border-hairline)' }} />
 
-      {/* Seção RAM */}
+      {/* Seção Memória Operacional */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <HardDrive size={15} color="#10B981" />
-            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#E2E8F0', letterSpacing: '0.5px' }}>
-              MEMÓRIA RAM
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: 'var(--border-radius-sm)',
+                background: 'var(--bg-inset)',
+                border: '1px solid var(--border-hairline)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <HardDrive size={14} />
+            </div>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Memória RAM
             </span>
           </div>
-          <div style={{ fontSize: '0.78rem', color: '#9CA3AF' }} className="tabular-nums">
-            <strong style={{ color: '#F3F4F6', fontWeight: 700 }}>{memory.usedGB}</strong> / {memory.totalGB} GB (
-            <span style={{ color: '#10B981', fontWeight: 600 }}>{Math.round(memory.percentUsed)}%</span>)
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }} className="tabular-nums">
+            <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{memory.usedGB}</strong> / {memory.totalGB} GB{' '}
+            <span style={{ color: 'var(--text-muted)' }}>({Math.round(memory.percentUsed)}%)</span>
           </div>
         </div>
 
-        <SegmentedBar value={memory.percentUsed} totalSegments={30} />
+        <SegmentedBar value={memory.percentUsed} totalSegments={32} />
       </div>
     </BentoCard>
   );

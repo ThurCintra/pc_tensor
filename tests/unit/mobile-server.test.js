@@ -113,7 +113,10 @@ describe('MobileLiveServer', () => {
     }));
 
     // Aguarda respostas do WebSocket
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    const startTime = Date.now();
+    while (received.length < 3 && Date.now() - startTime < 6000) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
 
     // Valida resposta da mídia
     const mediaRes = received.find((m) => m.requestId === 'req_media_1');

@@ -424,58 +424,72 @@ class SystemCollector extends EventEmitter {
       }
     }
 
-    // Se não houver sensor físico real verificado do bridge, marca como estimado
-    // (no Windows, MSAcpi_ThermalZoneTemperature do WMI frequentemente é estático/fictício e não reflete os núcleos)
+    // Telemetria Térmica Real (zero simulações e zero curvas sintéticas)
     let directCpuTemp = realCpuTemp;
-    let isCpuEstimated = directCpuTemp === null;
+    if (directCpuTemp === null && typeof tempData?.main === 'number' && !isNaN(tempData.main)) {
+      directCpuTemp = Number(tempData.main.toFixed(1));
+    }
 
     let directGpuTemp = realGpuTemp !== null
       ? realGpuTemp
-      : (this.cachedGfx?.gpuTemp ?? null);
-    let isGpuEstimated = directGpuTemp === null;
+      : (typeof this.cachedGfx?.gpuTemp === 'number' ? this.cachedGfx.gpuTemp : null);
 
+    const isCpuEstimated = directCpuTemp === null;
+    const isGpuEstimated = directGpuTemp === null;
     const isEstimated = isCpuEstimated || isGpuEstimated;
     this.hasWorkingTempSensor = !isCpuEstimated;
 
-    // Se o hardware não expõe sensor físico verificado no SO, calcula modelo termodinâmico realista baseado em carga
-    if (isCpuEstimated) {
-      const targetCpu = 38.0 + (cpuMetrics.loadPercent * 0.42);
-      this.currentCpuTemp += (targetCpu - this.currentCpuTemp) * 0.22;
-      const jitter = Math.sin(now / 1500) * 0.35;
-      directCpuTemp = Number((this.currentCpuTemp + jitter).toFixed(1));
-    }
-
-    if (isGpuEstimated) {
-      const targetGpu = 40.0 + (cpuMetrics.loadPercent * 0.35);
-      this.currentGpuTemp += (targetGpu - this.currentGpuTemp) * 0.18;
-      const gpuJitter = Math.cos(now / 1800) * 0.3;
-      directGpuTemp = Number((this.currentGpuTemp + gpuJitter).toFixed(1));
-    }
-
-    const cpuMaxTemp = (!isCpuEstimated && typeof tempData.max === 'number' && !isNaN(tempData.max))
+    const cpuMaxTemp = (!isCpuEstimated && typeof tempData?.max === 'number' && !isNaN(tempData.max))
       ? Number(tempData.max.toFixed(1))
-      : Number((directCpuTemp + 2.8).toFixed(1));
+      : directCpuTemp;
 
-    // Velocidade de ventoinha (Fan Speed) dinâmica ou real via hardware bridge
+    // Velocidade de ventoinha física real (se disponível pelo hardware)
     let fanRpm = realFanRpm;
-    let pwmPercent = 50;
-
+    let pwmPercent = null;
     if (fanRpm !== null && fanRpm >= 0) {
       pwmPercent = Math.min(100, Math.max(0, Math.round((fanRpm / 2400) * 100)));
-    } else {
-      const tempRatio = Math.max(0, Math.min(1, ((directCpuTemp - 35) / 55)));
-      fanRpm = Math.round(780 + (tempRatio * 1620) + (Math.sin(now / 2400) * 30));
-      pwmPercent = Math.min(100, Math.max(0, Math.round((fanRpm / 2400) * 100)));
     }
 
-    // Taxa estimada de atividade de I/O em disco
-    const ioWave = (Math.sin(now / 1900) + 1) / 2;
-    const readMBps = Number((2.8 + (ioWave * 24.5)).toFixed(1));
-    const writeMBps = Number((1.4 + (ioWave * 12.2)).toFixed(1));
+    // Taxa física real de I/O de disco via contadores do SO (bytes/s -> MB/s)
+    let readMBps = 0.0;
+    let writeMBps = 0.0;
+    let hasRealDiskIo = false;
+    if (bridgeValid && this.latestBridgeData.diskIo) {
+      const rBytes = Number(this.latestBridgeData.diskIo.readBytesSec) || 0;
+      const wBytes = Number(this.latestBridgeData.diskIo.writeBytesSec) || 0;
+      readMBps = Number((rBytes / (1024 * 1024)).toFixed(1));
+      writeMBps = Number((wBytes / (1024 * 1024)).toFixed(1));
+      hasRealDiskIo = true;
+    }
 
     const gpuNameResolved = realGpuName || this.cachedGfx?.gpuName || 'GPU Primária';
 
-    // 6. FASE 1: Processos, Swap, Gargalos, Rede e Ring Buffer
+    // Motherboard e Armazenamento físico
+    const motherboardData = (bridgeValid && this.latestBridgeData.motherboard) ? {
+      name: this.latestBridgeData.motherboard.name || 'Placa-mãe',
+      temp: typeof this.latestBridgeData.motherboard.temp === 'number' ? Number(this.latestBridgeData.motherboard.temp.toFixed(1)) : null,
+      requiresElevation: Boolean(this.latestBridgeData.motherboard.requiresElevation),
+    } : {
+      name: 'Placa-mãe',
+      temp: null,
+      requiresElevation: true,
+    };
+
+    const storageData = (bridgeValid && this.latestBridgeData.storage) ? {
+      name: this.latestBridgeData.storage.name || 'Armazenamento',
+      temp: typeof this.latestBridgeData.storage.temp === 'number' ? Number(this.latestBridgeData.storage.temp.toFixed(1)) : null,
+      load: typeof this.latestBridgeData.storage.load === 'number' ? Number(this.latestBridgeData.storage.load.toFixed(1)) : null,
+      requiresElevation: Boolean(this.latestBridgeData.storage.requiresElevation),
+    } : {
+      name: 'Armazenamento',
+      temp: null,
+      load: null,
+      requiresElevation: true,
+    };
+
+    const isAdmin = bridgeValid ? Boolean(this.latestBridgeData.isAdmin) : false;
+
+    // 6. Processos, Swap, Gargalos, Rede e Ring Buffer
     const [topProcesses, swapMetrics] = await Promise.all([
       this.processMonitor.getTopProcesses().catch(() => []),
       this.processMonitor.getSwapMetrics().catch(() => ({ totalMB: 0, usedMB: 0, percentUsed: 0 })),
@@ -493,9 +507,11 @@ class SystemCollector extends EventEmitter {
       ? this.latestBridgeData.gpu.load
       : null;
 
-    const vramPercentVal = (bridgeValid && this.latestBridgeData.gpu?.vramTotal && this.latestBridgeData.gpu?.vramUsed)
-      ? Number(((this.latestBridgeData.gpu.vramUsed / this.latestBridgeData.gpu.vramTotal) * 100).toFixed(1))
-      : null;
+    const vramPercentVal = (bridgeValid && this.latestBridgeData.gpu?.vramTotalMB && this.latestBridgeData.gpu?.vramUsedMB)
+      ? Number(((this.latestBridgeData.gpu.vramUsedMB / this.latestBridgeData.gpu.vramTotalMB) * 100).toFixed(1))
+      : (bridgeValid && this.latestBridgeData.gpu?.vramTotal && this.latestBridgeData.gpu?.vramUsed
+        ? Number(((this.latestBridgeData.gpu.vramUsed / this.latestBridgeData.gpu.vramTotal) * 100).toFixed(1))
+        : null);
 
     const bottleneck = ProcessMonitor.detectBottleneck({
       cpuLoad: cpuMetrics.loadPercent,
@@ -536,22 +552,28 @@ class SystemCollector extends EventEmitter {
       temperatures: {
         cpuMain: directCpuTemp,
         cpuMax: cpuMaxTemp,
-        cores: (!isCpuEstimated && tempData.cores && tempData.cores.length > 0) ? tempData.cores : [directCpuTemp],
+        cores: (!isCpuEstimated && tempData?.cores && tempData.cores.length > 0) ? tempData.cores : (directCpuTemp !== null ? [directCpuTemp] : []),
         gpu: directGpuTemp,
         gpuName: gpuNameResolved,
         gpuMemoryTemp: bridgeValid && typeof this.latestBridgeData.gpu?.memoryTemp === 'number' ? this.latestBridgeData.gpu.memoryTemp : null,
         gpuHotspotTemp: bridgeValid && typeof this.latestBridgeData.gpu?.hotspotTemp === 'number' ? this.latestBridgeData.gpu.hotspotTemp : null,
         gpuFanRpm: bridgeValid && typeof this.latestBridgeData.gpu?.fanRpm === 'number' ? this.latestBridgeData.gpu.fanRpm : null,
         gpuPowerWatts: bridgeValid && typeof this.latestBridgeData.gpu?.powerWatts === 'number' ? this.latestBridgeData.gpu.powerWatts : null,
+        gpuVramUsedMB: bridgeValid && typeof this.latestBridgeData.gpu?.vramUsedMB === 'number' ? this.latestBridgeData.gpu.vramUsedMB : null,
+        gpuVramTotalMB: bridgeValid && typeof this.latestBridgeData.gpu?.vramTotalMB === 'number' ? this.latestBridgeData.gpu.vramTotalMB : null,
         cpuName: (bridgeValid && this.latestBridgeData.cpu?.name) ? this.latestBridgeData.cpu.name : this.cpuModel,
+        motherboard: motherboardData,
+        storage: storageData,
+        isAdmin,
+        requiresElevation: !isAdmin,
         isEstimated: isEstimated,
         isCpuEstimated: isCpuEstimated,
         isGpuEstimated: isGpuEstimated,
       },
       cpu: {
         ...cpuMetrics,
-        model: this.cpuModel,
-        brand: this.cpuModel,
+        model: (bridgeValid && this.latestBridgeData.cpu?.name) ? this.latestBridgeData.cpu.name : this.cpuModel,
+        brand: (bridgeValid && this.latestBridgeData.cpu?.name) ? this.latestBridgeData.cpu.name : this.cpuModel,
       },
       memory: memMetrics,
       swap: swapMetrics,
@@ -567,13 +589,14 @@ class SystemCollector extends EventEmitter {
       degradationAlert: this.cachedDegradationResult,
       fan: {
         rpm: fanRpm,
-        pwmPercent,
+        pwmPercent: pwmPercent !== null ? pwmPercent : 0,
         maxRpm: 2400,
-        isReal: realFanRpm !== null,
+        isReal: fanRpm !== null,
       },
       diskIo: {
         readMBps,
         writeMBps,
+        isReal: hasRealDiskIo,
       },
     };
   }

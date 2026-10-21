@@ -217,4 +217,38 @@ describe('SystemCollector', () => {
 
     collector.stop();
   });
+
+  it('deve processar e integrar telemetria física real do sensor bridge (Motherboard, Storage, Admin e DiskIo)', async () => {
+    const collector = new SystemCollector(null);
+    collector.latestBridgeData = {
+      success: true,
+      isAdmin: false,
+      cpu: { name: 'AMD Ryzen 5 9600X', temp: 51.5, load: 35.0 },
+      gpu: { name: 'AMD Radeon RX 7600', temp: 68.0, hotspotTemp: 78.0, memoryTemp: 80.0, fanRpm: 830, load: 95.0, powerWatts: 85.0, vramUsedMB: 6140, vramTotalMB: 8176 },
+      motherboard: { name: 'MSI PRO B650M-P (MS-7E27)', temp: null, requiresElevation: true },
+      storage: { name: 'KINGSTON SNV3S500G', temp: null, load: null, requiresElevation: true },
+      diskIo: { readBytesSec: 5242880, writeBytesSec: 1048576 },
+      fanRpm: 830,
+      realSensors: { cpu: true, gpu: true, motherboard: false, storage: false },
+    };
+    collector.lastBridgeUpdate = Date.now();
+
+    const metrics = await collector.getMetricsSnapshot();
+
+    expect(metrics).toBeDefined();
+    expect(metrics.temperatures.cpuMain).toBe(51.5);
+    expect(metrics.temperatures.gpu).toBe(68.0);
+    expect(metrics.temperatures.gpuHotspotTemp).toBe(78.0);
+    expect(metrics.temperatures.gpuMemoryTemp).toBe(80.0);
+    expect(metrics.temperatures.isAdmin).toBe(false);
+    expect(metrics.temperatures.requiresElevation).toBe(true);
+    expect(metrics.temperatures.motherboard.name).toBe('MSI PRO B650M-P (MS-7E27)');
+    expect(metrics.temperatures.storage.name).toBe('KINGSTON SNV3S500G');
+    expect(metrics.diskIo.readMBps).toBe(5.0);
+    expect(metrics.diskIo.writeMBps).toBe(1.0);
+    expect(metrics.diskIo.isReal).toBe(true);
+    expect(metrics.fan.rpm).toBe(830);
+
+    collector.stop();
+  });
 });

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BentoCard } from '../ui/BentoCard';
-import { Activity, XCircle, HardDrive, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Activity, X, HardDrive, ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 const PROTECTED_PROCESSES = new Set([
   'system',
@@ -35,16 +35,16 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
       if (onKillProcess) {
         const res = await onKillProcess(proc.pid, proc.name);
         if (res && res.success) {
-          setFeedbackMsg({ text: `Encerrado: ${proc.name} (PID ${proc.pid})`, error: false });
+          setFeedbackMsg({ text: `Finalizado: ${proc.name} (PID ${proc.pid})`, error: false });
         } else {
-          setFeedbackMsg({ text: res?.error || `Falha ao encerrar ${proc.name}`, error: true });
+          setFeedbackMsg({ text: res?.error || `Falha ao finalizar ${proc.name}`, error: true });
         }
       } else if (window.sentinelAPI?.executeAction) {
         const res = await window.sentinelAPI.executeAction('KILL_PROCESS', { pid: proc.pid, processName: proc.name });
         if (res && res.success) {
-          setFeedbackMsg({ text: `Encerrado: ${proc.name} (PID ${proc.pid})`, error: false });
+          setFeedbackMsg({ text: `Finalizado: ${proc.name} (PID ${proc.pid})`, error: false });
         } else {
-          setFeedbackMsg({ text: res?.error || `Falha ao encerrar ${proc.name}`, error: true });
+          setFeedbackMsg({ text: res?.error || `Falha ao finalizar ${proc.name}`, error: true });
         }
       }
     } catch (err) {
@@ -60,30 +60,31 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
   const swapPercent = typeof swap?.percentUsed === 'number' ? swap.percentUsed : 0;
 
   return (
-    <BentoCard className={className} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <BentoCard className={className} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div
             style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              background: 'rgba(0, 240, 255, 0.08)',
-              border: '1px solid rgba(0, 240, 255, 0.25)',
+              width: '26px',
+              height: '26px',
+              borderRadius: 'var(--border-radius-sm)',
+              background: 'var(--bg-inset)',
+              border: '1px solid var(--border-hairline)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: 'var(--text-secondary)',
             }}
           >
-            <Activity size={15} color="#00F0FF" />
+            <Activity size={14} />
           </div>
           <div>
-            <div style={{ fontSize: '0.68rem', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600 }}>
-              CONSUMO EM TEMPO REAL
+            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Processos Ativos
             </div>
-            <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#F3F4F6' }}>
-              Top 5 Processos
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              Top 5 por impacto de carga
             </div>
           </div>
         </div>
@@ -91,16 +92,16 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
         {feedbackMsg && (
           <span
             style={{
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              padding: '3px 8px',
-              borderRadius: '6px',
+              fontSize: '0.7rem',
+              fontWeight: 500,
+              padding: '2px 8px',
+              borderRadius: 'var(--border-radius-sm)',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
-              background: feedbackMsg.error ? 'rgba(255, 42, 84, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-              border: `1px solid ${feedbackMsg.error ? 'rgba(255, 42, 84, 0.4)' : 'rgba(16, 185, 129, 0.4)'}`,
-              color: feedbackMsg.error ? '#FF2A54' : '#10B981',
+              background: 'var(--bg-inset)',
+              border: `1px solid ${feedbackMsg.error ? 'var(--color-critical)' : 'var(--color-nominal)'}`,
+              color: feedbackMsg.error ? 'var(--color-critical)' : 'var(--color-nominal)',
             }}
           >
             {feedbackMsg.error ? <ShieldAlert size={12} /> : <CheckCircle2 size={12} />}
@@ -109,10 +110,10 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
         )}
       </div>
 
-      {/* Tabela dos Top 5 Processos */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {/* Lista de Processos */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {(!processes || processes.length === 0) ? (
-          <div style={{ padding: '16px', textAlign: 'center', color: '#6B7280', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.74rem', fontFamily: 'var(--font-mono)' }}>
             Nenhum processo monitorado no momento
           </div>
         ) : (
@@ -129,20 +130,19 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '7px 10px',
-                  borderRadius: '7px',
-                  background: 'rgba(11, 15, 25, 0.55)',
-                  border: '1px solid #1F2937',
-                  transition: 'background 0.15s ease',
+                  padding: '6px 10px',
+                  borderRadius: 'var(--border-radius-sm)',
+                  background: 'var(--bg-inset)',
+                  border: '1px solid var(--border-hairline)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
                   <span
                     style={{
-                      fontSize: '0.7rem',
+                      fontSize: '0.68rem',
                       fontFamily: 'var(--font-mono)',
-                      color: '#4B5563',
-                      minWidth: '14px',
+                      color: 'var(--text-dim)',
+                      minWidth: '12px',
                     }}
                   >
                     {idx + 1}
@@ -150,9 +150,9 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
                     <span
                       style={{
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        color: '#E5E7EB',
+                        fontSize: '0.76rem',
+                        fontWeight: 500,
+                        color: 'var(--text-primary)',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -161,41 +161,41 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
                     >
                       {proc.name}
                     </span>
-                    <span style={{ fontSize: '0.65rem', color: '#6B7280', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                       PID {proc.pid}
                     </span>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                   {/* CPU % */}
-                  <div style={{ textAlign: 'right', minWidth: '46px' }}>
+                  <div style={{ textAlign: 'right', minWidth: '42px' }}>
                     <span
                       style={{
-                        fontSize: '0.74rem',
-                        fontWeight: 700,
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
                         fontFamily: 'var(--font-mono)',
-                        color: proc.cpuPercent > 40 ? '#FF8A00' : '#00F0FF',
+                        color: proc.cpuPercent > 40 ? 'var(--color-elevated)' : 'var(--text-primary)',
                       }}
                     >
                       {cpuVal}%
                     </span>
-                    <div style={{ fontSize: '0.6rem', color: '#6B7280' }}>CPU</div>
+                    <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>CPU</div>
                   </div>
 
                   {/* RAM MB */}
-                  <div style={{ textAlign: 'right', minWidth: '55px' }}>
+                  <div style={{ textAlign: 'right', minWidth: '50px' }}>
                     <span
                       style={{
-                        fontSize: '0.74rem',
-                        fontWeight: 700,
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
                         fontFamily: 'var(--font-mono)',
-                        color: proc.memMB > 1500 ? '#FF2A54' : '#9CA3AF',
+                        color: proc.memMB > 1500 ? 'var(--color-critical)' : 'var(--text-secondary)',
                       }}
                     >
                       {memMb} MB
                     </span>
-                    <div style={{ fontSize: '0.6rem', color: '#6B7280' }}>RAM</div>
+                    <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>RAM</div>
                   </div>
 
                   {/* Botão de Encerramento */}
@@ -205,19 +205,18 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
                     title={isProtected ? 'Processo crítico do Windows (Protegido)' : `Encerrar ${proc.name}`}
                     style={{
                       background: 'none',
-                      border: 'none',
-                      padding: '4px',
+                      border: '1px solid var(--border-hairline)',
+                      padding: '3px',
                       cursor: isProtected ? 'not-allowed' : 'pointer',
-                      color: isProtected ? '#374151' : isKilling ? '#FF8A00' : '#EF4444',
-                      opacity: isProtected ? 0.4 : 1,
+                      color: isProtected ? 'var(--text-dim)' : isKilling ? 'var(--color-elevated)' : 'var(--color-critical)',
+                      opacity: isProtected ? 0.3 : 0.8,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: '4px',
-                      transition: 'transform 0.1s ease',
+                      borderRadius: 'var(--border-radius-sm)',
                     }}
                   >
-                    <XCircle size={16} />
+                    <X size={13} />
                   </button>
                 </div>
               </div>
@@ -226,30 +225,34 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
         )}
       </div>
 
-      {/* Swap / Arquivo de Paginação */}
+      {/* Paginação / Swap em Disco */}
       {swapTotal > 0 && (
         <div
           style={{
-            marginTop: '4px',
-            background: 'rgba(11, 15, 25, 0.4)',
-            border: '1px solid #1F2937',
-            borderRadius: '8px',
-            padding: '8px 10px',
+            marginTop: '2px',
+            background: 'var(--bg-inset)',
+            border: '1px solid var(--border-hairline)',
+            borderRadius: 'var(--border-radius-sm)',
+            padding: '6px 10px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px',
+            gap: '5px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.7rem', color: '#9CA3AF', fontWeight: 600 }}>
-              <HardDrive size={12} color="#818CF8" /> Paginação / Swap (Disco)
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              <HardDrive size={11} /> Paginação / Swap em Disco
             </span>
             <span
               style={{
-                fontSize: '0.72rem',
+                fontSize: '0.7rem',
                 fontFamily: 'var(--font-mono)',
-                fontWeight: 700,
-                color: swapPercent > 70 ? '#FF2A54' : swapPercent > 40 ? '#FF8A00' : '#10B981',
+                fontWeight: 600,
+                color: swapPercent > 70 
+                  ? 'var(--color-critical)' 
+                  : swapPercent > 40 
+                  ? 'var(--color-elevated)' 
+                  : 'var(--text-secondary)',
               }}
             >
               {swapPercent.toFixed(1)}% ({(swapUsed / 1024).toFixed(1)} / {(swapTotal / 1024).toFixed(1)} GB)
@@ -259,9 +262,9 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
           <div
             style={{
               width: '100%',
-              height: '5px',
-              borderRadius: '9999px',
-              background: '#1F2937',
+              height: '3px',
+              borderRadius: '2px',
+              background: 'var(--bg-card)',
               overflow: 'hidden',
             }}
           >
@@ -269,8 +272,8 @@ export function ProcessListCard({ processes = [], swap = null, onKillProcess, cl
               style={{
                 width: `${Math.min(100, Math.max(0, swapPercent))}%`,
                 height: '100%',
-                background: swapPercent > 70 ? 'linear-gradient(90deg, #FF8A00, #FF2A54)' : 'linear-gradient(90deg, #818CF8, #00F0FF)',
-                transition: 'width 0.4s ease',
+                background: swapPercent > 70 ? 'var(--color-critical)' : 'var(--color-nominal)',
+                transition: 'width 0.3s ease',
               }}
             />
           </div>

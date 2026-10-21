@@ -177,7 +177,7 @@ ${gpusText || '  * Não identificada'}
 - Armazenamento:
 ${disksText || '  * Não identificado'}
 - Conectividade: ${formatFallback(info.network?.interface)} (${formatFallback(info.network?.localIp)} @ ${info.network?.linkSpeedMbps ? `${info.network.linkSpeedMbps} Mbps` : EMPTY_PLACEHOLDER})
-- Gerado por: PC Sentinel v0.1.0 (Dark Cyber-Clean)
+- Gerado por: PC Sentinel v0.1.0 (Console de Telemetria e Diagnóstico)
 `;
 
     navigator.clipboard.writeText(text);
@@ -203,15 +203,15 @@ ${disksText || '  * Não identificado'}
   const getVendorBadge = (vendor) => {
     const v = (vendor || '').toUpperCase();
     if (v.includes('NVIDIA')) {
-      return { label: 'NVIDIA', bg: 'rgba(16, 185, 129, 0.15)', border: '#10B981', color: '#10B981' };
+      return { label: 'NVIDIA', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)', color: '#10B981' };
     }
     if (v.includes('AMD') || v.includes('RADEON')) {
-      return { label: 'AMD', bg: 'rgba(255, 42, 84, 0.15)', border: '#FF2A54', color: '#FF2A54' };
+      return { label: 'AMD', bg: 'rgba(239, 68, 68, 0.08)', border: 'rgba(239, 68, 68, 0.25)', color: '#EF4444' };
     }
     if (v.includes('INTEL')) {
-      return { label: 'INTEL', bg: 'rgba(0, 240, 255, 0.15)', border: '#00F0FF', color: '#00F0FF' };
+      return { label: 'INTEL', bg: 'rgba(56, 189, 248, 0.08)', border: 'rgba(56, 189, 248, 0.25)', color: '#38BDF8' };
     }
-    return { label: vendor || 'GPU', bg: 'rgba(255, 255, 255, 0.08)', border: 'rgba(255, 255, 255, 0.2)', color: '#9CA3AF' };
+    return { label: vendor || 'GPU', bg: 'var(--bg-inset)', border: 'var(--border-hairline)', color: 'var(--text-secondary)' };
   };
 
   const gpuVendorStyle = getVendorBadge(activeGpu.vendor);
@@ -228,25 +228,26 @@ ${disksText || '  * Não identificado'}
           flexWrap: 'wrap',
           gap: '14px',
           padding: '16px 20px',
-          background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(13, 17, 23, 0.95))',
-          border: '1px solid var(--border-subtle)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-hairline)',
         }}
       >
         {/* Identificação do Sistema */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div
             style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #00F0FF, #10B981)',
+              width: '40px',
+              height: '40px',
+              borderRadius: 'var(--border-radius-sm)',
+              background: 'var(--bg-chip)',
+              border: '1px solid var(--border-subtle)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 16px rgba(0, 240, 255, 0.35)',
+              color: 'var(--color-nominal)',
             }}
           >
-            <Server size={22} color="#0B0F19" strokeWidth={2.4} />
+            <Server size={20} strokeWidth={2.2} />
           </div>
 
           <div>
@@ -255,8 +256,8 @@ ${disksText || '  * Não identificado'}
                 style={{
                   fontSize: '1.25rem',
                   fontWeight: 700,
-                  color: '#F3F4F6',
-                  letterSpacing: '0.6px',
+                  color: 'var(--text-primary)',
+                  letterSpacing: '0.4px',
                   fontFamily: 'var(--font-mono)',
                 }}
               >
@@ -266,10 +267,10 @@ ${disksText || '  * Não identificado'}
                 style={{
                   fontSize: '0.68rem',
                   padding: '2px 8px',
-                  borderRadius: '9999px',
-                  background: 'rgba(0, 240, 255, 0.1)',
-                  border: '1px solid rgba(0, 240, 255, 0.3)',
-                  color: '#00F0FF',
+                  borderRadius: 'var(--border-radius-sm)',
+                  background: 'var(--bg-inset)',
+                  border: '1px solid var(--border-hairline)',
+                  color: 'var(--text-secondary)',
                   fontWeight: 600,
                 }}
               >
@@ -579,19 +580,19 @@ ${disksText || '  * Não identificado'}
             <div
               style={{
                 width: '100%',
-                height: '5px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                borderRadius: '3px',
+                height: '4px',
+                background: 'var(--bg-inset)',
+                borderRadius: '2px',
                 overflow: 'hidden',
+                border: '1px solid var(--border-hairline)',
               }}
             >
               <div
                 style={{
                   width: activeGpu.vramTotalBytes ? '100%' : '0%',
                   height: '100%',
-                  background: 'linear-gradient(90deg, #FF8A00, #FF2A54)',
-                  borderRadius: '3px',
-                  boxShadow: '0 0 8px rgba(255, 138, 0, 0.4)',
+                  background: 'var(--color-accent)',
+                  borderRadius: '1px',
                 }}
               />
             </div>
@@ -720,18 +721,17 @@ ${disksText || '  * Não identificado'}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '80px', flexShrink: 0 }}>
                     <span
                       style={{
-                        width: '6px',
-                        height: '6px',
+                        width: '5px',
+                        height: '5px',
                         borderRadius: '50%',
-                        background: '#00F0FF',
-                        boxShadow: '0 0 6px #00F0FF',
+                        background: 'var(--color-nominal)',
                         flexShrink: 0,
                       }}
                     />
-                    <span style={{ fontWeight: 600, color: '#E2E8F0' }}>{stick.slot || `Slot ${idx + 1}`}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{stick.slot || `Slot ${idx + 1}`}</span>
                   </div>
                   <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ color: '#00F0FF', fontWeight: 700 }} className="tabular-nums">
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 600 }} className="tabular-nums">
                       {formatBytes(stick.capacityBytes)}
                     </span>
                     <span
@@ -941,11 +941,10 @@ ${disksText || '  * Não identificado'}
             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span
                 style={{
-                  width: '7px',
-                  height: '7px',
+                  width: '6px',
+                  height: '6px',
                   borderRadius: '50%',
-                  background: cap.active ? '#10B981' : '#4B5563',
-                  boxShadow: cap.active ? '0 0 8px #10B981' : 'none',
+                  background: cap.active ? 'var(--color-nominal)' : 'var(--text-dim)',
                 }}
               />
               <span

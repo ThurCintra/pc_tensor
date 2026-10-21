@@ -3,20 +3,20 @@ import { BentoCard } from '../ui/BentoCard';
 import { Wifi, Activity, ArrowDownUp } from 'lucide-react';
 
 const STATUS_COLOR_MAP = {
-  EXCELLENT: '#10B981',
-  GOOD: '#00F0FF',
-  FAIR: '#FF8A00',
-  POOR: '#FF2A54',
-  DISCONNECTED: '#6B7280',
-  MEASURING: '#38BDF8',
+  EXCELLENT: 'var(--color-nominal)',
+  GOOD: 'var(--color-accent)',
+  FAIR: 'var(--color-elevated)',
+  POOR: 'var(--color-critical)',
+  DISCONNECTED: 'var(--text-muted)',
+  MEASURING: 'var(--text-secondary)',
 };
 
 const STATUS_LABEL_MAP = {
   EXCELLENT: 'Excelente',
-  GOOD: 'Boa',
+  GOOD: 'Estável',
   FAIR: 'Oscilando',
   POOR: 'Instável',
-  DISCONNECTED: 'Desconectado',
+  DISCONNECTED: 'Sem Conexão',
   MEASURING: 'Medindo...',
 };
 
@@ -32,7 +32,7 @@ export function NetworkCard({ network = null, className = '' }) {
     : '0%';
 
   const statusKey = network?.status || 'MEASURING';
-  const statusColor = STATUS_COLOR_MAP[statusKey] || '#10B981';
+  const statusColor = STATUS_COLOR_MAP[statusKey] || 'var(--color-nominal)';
   const statusLabel = STATUS_LABEL_MAP[statusKey] || statusKey;
 
   return (
@@ -42,24 +42,25 @@ export function NetworkCard({ network = null, className = '' }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div
             style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              background: 'rgba(0, 240, 255, 0.08)',
-              border: '1px solid rgba(0, 240, 255, 0.25)',
+              width: '26px',
+              height: '26px',
+              borderRadius: 'var(--border-radius-sm)',
+              background: 'var(--bg-inset)',
+              border: '1px solid var(--border-hairline)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              color: 'var(--color-accent)',
             }}
           >
-            <Wifi size={15} color="#00F0FF" />
+            <Wifi size={14} />
           </div>
           <div>
-            <div style={{ fontSize: '0.68rem', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 600 }}>
-              ESTABILIDADE & REDE
+            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Latência & Rede
             </div>
-            <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#F3F4F6' }}>
-              Latência & Jitter
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              Sonda contínua de conexão
             </div>
           </div>
         </div>
@@ -67,19 +68,19 @@ export function NetworkCard({ network = null, className = '' }) {
         {/* Status Pill */}
         <span
           style={{
-            fontSize: '0.7rem',
-            fontWeight: 700,
+            fontSize: '0.72rem',
+            fontWeight: 500,
             color: statusColor,
-            background: 'rgba(17, 24, 39, 0.8)',
-            border: `1px solid ${statusColor}44`,
+            background: 'var(--bg-inset)',
+            border: '1px solid var(--border-hairline)',
             padding: '2px 8px',
-            borderRadius: '6px',
+            borderRadius: 'var(--border-radius-sm)',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
+            gap: '5px',
           }}
         >
-          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: statusColor, boxShadow: `0 0 6px ${statusColor}` }} />
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: statusColor }} />
           {statusLabel}
         </span>
       </div>
@@ -89,40 +90,40 @@ export function NetworkCard({ network = null, className = '' }) {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-          gap: '8px',
+          gap: '6px',
           marginTop: '2px',
         }}
       >
         {/* Ping / Latência */}
-        <div style={{ background: 'rgba(11, 15, 25, 0.65)', border: '1px solid #1F2937', borderRadius: '8px', padding: '8px 10px' }}>
-          <div style={{ fontSize: '0.65rem', color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px' }}>
-            Latência (Ping)
+        <div style={{ background: 'var(--bg-inset)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--border-radius-sm)', padding: '6px 8px' }}>
+          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+            Latência
           </div>
-          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#00F0FF', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
             {latency}
           </div>
         </div>
 
         {/* Jitter */}
-        <div style={{ background: 'rgba(11, 15, 25, 0.65)', border: '1px solid #1F2937', borderRadius: '8px', padding: '8px 10px' }}>
-          <div style={{ fontSize: '0.65rem', color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px' }}>
-            Jitter (Var.)
+        <div style={{ background: 'var(--bg-inset)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--border-radius-sm)', padding: '6px 8px' }}>
+          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+            Jitter
           </div>
-          <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#38BDF8', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
             {jitter}
           </div>
         </div>
 
         {/* Perda de Pacotes */}
-        <div style={{ background: 'rgba(11, 15, 25, 0.65)', border: '1px solid #1F2937', borderRadius: '8px', padding: '8px 10px' }}>
-          <div style={{ fontSize: '0.65rem', color: '#6B7280', textTransform: 'uppercase', marginBottom: '2px' }}>
-            Perda de Pcts
+        <div style={{ background: 'var(--bg-inset)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--border-radius-sm)', padding: '6px 8px' }}>
+          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginBottom: '2px' }}>
+            Perda Pct
           </div>
           <div
             style={{
               fontSize: '1.05rem',
-              fontWeight: 700,
-              color: network?.packetLossPercent > 0 ? '#FF2A54' : '#10B981',
+              fontWeight: 600,
+              color: network?.packetLossPercent > 0 ? 'var(--color-critical)' : 'var(--color-nominal)',
               fontFamily: 'var(--font-mono)',
             }}
           >
@@ -131,10 +132,10 @@ export function NetworkCard({ network = null, className = '' }) {
         </div>
       </div>
 
-      {/* Destino de Verificação */}
-      <div style={{ fontSize: '0.68rem', color: '#6B7280', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>Alvo de Sonda: <span style={{ color: '#9CA3AF', fontFamily: 'var(--font-mono)' }}>{network?.target || network?.host || '1.1.1.1 (Cloudflare)'}</span></span>
-        <span>TCP Probe 443</span>
+      {/* Alvo da Sonda */}
+      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>Alvo: <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{network?.target || network?.host || '1.1.1.1 (Cloudflare)'}</span></span>
+        <span>TCP 443</span>
       </div>
     </BentoCard>
   );

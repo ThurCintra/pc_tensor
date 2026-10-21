@@ -4,9 +4,9 @@ import { NumberTicker } from '../ui/NumberTicker';
 import { Wind } from 'lucide-react';
 
 /**
- * Ícone Vetorial Minimalista de Hélice / Fan Propeller
+ * Ícone Vetorial Técnico de Rotor / Propeller Mecânico
  */
-function PropellerSvg({ size = 28, color = '#00F0FF', isSpinning = true, duration = '1.2s' }) {
+function PropellerSvg({ size = 26, color = 'var(--text-secondary)', isSpinning = true, duration = '1.2s' }) {
   return (
     <div
       style={{
@@ -23,7 +23,7 @@ function PropellerSvg({ size = 28, color = '#00F0FF', isSpinning = true, duratio
         viewBox="0 0 24 24"
         fill="none"
         stroke={color}
-        strokeWidth="1.8"
+        strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
         style={{
@@ -31,11 +31,11 @@ function PropellerSvg({ size = 28, color = '#00F0FF', isSpinning = true, duratio
           transformOrigin: '12px 12px',
         }}
       >
-        <circle cx="12" cy="12" r="3" fill={color} />
-        <path d="M12 9 C12 4, 16 3, 16 3 C16 3, 16 7, 12 9" fill={color} fillOpacity="0.25" />
-        <path d="M15 12 C20 12, 21 16, 21 16 C21 16, 17 16, 15 12" fill={color} fillOpacity="0.25" />
-        <path d="M12 15 C12 20, 8 21, 8 21 C8 21, 8 17, 12 15" fill={color} fillOpacity="0.25" />
-        <path d="M9 12 C4 12, 3 8, 3 8 C3 8, 7 8, 9 12" fill={color} fillOpacity="0.25" />
+        <circle cx="12" cy="12" r="2.5" fill={color} />
+        <path d="M12 9.5 C12 5, 15.5 4, 15.5 4 C15.5 4, 15.5 7.5, 12 9.5" fill={color} fillOpacity="0.15" />
+        <path d="M14.5 12 C19 12, 20 15.5, 20 15.5 C20 15.5, 16.5 15.5, 14.5 12" fill={color} fillOpacity="0.15" />
+        <path d="M12 14.5 C12 19, 8.5 20, 8.5 20 C8.5 20, 8.5 16.5, 12 14.5" fill={color} fillOpacity="0.15" />
+        <path d="M9.5 12 C5 12, 4 8.5, 4 8.5 C4 8.5, 7.5 8.5, 9.5 12" fill={color} fillOpacity="0.15" />
       </svg>
     </div>
   );
@@ -48,8 +48,6 @@ export function FanSpeedCard({
 }) {
   const isSpinning = rpm > 0;
 
-  // Física Visual: Cálculo inverso da duração da rotação (Regra 3.3 da especificação)
-  // 800 RPM -> ~1.8s, 2500+ RPM -> ~0.35s
   let durationSeconds = 1.4;
   if (rpm <= 0) {
     durationSeconds = 0;
@@ -58,47 +56,64 @@ export function FanSpeedCard({
   } else if (rpm >= 2500) {
     durationSeconds = 0.35;
   } else {
-    // Interpolação linear entre 800 e 2500
     const ratio = (rpm - 800) / (2500 - 800);
     durationSeconds = Number((1.8 - ratio * (1.8 - 0.35)).toFixed(2));
   }
 
-  const fanColor = rpm >= 2000 ? '#FF2A54' : rpm >= 1400 ? '#FF8A00' : '#00F0FF';
-  const mode = rpm >= 2000 ? 'ALTO DESEMPENHO' : rpm >= 1200 ? 'EQUILIBRADO' : 'SILENCIOSO';
+  const fanColor = rpm >= 2000 
+    ? 'var(--color-critical)' 
+    : rpm >= 1400 
+    ? 'var(--color-elevated)' 
+    : 'var(--color-nominal)';
+
+  const mode = rpm >= 2000 ? 'Alto Desempenho' : rpm >= 1200 ? 'Equilibrado' : 'Silencioso';
 
   return (
-    <BentoCard className={className} style={{ padding: '14px 18px' }}>
+    <BentoCard className={className} style={{ padding: '14px 16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        {/* Lado Esquerdo: Ícone da Hélice e Título */}
+        {/* Rotor Mecânico e Título */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <PropellerSvg
-            size={30}
-            color={fanColor}
-            isSpinning={isSpinning}
-            duration={`${durationSeconds}s`}
-          />
+          <div
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: 'var(--border-radius-sm)',
+              background: 'var(--bg-inset)',
+              border: '1px solid var(--border-hairline)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <PropellerSvg
+              size={24}
+              color={fanColor}
+              isSpinning={isSpinning}
+              duration={`${durationSeconds}s`}
+            />
+          </div>
           <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#E2E8F0', letterSpacing: '0.5px' }}>
-              VENTOINHAS (COOLING)
+            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Arrefecimento
             </div>
-            <div style={{ fontSize: '0.66rem', color: '#6B7280', letterSpacing: '0.4px' }}>
-              {mode} • PWM {pwmPercent}%
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              {mode}, ciclo PWM {pwmPercent}%
             </div>
           </div>
         </div>
 
-        {/* Lado Direito: RPM em Destaque */}
+        {/* Leitura de Rotação */}
         <div style={{ textAlign: 'right' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#F3F4F6' }} className="tabular-nums">
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', justifyContent: 'flex-end' }}>
+            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }} className="tabular-nums">
               <NumberTicker value={rpm} />
             </span>
-            <span style={{ fontSize: '0.7rem', color: '#6B7280', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               RPM
             </span>
           </div>
-          <div style={{ fontSize: '0.62rem', color: fanColor, fontWeight: 600 }}>
-            {durationSeconds > 0 ? `${durationSeconds}s / volta` : 'Parado'}
+          <div style={{ fontSize: '0.64rem', color: fanColor, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
+            {durationSeconds > 0 ? `${durationSeconds}s / ciclo` : 'Inativo'}
           </div>
         </div>
       </div>

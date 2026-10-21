@@ -9,7 +9,14 @@ export function MiniWidget({
   onExpand,
 }) {
   const maxTemp = Math.max(cpuTemp, gpuTemp);
-  const statusColor = maxTemp >= 76 ? '#FF2A54' : maxTemp >= 56 ? '#FF8A00' : '#00F0FF';
+  const isCritical = maxTemp >= 76;
+  const isWarning = maxTemp >= 56 && maxTemp < 76;
+
+  const statusColor = isCritical 
+    ? 'var(--color-critical)' 
+    : isWarning 
+    ? 'var(--color-elevated)' 
+    : 'var(--color-nominal)';
 
   return (
     <div
@@ -20,28 +27,27 @@ export function MiniWidget({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '6px 10px',
-        background: '#0B0F19',
+        background: 'var(--bg-base)',
       }}
     >
       <div
         className="mini-widget-bar"
         style={{
-          borderColor: statusColor,
-          boxShadow: `0 0 16px ${statusColor}33`,
+          border: '1px solid var(--border-subtle)',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
         }}
       >
-        {/* Ponto Luminoso de Estado */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Ponto Indicador de Estado */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span
             style={{
-              width: '8px',
-              height: '8px',
+              width: '6px',
+              height: '6px',
               borderRadius: '50%',
               backgroundColor: statusColor,
-              boxShadow: `0 0 10px ${statusColor}`,
             }}
           />
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.5px' }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
             SENTINEL
           </span>
         </div>
@@ -53,31 +59,31 @@ export function MiniWidget({
             alignItems: 'center',
             gap: '10px',
             fontSize: '0.82rem',
-            color: '#F3F4F6',
+            color: 'var(--text-primary)',
           }}
           className="tabular-nums"
         >
           <div>
-            <span style={{ color: '#6B7280', fontSize: '0.68rem', marginRight: '3px' }}>CPU</span>
-            <strong style={{ color: cpuTemp >= 76 ? '#FF2A54' : '#F3F4F6' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem', marginRight: '4px' }}>CPU</span>
+            <strong style={{ color: cpuTemp >= 76 ? 'var(--color-critical)' : 'var(--text-primary)' }}>
               <NumberTicker value={Math.round(cpuTemp)} />°
             </strong>
           </div>
 
-          <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>|</span>
+          <span style={{ color: 'var(--border-hairline)' }}>|</span>
 
           <div>
-            <span style={{ color: '#6B7280', fontSize: '0.68rem', marginRight: '3px' }}>GPU</span>
-            <strong style={{ color: gpuTemp >= 76 ? '#FF2A54' : '#F3F4F6' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem', marginRight: '4px' }}>GPU</span>
+            <strong style={{ color: gpuTemp >= 76 ? 'var(--color-critical)' : 'var(--text-primary)' }}>
               <NumberTicker value={Math.round(gpuTemp)} />°
             </strong>
           </div>
 
-          <span style={{ color: 'rgba(255, 255, 255, 0.15)' }}>|</span>
+          <span style={{ color: 'var(--border-hairline)' }}>|</span>
 
           <div>
-            <span style={{ color: '#6B7280', fontSize: '0.68rem', marginRight: '3px' }}>RAM</span>
-            <strong style={{ color: '#10B981' }}>{Math.round(ramPercent)}%</strong>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem', marginRight: '4px' }}>RAM</span>
+            <strong style={{ color: 'var(--text-primary)' }}>{Math.round(ramPercent)}%</strong>
           </div>
         </div>
 
@@ -85,30 +91,30 @@ export function MiniWidget({
         <button
           onClick={onExpand}
           className="mini-widget-action"
-          title="Expandir para Dashboard Completo"
+          title="Expandir para o console completo"
           style={{
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            borderRadius: '6px',
-            color: '#9CA3AF',
+            background: 'var(--bg-inset)',
+            border: '1px solid var(--border-hairline)',
+            borderRadius: 'var(--border-radius-sm)',
+            color: 'var(--text-secondary)',
             padding: '4px 6px',
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
             fontSize: '0.7rem',
             cursor: 'pointer',
-            transition: 'all 0.2s',
+            transition: 'all 0.15s ease',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = '#00F0FF';
-            e.currentTarget.style.borderColor = '#00F0FF';
+            e.currentTarget.style.color = 'var(--text-primary)';
+            e.currentTarget.style.borderColor = 'var(--border-active)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.color = '#9CA3AF';
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+            e.currentTarget.style.borderColor = 'var(--border-hairline)';
           }}
         >
-          <Maximize2 size={13} />
+          <Maximize2 size={12} />
         </button>
       </div>
     </div>

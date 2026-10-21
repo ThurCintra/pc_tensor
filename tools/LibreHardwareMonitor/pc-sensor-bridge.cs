@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Management;
 using System.Reflection;
+using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using LibreHardwareMonitor.Hardware;
@@ -12,6 +16,11 @@ namespace PCSentinelBridge
     {
         private static Computer _computer;
         private static bool _streaming = false;
+        private static bool _isAdmin = false;
+        private static PerformanceCounter _diskReadCounter = null;
+        private static PerformanceCounter _diskWriteCounter = null;
+        private static string _cachedMoboName = null;
+        private static string _cachedDiskName = null;
 
         public static void Main(string[] args)
         {
@@ -23,16 +32,20 @@ namespace PCSentinelBridge
                 }
             }
 
+            _isAdmin = CheckIsAdministrator();
+            InitPerformanceCounters();
+            DetectStaticHardwareFallback();
+
             try
             {
                 _computer = new Computer
                 {
                     IsCpuEnabled = true,
                     IsGpuEnabled = true,
-                    IsMotherboardEnabled = false,
-                    IsMemoryEnabled = false,
+                    IsMotherboardEnabled = true,
+                    IsMemoryEnabled = true,
                     IsControllerEnabled = false,
-                    IsStorageEnabled = false
+                    IsStorageEnabled = true
                 };
 
                 _computer.Open();
@@ -44,7 +57,7 @@ namespace PCSentinelBridge
                         string json = CollectMetricsJson();
                         Console.WriteLine(json);
                         Console.Out.Flush();
-                        Thread.Sleep(1200);
+                        Thread.Sleep(1000);
                     }
                 }
                 else
@@ -67,7 +80,83 @@ namespace PCSentinelBridge
                     }
                 }
                 catch { }
+
+                try
+                {
+                    if (_diskReadCounter != null) _diskReadCounter.Dispose();
+                    if (_diskWriteCounter != null) _diskWriteCounter.Dispose();
+                }
+                catch { }
             }
+        }
+
+        private static bool CheckIsAdministrator()
+        {
+            try
+            {
+                using (var identity = WindowsIdentity.GetCurrent())
+                {
+                    var principal = new WindowsPrincipal(identity);
+                    return principal.IsInRole(WindowsBuiltInRole.Administrator);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void InitPerformanceCounters()
+        {
+            try
+            {
+                if (PerformanceCounterCategory.Exists("PhysicalDisk"))
+                {
+                    _diskReadCounter = new PerformanceCounter("PhysicalDisk", "Disk Read Bytes/sec", "_Total", true);
+                    _diskWriteCounter = new PerformanceCounter("PhysicalDisk", "Disk Write Bytes/sec", "_Total", true);
+                    _diskReadCounter.NextValue();
+                    _diskWriteCounter.NextValue();
+                }
+            }
+            catch
+            {
+                _diskReadCounter = null;
+                _diskWriteCounter = null;
+            }
+        }
+
+        private static void DetectStaticHardwareFallback()
+        {
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher("SELECT Manufacturer, Product FROM Win32_BaseBoard"))
+                {
+                    foreach (ManagementObject obj in searcher.Get())
+                    {
+                        string m = obj["Manufacturer"] != null ? obj["Manufacturer"].ToString().Trim() : "";
+                        string p = obj["Product"] != null ? obj["Product"].ToString().Trim() : "";
+                        _cachedMoboName = (m + " " + p).Trim();
+                        break;
+                    }
+                }
+            }
+            catch { }
+
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher("SELECT Model FROM Win32_DiskDrive"))
+                {
+                    foreach (ManagementObject obj in searcher.Get())
+                    {
+                        if (obj["Model"] != null)
+                        {
+                            _cachedDiskName = obj["Model"].ToString().Trim();
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         private static string CollectMetricsJson()
@@ -75,6 +164,7 @@ namespace PCSentinelBridge
             string cpuName = "Processador";
             float? cpuTemp = null;
             float? cpuLoad = null;
+            float? cpuPower = null;
 
             string gpuName = "GPU";
             float? gpuTemp = null;
@@ -83,9 +173,19 @@ namespace PCSentinelBridge
             float? gpuFanRpm = null;
             float? gpuLoad = null;
             float? gpuPower = null;
+            float? gpuVramUsed = null;
+            float? gpuVramTotal = null;
+
+            string moboName = _cachedMoboName ?? "Placa-mãe";
+            float? moboTemp = null;
+
+            string diskName = _cachedDiskName ?? "Unidade de Armazenamento";
+            float? diskTemp = null;
+            float? diskLoad = null;
+
             float? fanRpm = null;
 
-            // 1. Extração de dados da CPU via LibreHardwareMonitor
+            // 1. CPU via LibreHardwareMonitor
             foreach (var hardware in _computer.Hardware)
             {
                 if (hardware.HardwareType == HardwareType.Cpu)
@@ -96,32 +196,41 @@ namespace PCSentinelBridge
 
                     foreach (var sensor in hardware.Sensors)
                     {
-                        if (sensor.SensorType == SensorType.Temperature && sensor.Value.HasValue && sensor.Value.Value > 0)
+                        if (!sensor.Value.HasValue) continue;
+                        float val = sensor.Value.Value;
+                        string sName = sensor.Name.ToLowerInvariant();
+
+                        if (sensor.SensorType == SensorType.Temperature && val > 0)
                         {
-                            string sName = sensor.Name.ToLowerInvariant();
                             if (sName.Contains("tctl") || sName.Contains("package") || sName.Contains("core max"))
                             {
                                 if (!cpuTemp.HasValue || sName.Contains("tctl"))
-                                    cpuTemp = sensor.Value.Value;
+                                    cpuTemp = val;
                             }
                             else if (!cpuTemp.HasValue && (sName.Contains("core") || sName.Contains("cpu")))
                             {
-                                cpuTemp = sensor.Value.Value;
+                                cpuTemp = val;
                             }
                         }
-                        else if (sensor.SensorType == SensorType.Load && sensor.Value.HasValue)
+                        else if (sensor.SensorType == SensorType.Load)
                         {
-                            string sName = sensor.Name.ToLowerInvariant();
                             if (sName.Contains("total"))
                             {
-                                cpuLoad = sensor.Value.Value;
+                                cpuLoad = val;
+                            }
+                        }
+                        else if (sensor.SensorType == SensorType.Power && val > 0)
+                        {
+                            if (sName.Contains("package") || sName.Contains("total"))
+                            {
+                                cpuPower = val;
                             }
                         }
                     }
                 }
             }
 
-            // 2. Extração de dados da GPU via LibreHardwareMonitor e AMD ADL PMLog
+            // 2. GPU via LibreHardwareMonitor e AMD ADL PMLog
             foreach (var hardware in _computer.Hardware)
             {
                 if (hardware.HardwareType == HardwareType.GpuAmd ||
@@ -133,7 +242,6 @@ namespace PCSentinelBridge
                     bool isApu = hwName.IndexOf("Graphics", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                  hwName.IndexOf("APU", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                    // Se não for APU (é GPU dedicada como RX 7600), prioriza para métricas de GPU principal
                     if (!isApu || gpuName == "GPU")
                     {
                         gpuName = hwName;
@@ -149,7 +257,6 @@ namespace PCSentinelBridge
                         {
                             if (isApu)
                             {
-                                // Sensores térmicos no silício da CPU
                                 if (!cpuTemp.HasValue || cpuTemp.Value <= 0)
                                 {
                                     cpuTemp = val;
@@ -197,15 +304,25 @@ namespace PCSentinelBridge
                             }
                             else if (sensor.SensorType == SensorType.Power && val >= 0)
                             {
-                                if (sName.Contains("core") || sName.Contains("package") || sName.Contains("asic") || sName.Contains("total"))
+                                if (sName.Contains("package") || sName.Contains("core") || sName.Contains("asic") || sName.Contains("total"))
                                 {
-                                    if (!gpuPower.HasValue || sName.Contains("asic") || sName.Contains("total")) gpuPower = val;
+                                    if (!gpuPower.HasValue || sName.Contains("package") || sName.Contains("total")) gpuPower = val;
+                                }
+                            }
+                            else if (sensor.SensorType == SensorType.SmallData && val > 0)
+                            {
+                                if (sName.Contains("gpu memory used") && !sName.Contains("d3d"))
+                                {
+                                    gpuVramUsed = val;
+                                }
+                                else if (sName.Contains("gpu memory total") && !sName.Contains("d3d"))
+                                {
+                                    gpuVramTotal = val;
                                 }
                             }
                         }
                     }
 
-                    // Consulta Direta ao PMLog da AMD (ADL) oficial usado pelo AMD Adrenalin
                     if (hardware.HardwareType == HardwareType.GpuAmd)
                     {
                         try
@@ -217,12 +334,88 @@ namespace PCSentinelBridge
                 }
             }
 
+            // 3. Motherboard via LibreHardwareMonitor
+            foreach (var hardware in _computer.Hardware)
+            {
+                if (hardware.HardwareType == HardwareType.Motherboard)
+                {
+                    hardware.Update();
+                    if (!string.IsNullOrEmpty(hardware.Name))
+                        moboName = hardware.Name;
+
+                    foreach (var s in hardware.Sensors)
+                    {
+                        if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value > 0)
+                        {
+                            if (!moboTemp.HasValue) moboTemp = s.Value.Value;
+                        }
+                        else if (s.SensorType == SensorType.Fan && s.Value.HasValue && s.Value.Value > 0)
+                        {
+                            if (!fanRpm.HasValue) fanRpm = s.Value.Value;
+                        }
+                    }
+
+                    foreach (var sub in hardware.SubHardware)
+                    {
+                        sub.Update();
+                        foreach (var s in sub.Sensors)
+                        {
+                            if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value > 0)
+                            {
+                                if (!moboTemp.HasValue) moboTemp = s.Value.Value;
+                            }
+                            else if (s.SensorType == SensorType.Fan && s.Value.HasValue && s.Value.Value > 0)
+                            {
+                                if (!fanRpm.HasValue) fanRpm = s.Value.Value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Storage via LibreHardwareMonitor
+            foreach (var hardware in _computer.Hardware)
+            {
+                if (hardware.HardwareType == HardwareType.Storage)
+                {
+                    hardware.Update();
+                    if (!string.IsNullOrEmpty(hardware.Name))
+                        diskName = hardware.Name;
+
+                    foreach (var s in hardware.Sensors)
+                    {
+                        if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value > 0)
+                        {
+                            if (!diskTemp.HasValue) diskTemp = s.Value.Value;
+                        }
+                        else if (s.SensorType == SensorType.Load && s.Value.HasValue)
+                        {
+                            if (!diskLoad.HasValue) diskLoad = s.Value.Value;
+                        }
+                    }
+                }
+            }
+
+            // 5. Taxas Reais de I/O de Disco via PerformanceCounter
+            float diskReadBytesSec = 0;
+            float diskWriteBytesSec = 0;
+            try
+            {
+                if (_diskReadCounter != null) diskReadBytesSec = _diskReadCounter.NextValue();
+                if (_diskWriteCounter != null) diskWriteBytesSec = _diskWriteCounter.NextValue();
+            }
+            catch { }
+
             var sb = new StringBuilder();
             sb.Append("{\"success\":true,");
+            sb.Append("\"isAdmin\":").Append(_isAdmin ? "true" : "false").Append(",");
+
             sb.Append("\"cpu\":{");
             sb.Append("\"name\":\"").Append(EscapeJson(cpuName)).Append("\",");
             sb.Append("\"temp\":").Append(FormatNullable(cpuTemp)).Append(",");
-            sb.Append("\"load\":").Append(FormatNullable(cpuLoad));
+            sb.Append("\"load\":").Append(FormatNullable(cpuLoad)).Append(",");
+            sb.Append("\"powerWatts\":").Append(FormatNullable(cpuPower)).Append(",");
+            sb.Append("\"requiresElevation\":").Append(!cpuTemp.HasValue && !_isAdmin ? "true" : "false");
             sb.Append("},");
 
             sb.Append("\"gpu\":{");
@@ -232,13 +425,35 @@ namespace PCSentinelBridge
             sb.Append("\"hotspotTemp\":").Append(FormatNullable(gpuHotspot)).Append(",");
             sb.Append("\"fanRpm\":").Append(FormatNullable(gpuFanRpm)).Append(",");
             sb.Append("\"load\":").Append(FormatNullable(gpuLoad)).Append(",");
-            sb.Append("\"powerWatts\":").Append(FormatNullable(gpuPower));
+            sb.Append("\"powerWatts\":").Append(FormatNullable(gpuPower)).Append(",");
+            sb.Append("\"vramUsedMB\":").Append(FormatNullable(gpuVramUsed)).Append(",");
+            sb.Append("\"vramTotalMB\":").Append(FormatNullable(gpuVramTotal));
+            sb.Append("},");
+
+            sb.Append("\"motherboard\":{");
+            sb.Append("\"name\":\"").Append(EscapeJson(moboName)).Append("\",");
+            sb.Append("\"temp\":").Append(FormatNullable(moboTemp)).Append(",");
+            sb.Append("\"requiresElevation\":").Append(!moboTemp.HasValue && !_isAdmin ? "true" : "false");
+            sb.Append("},");
+
+            sb.Append("\"storage\":{");
+            sb.Append("\"name\":\"").Append(EscapeJson(diskName)).Append("\",");
+            sb.Append("\"temp\":").Append(FormatNullable(diskTemp)).Append(",");
+            sb.Append("\"load\":").Append(FormatNullable(diskLoad)).Append(",");
+            sb.Append("\"requiresElevation\":").Append(!diskTemp.HasValue && !_isAdmin ? "true" : "false");
+            sb.Append("},");
+
+            sb.Append("\"diskIo\":{");
+            sb.Append("\"readBytesSec\":").Append(diskReadBytesSec.ToString("F0", CultureInfo.InvariantCulture)).Append(",");
+            sb.Append("\"writeBytesSec\":").Append(diskWriteBytesSec.ToString("F0", CultureInfo.InvariantCulture));
             sb.Append("},");
 
             sb.Append("\"fanRpm\":").Append(FormatNullable(fanRpm)).Append(",");
             sb.Append("\"realSensors\":{");
             sb.Append("\"cpu\":").Append(cpuTemp.HasValue && cpuTemp.Value > 0 ? "true" : "false").Append(",");
-            sb.Append("\"gpu\":").Append(gpuTemp.HasValue && gpuTemp.Value > 0 ? "true" : "false");
+            sb.Append("\"gpu\":").Append(gpuTemp.HasValue && gpuTemp.Value > 0 ? "true" : "false").Append(",");
+            sb.Append("\"motherboard\":").Append(moboTemp.HasValue && moboTemp.Value > 0 ? "true" : "false").Append(",");
+            sb.Append("\"storage\":").Append(diskTemp.HasValue && diskTemp.Value > 0 ? "true" : "false");
             sb.Append("}}");
 
             return sb.ToString();
@@ -279,7 +494,7 @@ namespace PCSentinelBridge
 
             object[] invokeArgs = new object[] { context, adapterIndex, outputInstance };
             int res = (int)queryMethod.Invoke(null, invokeArgs);
-            if (res != 0) return; // 0 = ADL_OK
+            if (res != 0) return;
 
             outputInstance = invokeArgs[2];
             FieldInfo sensorsField = outputType.GetField("sensors");
@@ -297,18 +512,6 @@ namespace PCSentinelBridge
             float? adlPower = null;
             float? adlFanRpm = null;
 
-            // ADLPMLogSensors índices constantes oficiais AMD ADL:
-            // 8: ADL_PMLOG_TEMPERATURE_EDGE
-            // 14: ADL_PMLOG_FAN_RPM
-            // 19: ADL_PMLOG_INFO_ACTIVITY_GFX
-            // 23: ADL_PMLOG_ASIC_POWER
-            // 27: ADL_PMLOG_TEMPERATURE_HOTSPOT
-            // 28: ADL_PMLOG_TEMPERATURE_GFX
-            // 29: ADL_PMLOG_TEMPERATURE_SOC
-            // 30: ADL_PMLOG_GFX_POWER
-            // 32: ADL_PMLOG_TEMPERATURE_CPU
-            // 33: ADL_PMLOG_CPU_POWER
-            // 73: ADL_PMLOG_BOARD_POWER
             for (int i = 0; i < sensorsArray.Length; i++)
             {
                 object item = sensorsArray.GetValue(i);
@@ -323,43 +526,18 @@ namespace PCSentinelBridge
                 int rawVal = Convert.ToInt32(valField.GetValue(item));
                 if (!supported || rawVal <= 0) continue;
 
-                if (i == 32)
-                {
-                    adlCpuTemp = rawVal;
-                }
-                else if (i == 29)
-                {
-                    adlSocTemp = rawVal;
-                }
-                else if (i == 28)
-                {
-                    adlGfxTemp = rawVal;
-                }
-                else if (i == 8)
-                {
-                    adlEdgeTemp = rawVal;
-                }
-                else if (i == 27)
-                {
-                    adlHotspotTemp = rawVal;
-                }
-                else if (i == 19)
-                {
-                    adlLoad = rawVal;
-                }
-                else if (i == 23 || i == 73)
-                {
-                    adlPower = rawVal;
-                }
-                else if (i == 14)
-                {
-                    adlFanRpm = rawVal;
-                }
+                if (i == 32) adlCpuTemp = rawVal;
+                else if (i == 29) adlSocTemp = rawVal;
+                else if (i == 28) adlGfxTemp = rawVal;
+                else if (i == 8) adlEdgeTemp = rawVal;
+                else if (i == 27) adlHotspotTemp = rawVal;
+                else if (i == 19) adlLoad = rawVal;
+                else if (i == 23 || i == 73) adlPower = rawVal;
+                else if (i == 14) adlFanRpm = rawVal;
             }
 
             if (isApu)
             {
-                // Temperatura física do processador AMD Ryzen através da sua iGPU / SoC
                 if (!cpuTemp.HasValue || cpuTemp.Value <= 0)
                 {
                     if (adlCpuTemp.HasValue && adlCpuTemp.Value > 0)
@@ -372,7 +550,6 @@ namespace PCSentinelBridge
             }
             else
             {
-                // GPU dedicada (AMD Radeon RX 7600)
                 if (adlCpuTemp.HasValue && adlCpuTemp.Value > 0 && (!cpuTemp.HasValue || cpuTemp.Value <= 0))
                 {
                     cpuTemp = adlCpuTemp.Value;

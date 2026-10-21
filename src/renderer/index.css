@@ -1,36 +1,55 @@
+/* ==========================================================================
+   PC SENTINEL — DESIGN SYSTEM: INSTRUMENTAÇÃO TÉCNICA DE ALTA PRECISÃO
+   Direção estética sóbria, sem gradientes clichês de IA, com foco em densidade,
+   legibilidade ótica e contraste funcional de bancada.
+   ========================================================================== */
+
 :root {
-  /* Fundos Principais */
-  --bg-app: #0B0F19;
-  --bg-canvas: #0D1117;
-  --bg-card: rgba(17, 24, 39, 0.72);
-  --bg-card-hover: rgba(24, 33, 52, 0.85);
-  --bg-widget-compact: rgba(11, 15, 25, 0.88);
+  /* Superfícies Neutras (Charcoal Obsidian & Slate Instrument Deck) */
+  --bg-app: #0c0e12;
+  --bg-base: #0c0e12;
+  --bg-canvas: #0f1218;
+  --bg-panel: #131720;
+  --bg-card: #161b24;
+  --bg-card-hover: #1c222e;
+  --bg-inset: #0e1117;
+  --bg-chip: #1e2430;
+  --bg-widget-compact: rgba(14, 17, 23, 0.95);
 
-  /* Bordas e Divisores */
-  --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-highlight: rgba(0, 240, 255, 0.25);
-  --border-radius-card: 14px;
-  --border-radius-inner: 8px;
-
-  /* Texto */
-  --text-primary: #F3F4F6;
-  --text-secondary: #9CA3AF;
-  --text-muted: #6B7280;
-
-  /* Cores Semânticas de Estado Térmico (Dynamic Glow) */
-  --status-stable-cyan: #00F0FF;
-  --status-stable-emerald: #10B981;
-  --glow-stable: 0 0 24px rgba(0, 240, 255, 0.22);
-
-  --status-warning: #FF8A00;
-  --glow-warning: 0 0 28px rgba(255, 138, 0, 0.28);
-
-  --status-critical: #FF2A54;
-  --glow-critical: 0 0 36px rgba(255, 42, 84, 0.45);
+  /* Bordas e Réguas Mecânicas (Hairline 1px nítido) */
+  --border-hairline: #202634;
+  --border-subtle: #252d3d;
+  --border-active: #3b475d;
+  --border-highlight: #38bdf8;
+  --border-radius-card: 8px;
+  --border-radius-inner: 5px;
+  --border-radius-sm: 4px;
 
   /* Tipografia Técnica */
+  --text-primary: #e6edf3;
+  --text-secondary: #9aa5b5;
+  --text-muted: #616e82;
+  --text-dim: #3d4758;
+
+  /* Semântica Funcional de Estado (Cores sólidas, sem neon glow artificial) */
+  --color-nominal: #2dd4bf;       /* Phosphor Mint: Nominal / Estável (<55°C) */
+  --color-elevated: #f59e0b;      /* Cadmium Amber: Carga Elevada (56°C–75°C) */
+  --color-critical: #ef4444;      /* Signal Vermilion: Carga Crítica (>75°C) */
+  --color-accent: #38bdf8;        /* Ice Cobalt: Barramento e Conexão */
+  --color-accent-subtle: rgba(56, 189, 248, 0.1);
+
+  /* Aliases para compatibilidade legada */
+  --status-stable-cyan: #2dd4bf;
+  --status-stable-emerald: #2dd4bf;
+  --status-warning: #f59e0b;
+  --status-critical: #ef4444;
+  --glow-stable: none;
+  --glow-warning: none;
+  --glow-critical: none;
+
+  /* Fontes */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Pro Display', ui-monospace, monospace;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
 }
 
 * {
@@ -38,24 +57,23 @@
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background-color: var(--bg-app);
-  background-image: 
-    radial-gradient(circle at 10% 0%, rgba(0, 240, 255, 0.04) 0%, transparent 45%),
-    radial-gradient(circle at 90% 100%, rgba(255, 42, 84, 0.03) 0%, transparent 40%);
+  background-color: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-sans);
   user-select: none;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
+  letter-spacing: -0.01em;
 }
 
-/* Regra Obrigatória para Números */
+/* Regra Obrigatória para Leituras Numéricas */
 .tabular-nums {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   font-family: var(--font-mono);
 }
 
@@ -67,20 +85,20 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Scrollbar Minimalista */
+/* Scrollbar Mecânica Minimalista */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--bg-base);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: var(--border-subtle);
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 240, 255, 0.4);
+  background: var(--border-active);
 }
 
 /* Estrutura da Aplicação */
@@ -88,40 +106,43 @@ body {
   display: flex;
   height: 100vh;
   width: 100vw;
-  background: var(--bg-app);
+  background: var(--bg-base);
   overflow: hidden;
 }
 
-/* Sidebar Técnica Responsiva */
+/* Sidebar Técnica de Bancada */
 .sidebar {
   width: 240px;
   min-width: 240px;
-  background: rgba(13, 17, 23, 0.95);
-  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-hairline);
   display: flex;
   flex-direction: column;
-  padding: 20px 16px;
+  padding: 16px 14px;
   z-index: 10;
-  transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease;
+  transition: width 0.2s ease, min-width 0.2s ease, padding 0.2s ease;
 }
 
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .sidebar-logo {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #00F0FF, #10B981);
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: var(--border-radius-inner);
+  background: var(--bg-chip);
+  border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+  color: var(--color-nominal);
 }
 
 .sidebar-brand-text {
@@ -134,7 +155,7 @@ body {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
 }
 
@@ -142,35 +163,38 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 9px 12px;
+  border-radius: var(--border-radius-inner);
   border: 1px solid transparent;
   background: transparent;
-  color: #9CA3AF;
+  color: var(--text-secondary);
   cursor: pointer;
-  font-weight: 600;
-  font-size: 0.84rem;
+  font-weight: 500;
+  font-size: 0.82rem;
   text-align: left;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
 }
 
 .sidebar-btn:hover {
-  color: #F3F4F6;
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border-color: var(--border-hairline);
 }
 
 .sidebar-btn.active {
-  border-color: rgba(0, 240, 255, 0.35);
-  background: rgba(0, 240, 255, 0.1);
-  color: #00F0FF;
+  border-color: var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--color-nominal);
 }
 
 .sidebar-footer {
-  background: rgba(17, 24, 39, 0.7);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--border-radius-inner);
+  padding: 10px 12px;
   margin-top: auto;
 }
 
@@ -178,18 +202,19 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px;
+  padding: 18px 22px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
+  background: var(--bg-base);
 }
 
-/* Bento Grid Principal: 12 Colunas */
+/* Grid de Instrumentação: 12 Colunas */
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 16px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -217,21 +242,23 @@ body {
     grid-column: span 12;
   }
   .bento-grid {
-    gap: 14px;
+    gap: 12px;
   }
 }
 
 /* Breakpoint 2: Tablet Landscape / Telas Compactas (<= 1024px) */
 @media (max-width: 1024px) and (min-width: 769px) {
   .sidebar {
-    width: 68px;
-    min-width: 68px;
-    padding: 16px 8px;
+    width: 64px;
+    min-width: 64px;
+    padding: 14px 8px;
     align-items: center;
   }
   .sidebar-brand {
     justify-content: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-hairline);
   }
   .sidebar-brand-text,
   .sidebar-btn span,
@@ -244,7 +271,7 @@ body {
   }
   .sidebar-btn {
     justify-content: center;
-    padding: 12px;
+    padding: 10px;
     width: 100%;
   }
   .sidebar-footer {
@@ -285,13 +312,15 @@ body {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding: 8px 12px;
     border-right: none;
-    border-bottom: 1px solid var(--border-subtle);
-    background: rgba(11, 15, 25, 0.98);
+    border-bottom: 1px solid var(--border-hairline);
+    background: var(--bg-panel);
   }
   .sidebar-brand {
     margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
   }
   .sidebar-brand-text span {
     display: none;
@@ -299,101 +328,73 @@ body {
   .sidebar-nav {
     flex-direction: row;
     flex: none;
-    gap: 6px;
+    gap: 4px;
   }
   .sidebar-btn {
-    padding: 6px 10px;
-    font-size: 0.76rem;
-    gap: 6px;
+    padding: 6px 8px;
+    font-size: 0.74rem;
+    gap: 5px;
   }
   .sidebar-footer {
     display: none !important;
   }
   .main-content {
-    padding: 12px;
-    gap: 12px;
+    padding: 10px;
+    gap: 10px;
   }
   .bento-card {
     padding: 14px;
   }
 }
 
-/* Bento Card Base com Radial Spotlight Hover */
+/* Módulo de Instrumentação (Bento Card Sóbrio) */
 .bento-card {
   position: relative;
   background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--border-radius-card);
-  border: 1px solid var(--border-subtle);
-  padding: 18px;
+  border: 1px solid var(--border-hairline);
+  padding: 16px;
   overflow: hidden;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
   display: flex;
   flex-direction: column;
 }
 
-/* Spotlight Hover Effect via pseudo-elemento ::before */
-.bento-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: radial-gradient(
-    320px circle at var(--mouse-x, -500px) var(--mouse-y, -500px),
-    rgba(0, 240, 255, 0.4),
-    transparent 40%
-  );
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 2;
-}
-
-.bento-card:hover::before {
-  opacity: 1;
-}
-
 .bento-card:hover {
   background: var(--bg-card-hover);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--border-subtle);
 }
 
-/* Estado Crítico com Ambient Glow Pulsante */
-.bento-card.is-critical {
-  border-color: rgba(255, 42, 84, 0.5);
-  box-shadow: var(--glow-critical);
+/* Indicadores de Estado Térmico Sóbrios (Hairline top indicator, sem neon pulse) */
+.bento-card.is-warning {
+  border-color: rgba(245, 158, 11, 0.4);
 }
 
-.bento-card.is-critical::after {
+.bento-card.is-warning::before {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 42, 84, 0.22) 0%, transparent 70%);
-  animation: ambientPulse 2s infinite ease-in-out;
-  pointer-events: none;
-  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-elevated);
 }
 
-@keyframes ambientPulse {
-  0%, 100% {
-    opacity: 0.3;
-    transform: scale(0.98);
-  }
-  50% {
-    opacity: 0.85;
-    transform: scale(1.02);
-  }
+.bento-card.is-critical {
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
-/* Animação de Ventoinha */
+.bento-card.is-critical::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-critical);
+}
+
+/* Rotação Contínua da Ventoinha Mecânica */
 @keyframes fanSpin {
   from {
     transform: rotate(0deg);
@@ -408,19 +409,17 @@ body {
   transform-origin: center;
 }
 
-/* Mini-Widget Flutuante */
+/* Mini-Widget Compacto */
 .mini-widget-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   background: var(--bg-widget-compact);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-subtle);
   border-radius: 9999px;
-  padding: 8px 14px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  padding: 6px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   width: 100%;
   height: 100%;
   -webkit-app-region: drag;
@@ -430,36 +429,54 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* Modo Stealth (Minimalista / Baixo Contraste Dark Charcoal) */
+/* Modo Stealth (Console Industrial Neutro / Baixo Contraste) */
 .app-container.stealth-mode {
-  --bg-app: #08090C;
-  --bg-card: rgba(14, 16, 20, 0.9);
-  --bg-card-hover: rgba(20, 23, 29, 0.95);
-  --border-subtle: rgba(255, 255, 255, 0.04);
-  --border-highlight: rgba(255, 255, 255, 0.12);
-  --status-stable-cyan: #71717A;
-  --status-stable-emerald: #71717A;
-  --glow-stable: none;
-  --glow-warning: none;
-  --glow-critical: none;
-  filter: grayscale(85%);
-}
-
-.app-container.stealth-mode .bento-card::before {
-  display: none !important;
+  --bg-app: #08090b;
+  --bg-base: #08090b;
+  --bg-panel: #0d0f13;
+  --bg-card: #11141a;
+  --bg-card-hover: #151921;
+  --bg-inset: #090b0e;
+  --border-hairline: #1c212a;
+  --border-subtle: #252b37;
+  --text-primary: #cbd5e1;
+  --text-secondary: #7e8b9b;
+  --text-muted: #525d6b;
+  --color-nominal: #64748b;
+  --color-elevated: #94a3b8;
+  --color-critical: #e2e8f0;
+  --color-accent: #64748b;
 }
 
 .app-container.stealth-mode .fan-spinner {
   animation: none !important;
 }
 
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+/* Botões Utilitários de Precisão */
+.btn-instrument {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: var(--border-radius-inner);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-instrument:hover {
+  background: var(--bg-chip);
+  border-color: var(--border-active);
+  color: var(--text-primary);
+}
+
+.btn-instrument.active {
+  background: var(--bg-chip);
+  border-color: var(--border-active);
+  color: var(--text-primary);
+  font-weight: 600;
 }

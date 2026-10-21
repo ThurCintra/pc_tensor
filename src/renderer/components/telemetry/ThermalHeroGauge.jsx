@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { BentoCard } from '../ui/BentoCard';
 import { NumberTicker } from '../ui/NumberTicker';
-import { Flame, Cpu, Activity, ArrowUpRight } from 'lucide-react';
+import { Thermometer, Cpu, Activity } from 'lucide-react';
 
 export function ThermalHeroGauge({
   cpuTemp = 42,
   gpuTemp = 45,
   cpuMax = 46,
   gpuMax = 48,
-  cpuModel = 'AMD / Intel Processor',
-  gpuModel = 'GPU Telemetry',
+  cpuModel = 'Processador Central',
+  gpuModel = 'Placa de Vídeo',
   isEstimated = false,
   isCpuEstimated = undefined,
   isGpuEstimated = undefined,
@@ -24,94 +24,105 @@ export function ThermalHeroGauge({
     ? (typeof isCpuEstimated === 'boolean' ? isCpuEstimated : isEstimated)
     : (typeof isGpuEstimated === 'boolean' ? isGpuEstimated : isEstimated);
 
-  // Estado Térmico Semântico
-  const status = currentTemp >= 76 ? 'critical' : currentTemp >= 56 ? 'warning' : 'stable';
+  // Estado Térmico Funcional
+  const isCritical = currentTemp >= 76;
+  const isWarning = currentTemp >= 56 && currentTemp < 76;
+  const status = isCritical ? 'critical' : isWarning ? 'warning' : 'stable';
 
-  // Cores dinâmicas
-  const colors = {
-    stable: {
-      primary: '#00F0FF',
-      secondary: '#10B981',
-      glow: 'rgba(0, 240, 255, 0.35)',
-      gradientId: 'hero-grad-stable',
-    },
-    warning: {
-      primary: '#FF8A00',
-      secondary: '#FFB703',
-      glow: 'rgba(255, 138, 0, 0.45)',
-      gradientId: 'hero-grad-warning',
-    },
-    critical: {
-      primary: '#FF2A54',
-      secondary: '#FF0055',
-      glow: 'rgba(255, 42, 84, 0.65)',
-      gradientId: 'hero-grad-critical',
-    },
-  }[status];
+  // Cores Sólidas de Instrumento (Sem gradientes artificiais)
+  const statusColor = isCritical 
+    ? 'var(--color-critical)' 
+    : isWarning 
+    ? 'var(--color-elevated)' 
+    : 'var(--color-nominal)';
 
-  // Geometria Donut Radial
-  const size = 220;
-  const strokeWidth = 14;
-  const radius = (size - strokeWidth) / 2;
+  // Geometria de Disco de Bancada com Escala Calibrada
+  const size = 210;
+  const strokeWidth = 10;
+  const radius = (size - strokeWidth - 16) / 2;
   const circumference = 2 * Math.PI * radius;
-  // Mapeia 25°C - 95°C
-  const normalized = Math.max(0, Math.min(1, (currentTemp - 25) / 70));
-  const dashoffset = circumference * (1 - normalized);
+
+  // Escala útil: 20°C a 100°C (80°C de amplitude total)
+  const minTemp = 20;
+  const maxTempScale = 100;
+  const normalized = Math.max(0, Math.min(1, (currentTemp - minTemp) / (maxTempScale - minTemp)));
+  const arcLength = circumference * 0.75; // 270 graus de arco para formato manômetro
+  const dashoffset = arcLength * (1 - normalized);
+
+  // Marcas de calibração (ticks) ao redor do disco
+  const ticks = [20, 40, 60, 80, 100];
 
   return (
     <BentoCard
-      isCritical={status === 'critical'}
+      isCritical={isCritical}
       status={status}
       className={className || 'bento-col-4'}
       style={{
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
         justifyContent: 'space-between',
         minHeight: '340px',
       }}
     >
-      {/* Topo do Cartão: Toggle Rápido CPU / GPU */}
+      {/* Topo do Módulo: Título e Seletor de Canal */}
       <div
         style={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '8px',
-          flexWrap: 'wrap',
-          gap: '6px',
+          marginBottom: '6px',
+          gap: '8px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Flame size={16} color={colors.primary} />
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.5px', color: '#9CA3AF' }}>
-            CORAÇÃO TÉRMICO
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            style={{
+              width: '26px',
+              height: '26px',
+              borderRadius: 'var(--border-radius-sm)',
+              background: 'var(--bg-inset)',
+              border: '1px solid var(--border-hairline)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: statusColor,
+            }}
+          >
+            <Thermometer size={15} />
+          </div>
+          <div>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Núcleo Térmico
+            </span>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+              Telemetria contínua de junção
+            </div>
+          </div>
         </div>
 
-        {/* Pill Selector CPU / GPU */}
+        {/* Toggle Discreto CPU / GPU */}
         <div
           style={{
             display: 'inline-flex',
-            background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '9999px',
+            background: 'var(--bg-inset)',
+            borderRadius: 'var(--border-radius-inner)',
             padding: '2px',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            border: '1px solid var(--border-hairline)',
           }}
         >
           <button
             onClick={() => setSelectedTarget('CPU')}
             style={{
-              background: selectedTarget === 'CPU' ? 'rgba(0, 240, 255, 0.18)' : 'transparent',
-              color: selectedTarget === 'CPU' ? '#00F0FF' : '#6B7280',
-              border: selectedTarget === 'CPU' ? '1px solid rgba(0, 240, 255, 0.35)' : '1px solid transparent',
-              borderRadius: '9999px',
-              padding: '3px 10px',
+              background: selectedTarget === 'CPU' ? 'var(--bg-card)' : 'transparent',
+              color: selectedTarget === 'CPU' ? 'var(--text-primary)' : 'var(--text-muted)',
+              border: selectedTarget === 'CPU' ? '1px solid var(--border-subtle)' : '1px solid transparent',
+              borderRadius: 'var(--border-radius-sm)',
+              padding: '3px 9px',
               fontSize: '0.72rem',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.15s ease',
             }}
           >
             CPU
@@ -119,15 +130,15 @@ export function ThermalHeroGauge({
           <button
             onClick={() => setSelectedTarget('GPU')}
             style={{
-              background: selectedTarget === 'GPU' ? 'rgba(0, 240, 255, 0.18)' : 'transparent',
-              color: selectedTarget === 'GPU' ? '#00F0FF' : '#6B7280',
-              border: selectedTarget === 'GPU' ? '1px solid rgba(0, 240, 255, 0.35)' : '1px solid transparent',
-              borderRadius: '9999px',
-              padding: '3px 10px',
+              background: selectedTarget === 'GPU' ? 'var(--bg-card)' : 'transparent',
+              color: selectedTarget === 'GPU' ? 'var(--text-primary)' : 'var(--text-muted)',
+              border: selectedTarget === 'GPU' ? '1px solid var(--border-subtle)' : '1px solid transparent',
+              borderRadius: 'var(--border-radius-sm)',
+              padding: '3px 9px',
               fontSize: '0.72rem',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.15s ease',
             }}
           >
             GPU
@@ -135,7 +146,7 @@ export function ThermalHeroGauge({
         </div>
       </div>
 
-      {/* Donut SVG Centralizado */}
+      {/* Mostrador Técnico Circular de Alta Precisão */}
       <div
         style={{
           position: 'relative',
@@ -150,55 +161,38 @@ export function ThermalHeroGauge({
       >
         <svg
           viewBox={`0 0 ${size} ${size}`}
-          style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}
+          style={{ width: '100%', height: '100%', transform: 'rotate(135deg)' }}
         >
-          <defs>
-            <linearGradient id="hero-grad-stable" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#00F0FF" />
-              <stop offset="100%" stopColor="#10B981" />
-            </linearGradient>
-            <linearGradient id="hero-grad-warning" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FF8A00" />
-              <stop offset="100%" stopColor="#FFB703" />
-            </linearGradient>
-            <linearGradient id="hero-grad-critical" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FF2A54" />
-              <stop offset="100%" stopColor="#FF0055" />
-            </linearGradient>
-            <filter id="hero-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor={colors.glow} />
-            </filter>
-          </defs>
-
-          {/* Trilha de fundo */}
+          {/* Trilha de Referência Recuada */}
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="rgba(255, 255, 255, 0.06)"
+            stroke="var(--bg-chip)"
             strokeWidth={strokeWidth}
+            strokeDasharray={`${arcLength} ${circumference}`}
+            strokeLinecap="round"
           />
 
-          {/* Arco Dinâmico de Progresso */}
+          {/* Arco Ativo com Cor Funcional Sólida */}
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke={`url(#${colors.gradientId})`}
+            stroke={statusColor}
             strokeWidth={strokeWidth}
-            strokeDasharray={circumference}
+            strokeDasharray={`${arcLength} ${circumference}`}
             strokeDashoffset={dashoffset}
             strokeLinecap="round"
-            filter="url(#hero-glow)"
             style={{
-              transition: 'stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.4s ease',
+              transition: 'stroke-dashoffset 0.4s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.25s ease',
             }}
           />
         </svg>
 
-        {/* Mostrador Central Gigante */}
+        {/* Leitura Central Alinhada */}
         <div
           style={{
             position: 'absolute',
@@ -214,20 +208,20 @@ export function ThermalHeroGauge({
           <div style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1 }}>
             <span
               style={{
-                fontSize: '3.6rem',
+                fontSize: '3.4rem',
                 fontWeight: 700,
-                color: '#F3F4F6',
-                letterSpacing: '-1.5px',
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.03em',
               }}
             >
               <NumberTicker value={Math.round(currentTemp)} />
             </span>
             <span
               style={{
-                fontSize: '1.4rem',
-                fontWeight: 600,
-                color: colors.primary,
-                marginLeft: '2px',
+                fontSize: '1.25rem',
+                fontWeight: 500,
+                color: 'var(--text-muted)',
+                marginLeft: '3px',
                 fontFamily: 'var(--font-mono)',
               }}
             >
@@ -235,69 +229,76 @@ export function ThermalHeroGauge({
             </span>
           </div>
 
+          {/* Parâmetros Mín/Máx */}
           <div
             style={{
-              marginTop: '4px',
+              marginTop: '6px',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '8px',
+              fontSize: '0.72rem',
+              color: 'var(--text-muted)',
             }}
           >
-            <span
-              style={{
-                fontSize: '0.68rem',
-                fontWeight: 600,
-                color: '#6B7280',
-                letterSpacing: '0.5px',
-              }}
-            >
-              MÁX: <strong style={{ color: '#9CA3AF' }}>{Math.round(currentMax)}°C</strong>
+            <span>
+              Pico:{' '}
+              <strong style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                {Math.round(currentMax)}°C
+              </strong>
+            </span>
+            <span style={{ color: 'var(--border-subtle)' }}>•</span>
+            <span style={{ color: statusColor, fontWeight: 500 }}>
+              {isCritical ? 'Alerta Térmico' : isWarning ? 'Elevada' : 'Nominal'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Rodapé do Cartão Hero */}
+      {/* Rodapé do Módulo: Identificação do Dispositivo e Fonte do Sinal */}
       <div
         style={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderTop: '1px solid var(--border-subtle)',
+          borderTop: '1px solid var(--border-hairline)',
           paddingTop: '10px',
           marginTop: '6px',
+          gap: '8px',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: '65%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
           <span
             style={{
-              fontSize: '0.74rem',
-              color: '#9CA3AF',
+              fontSize: '0.76rem',
+              color: 'var(--text-secondary)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               fontWeight: 500,
             }}
+            title={currentModel}
           >
             {currentModel}
           </span>
-          <span style={{ fontSize: '0.65rem', color: '#6B7280' }}>
-            {currentIsEstimated ? 'Modelo Térmico Dinâmico' : (status === 'critical' ? 'Sob Carga Crítica' : status === 'warning' ? 'Carga Elevada' : 'Arrefecimento Ideal')}
+          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+            {selectedTarget === 'CPU' ? 'Processador do Sistema' : 'Acelerador Gráfico'}
           </span>
         </div>
 
         <span
-          title={currentIsEstimated ? 'Temperatura estimada dinamicamente com base na carga e inércia térmica' : 'Sensor físico de hardware coletado em tempo real'}
+          title={currentIsEstimated ? 'Modelo preditivo baseado em carga de trabalho' : 'Leitura física direta via sensores de silício'}
           style={{
-            fontSize: '0.62rem',
-            padding: '2px 7px',
-            borderRadius: '6px',
-            background: currentIsEstimated ? 'rgba(0, 240, 255, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-            color: currentIsEstimated ? '#00F0FF' : '#10B981',
-            border: currentIsEstimated ? '1px solid rgba(0, 240, 255, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)',
-            fontWeight: 700,
-            letterSpacing: '0.5px',
+            fontSize: '0.65rem',
+            padding: '2px 8px',
+            borderRadius: 'var(--border-radius-sm)',
+            background: 'var(--bg-inset)',
+            color: currentIsEstimated ? 'var(--text-muted)' : 'var(--color-nominal)',
+            border: '1px solid var(--border-hairline)',
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           {currentIsEstimated ? 'ESTIMADO' : 'SENSOR REAL'}

@@ -3,34 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PC Sentinel - Dark Cyber-Clean Web HUD</title>
+  <title>PC Sentinel — Painel Remoto de Telemetria</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="icon" type="image/png" href="/icon-192.png">
-  <meta name="theme-color" content="#0B0F19">
+  <meta name="theme-color" content="#0c0e12">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-app: #0B0F19;
-      --bg-canvas: #0D1117;
-      --bg-card: rgba(17, 24, 39, 0.78);
-      --bg-card-hover: rgba(22, 31, 50, 0.85);
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(0, 240, 255, 0.4);
-      --border-radius-card: 14px;
+      --bg-app: #0c0e12;
+      --bg-canvas: #0f1218;
+      --bg-card: #161b24;
+      --bg-card-hover: #1c222e;
+      --border-subtle: #202634;
+      --border-focus: #38bdf8;
+      --border-radius-card: 8px;
 
-      --text-primary: #F3F4F6;
-      --text-secondary: #9CA3AF;
-      --text-muted: #6B7280;
+      --text-primary: #e6edf3;
+      --text-secondary: #9aa5b5;
+      --text-muted: #616e82;
 
-      --status-stable-cyan: #00F0FF;
-      --status-stable-emerald: #10B981;
-      --status-warning: #FF8A00;
-      --status-critical: #FF2A54;
+      --status-stable-cyan: #2dd4bf;
+      --status-stable-emerald: #2dd4bf;
+      --status-warning: #f59e0b;
+      --status-critical: #ef4444;
 
       --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
@@ -46,15 +46,12 @@
 
     body {
       background-color: var(--bg-app);
-      background-image: 
-        radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.09) 0%, transparent 60%),
-        radial-gradient(circle at 100% 100%, rgba(255, 42, 84, 0.05) 0%, transparent 50%);
       color: var(--text-primary);
       font-family: var(--font-sans);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      padding: 16px;
+      padding: 14px;
       overflow-x: hidden;
     }
 
@@ -95,17 +92,17 @@
     }
 
     .brand-icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
-      background: linear-gradient(135deg, #00F0FF, #10B981);
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: #1e2430;
+      border: 1px solid #2b3444;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 900;
-      font-size: 1.1rem;
-      color: #0B0F19;
-      box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
+      font-weight: 700;
+      font-size: 1rem;
+      color: #2dd4bf;
     }
 
     .brand-info h1 {
@@ -877,7 +874,7 @@
         <div class="brand-icon">⚡</div>
         <div class="brand-info">
           <h1>PC SENTINEL</h1>
-          <span>Dark Cyber-Clean Web HUD</span>
+          <span>Painel Remoto de Telemetria</span>
         </div>
       </div>
 
