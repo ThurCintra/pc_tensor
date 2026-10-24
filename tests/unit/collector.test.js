@@ -219,8 +219,14 @@ describe('SystemCollector', () => {
   });
 
   it('deve processar e integrar telemetria física real do sensor bridge (Motherboard, Storage, Admin e DiskIo)', async () => {
-    const collector = new SystemCollector(null);
-    // Caminho real do snapshot, mas sem consultar o hardware (lento no runner do CI)
+    // Caminho real do snapshot, mas sem consultar o hardware nem a lista de processos
+    // (lentos no runner do CI)
+    const collector = new SystemCollector(null, {
+      processMonitor: {
+        getTopProcesses: vi.fn().mockResolvedValue([]),
+        getSwapMetrics: vi.fn().mockResolvedValue({ totalMB: 0, usedMB: 0, percentUsed: 0 }),
+      },
+    });
     collector.si = {
       graphics: vi.fn().mockResolvedValue({ controllers: [] }),
       fsSize: vi.fn().mockResolvedValue([]),
