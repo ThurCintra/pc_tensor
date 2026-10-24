@@ -1,6 +1,6 @@
 {
   "name": "pc-sentinel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Monitor de hardware para Windows: temperaturas reais, processos, histórico térmico e acesso pelo celular.",
   "keywords": [
     "electron",

@@ -5,6 +5,8 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [0.2.0] - 2026-10-24
+
 ### Alterado
 
 - Estrutura do projeto reorganizada: `src/main` dividido em janelas, bandeja, IPC e sistema; telemetria em
@@ -40,5 +42,6 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v0.1.0...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ThurCintra/pc_tensor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ThurCintra/pc_tensor/releases/tag/v0.1.0

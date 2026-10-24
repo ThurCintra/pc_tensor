@@ -42,9 +42,23 @@ jobs:
       - name: Gerar instalador
         run: npm run dist -- --publish never
 
+      - name: Extrair notas do CHANGELOG
+        shell: bash
+        run: |
+          versao="${GITHUB_REF_NAME#v}"
+          awk -v h="## [$versao]" '
+            index($0, h) == 1 { on = 1; next }
+            on && index($0, "## [") == 1 { exit }
+            on { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::O CHANGELOG.md não tem a seção [$versao]."
+            exit 1
+          fi
+
       - name: Publicar release
         uses: softprops/action-gh-release@v2
         with:
           name: PC Sentinel ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: release-notes.md
           files: release/PC-Sentinel-Setup.exe
