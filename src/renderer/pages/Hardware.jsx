@@ -53,7 +53,7 @@ function toSummary(info) {
 export function Hardware() {
   const [info, setInfo] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [showMac, setShowMac] = useState(false);
 
@@ -69,9 +69,18 @@ export function Hardware() {
     }
   }, []);
 
+  // Primeira carga: o estado só muda quando a resposta chega (e não se a página já saiu da tela)
   useEffect(() => {
-    load(false);
-  }, [load]);
+    let active = true;
+    getTransport()
+      .getHardwareInfo(false)
+      .then((data) => active && setInfo(data))
+      .catch((err) => active && setError(err.message))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleCopy = async () => {
     if (await copyText(toSummary(info))) {

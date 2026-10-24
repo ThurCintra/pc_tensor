@@ -386,7 +386,7 @@ class ActionRouter {
     const cmd = String(command || '').toUpperCase();
 
     // Mapeamento para teclas virtuais do Windows (Virtual Key Codes via WScript.Shell SendKeys)
-    let charCode = null;
+    let charCode;
     let label = '';
 
     switch (cmd) {

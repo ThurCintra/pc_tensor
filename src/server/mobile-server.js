@@ -677,7 +677,7 @@ class MobileLiveServer {
       ? `http://${this.localIp}:${this.port}/?token=${this.sessionToken}`
       : `http://${this.localIp}:${this.port}`;
 
-    let qrDataUrl = '';
+    let qrDataUrl;
     try {
       qrDataUrl = await QRCode.toDataURL(mobileUrl, {
         margin: 1,

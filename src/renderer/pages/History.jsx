@@ -19,8 +19,10 @@ export function History({ history, metrics, lastReport }) {
   const [minutes, setMinutes] = useState(5);
   const thresholds = metrics?.alerts?.thresholds;
 
+  // A janela termina na amostra mais recente (chega uma a cada 1,2 s), não no relógio
   const samples = useMemo(() => {
-    const since = Date.now() - minutes * 60 * 1000;
+    const latest = history.length > 0 ? history[history.length - 1].t : 0;
+    const since = latest - minutes * 60 * 1000;
     return history.filter((s) => s.t >= since);
   }, [history, minutes]);
 

@@ -24,7 +24,7 @@ async function collectHardwareInfo(si, context = {}) {
       call('networkInterfaces', []),
     ]);
 
-  let timeInfo = null;
+  let timeInfo;
   try {
     timeInfo = typeof si.time === 'function' ? si.time() : null;
   } catch {

@@ -5,6 +5,17 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+### Alterado
+
+- React 19, Vite 8, ESLint 10 e eslint-plugin-react-hooks 7. O eslint-plugin-react saiu (ainda sem suporte ao
+  ESLint 10, que já reconhece os componentes usados no JSX).
+- Configurações do Vite e do Vitest em `.mjs`.
+
+### Corrigido
+
+- A página Hardware não dispara mais uma renderização extra ao abrir.
+- O filtro de tempo do Histórico usa a amostra mais recente como referência, e não o relógio a cada renderização.
+
 ## [0.2.0] - 2026-10-24
 
 ### Alterado

@@ -163,7 +163,7 @@ class NetworkMonitor {
     }
 
     // Cálculo do Jitter RFC 1889 (variação absoluta média entre pings consecutivos)
-    let jitter = null;
+    let jitter;
     if (validPings.length >= 2) {
       let diffSum = 0;
       let diffCount = 0;
@@ -177,7 +177,7 @@ class NetworkMonitor {
     }
 
     // Status Semântico de Qualidade da Conexão
-    let status = 'EXCELLENT';
+    let status;
     if (lossPct >= 15 || avgLatency === null) {
       status = 'DISCONNECTED';
     } else if (lossPct > 5 || avgLatency > 150 || (jitter && jitter > 30)) {

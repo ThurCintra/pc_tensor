@@ -1,6 +1,5 @@
 const js = require('@eslint/js');
 const globals = require('globals');
-const react = require('eslint-plugin-react');
 const reactHooks = require('eslint-plugin-react-hooks');
 const prettier = require('eslint-config-prettier');
 
@@ -21,27 +20,21 @@ module.exports = [
 
   // Configurações do Vite/Vitest (ESM)
   {
-    files: ['vite.config.js', 'vitest.config.js'],
+    files: ['**/*.mjs'],
     languageOptions: { sourceType: 'module', globals: globals.node },
   },
 
   // Interface React (navegador + ESM)
   {
     files: ['src/renderer/**/*.{js,jsx}'],
-    plugins: { react, 'react-hooks': reactHooks },
+    plugins: { 'react-hooks': reactHooks },
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
-    settings: { react: { version: 'detect' } },
-    rules: {
-      ...react.configs.recommended.rules,
-      ...react.configs['jsx-runtime'].rules,
-      ...reactHooks.configs.recommended.rules,
-      'react/prop-types': 'off',
-    },
+    rules: reactHooks.configs.recommended.rules,
   },
 
   // Service worker do PWA

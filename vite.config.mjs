@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+const root = import.meta.dirname;
+
 // CSP só no build: em desenvolvimento o Vite injeta scripts inline para o hot reload.
 // connect-src libera WebSocket/HTTP da mesma origem (celular falando com o PC).
 const CONTENT_SECURITY_POLICY = [
@@ -29,10 +31,10 @@ const cspPlugin = {
 
 export default defineConfig({
   plugins: [react(), cspPlugin],
-  root: path.join(__dirname, 'src/renderer'),
+  root: path.join(root, 'src/renderer'),
   base: './',
   build: {
-    outDir: path.join(__dirname, 'dist'),
+    outDir: path.join(root, 'dist'),
     emptyOutDir: true,
   },
   server: {
