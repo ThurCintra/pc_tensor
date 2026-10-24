@@ -5,6 +5,20 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+### Adicionado
+
+- **pc_tensor Cloud** (`cloud/`, Etapas 1 e 2): base do painel web multiusuário.
+  - Banco PostgreSQL com Prisma 7 (usuários, contas OAuth, computadores, códigos de pareamento, histórico e
+    alertas) e migração inicial.
+  - Site Next.js 16 com Auth.js: cadastro e login por e-mail e senha (Argon2id), Google e GitHub com conferência
+    de e-mail verificado, recuperação de senha por link de uso único e limite de tentativas.
+  - API de computadores e pareamento por código de 6 dígitos (5 minutos, uso único, `DeviceToken` guardado só
+    como hash).
+  - Servidor de tempo real Socket.IO com autenticação separada para PCs e navegadores, salas por computador,
+    presença (`HEARTBEAT` de 60 s sem espectadores, `LIVE` de 250 ms com o painel aberto), comandos só da lista
+    permitida e detecção de travamento sob carga.
+  - 30 testes com PostgreSQL em memória (PGlite) e job próprio no CI.
+
 ## [1.2.0] - 2026-10-24
 
 ### Adicionado

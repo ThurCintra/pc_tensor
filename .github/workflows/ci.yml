@@ -51,3 +51,27 @@ jobs:
 
       - name: Testes do serviço
         run: dotnet test service/PcSentinel.sln
+
+  cloud:
+    # pc_tensor Cloud (cloud/): tipos dos quatro pacotes e testes com PostgreSQL em memória (PGlite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloud
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cloud/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Tipos e testes
+        run: npm run check
+
+      - name: Build do site
+        run: npm run build -w @pc-tensor/web

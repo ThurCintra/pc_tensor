@@ -40,3 +40,10 @@ thermal_history.json
 .github/copilot-instructions.md
 docs/superpowers/
 start_dev_universal.md
+
+# pc_tensor Cloud
+cloud/**/.next/
+cloud/**/.env
+cloud/**/.env.local
+cloud/**/next-env.d.ts
+cloud/**/tsconfig.tsbuildinfo

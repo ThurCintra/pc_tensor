@@ -1,0 +1,131 @@
+// pc_tensor Cloud: banco PostgreSQL (Neon, Supabase ou qualquer PostgreSQL 15+).
+// A URL de conexão fica em DATABASE_URL (prisma.config.ts); migrações em prisma/migrations.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  /// Hash Argon2id; null para quem só entra com Google/GitHub
+  passwordHash  String?
+  /// Tarifa de energia em R$/kWh, usada pelo taxímetro
+  kwhTariff     Decimal   @default(0.95) @db.Decimal(6, 4)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts            Account[]
+  devices             Device[]
+  pairingCodes        PairingCode[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+/// Vínculo com um provedor OAuth (Google, GitHub)
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Link de "esqueci minha senha": só o hash do token fica no banco, válido por 1 hora e uma única vez
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Device {
+  id              String    @id @default(cuid())
+  userId          String
+  name            String
+  /// SHA-256 do DeviceToken; o token em si só existe no PC
+  deviceTokenHash String    @unique
+  cpuModel        String?
+  gpuModel        String?
+  totalRamGb      Decimal?  @db.Decimal(8, 2)
+  isOnline        Boolean   @default(false)
+  lastSeenAt      DateTime?
+  maxCpuTempAlert Int       @default(90)
+  maxGpuTempAlert Int       @default(85)
+  alertsEnabled   Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telemetry TelemetryHistory[]
+  alerts    AlertEvent[]
+
+  @@index([userId])
+}
+
+/// Código de 6 dígitos mostrado no site para parear um PC; vale 5 minutos e uma única vez
+model PairingCode {
+  id        String   @id @default(cuid())
+  code      String
+  userId    String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([code, used])
+  @@index([userId])
+}
+
+/// Resumo de um minuto enviado no modo HEARTBEAT
+model TelemetryHistory {
+  id               BigInt   @id @default(autoincrement())
+  deviceId         String
+  timestamp        DateTime
+  avgCpuTemp       Float?
+  avgGpuTemp       Float?
+  maxTemp          Float?
+  energyConsumedWh Float    @default(0)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, timestamp(sort: Desc)])
+}
+
+enum AlertType {
+  OVERHEAT
+  PREDICTIVE_THROTTLE
+  DUST_WARNING
+  ABRUPT_CRASH
+}
+
+model AlertEvent {
+  id          String    @id @default(cuid())
+  deviceId    String
+  type        AlertType
+  detailsJson Json
+  createdAt   DateTime  @default(now())
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, createdAt(sort: Desc)])
+}

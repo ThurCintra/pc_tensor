@@ -1,0 +1,26 @@
+{
+  "name": "@pc-tensor/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "2.2.2",
+    "@pc-tensor/db": "*",
+    "@pc-tensor/protocol": "*",
+    "jose": "^6.2.13",
+    "next": "16.4.3",
+    "next-auth": "5.0.0-beta.32",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0"
+  }
+}

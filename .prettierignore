@@ -5,3 +5,7 @@ resources/
 node_modules/
 package-lock.json
 *.md
+cloud/**/.next/
+cloud/**/generated/
+cloud/**/next-env.d.ts
+cloud/**/migrations/

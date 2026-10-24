@@ -1,0 +1,24 @@
+{
+  "name": "@pc-tensor/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate deploy",
+    "migrate:sql": "prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
+    "pglite-prisma-adapter": "0.7.2",
+    "prisma": "7.10.1"
+  }
+}

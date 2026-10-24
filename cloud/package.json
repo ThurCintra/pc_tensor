@@ -1,0 +1,27 @@
+{
+  "name": "pc-tensor-cloud",
+  "private": true,
+  "description": "pc_tensor Cloud: painel web multiusuário, servidor de tempo real e banco de dados",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "db:generate": "npm run generate -w @pc-tensor/db",
+    "db:migrate": "npm run migrate -w @pc-tensor/db",
+    "dev:web": "npm run dev -w @pc-tensor/web",
+    "dev:realtime": "npm run dev -w @pc-tensor/realtime",
+    "typecheck": "tsc -p packages/protocol && tsc -p packages/db && tsc -p apps/web && tsc -p apps/realtime",
+    "test": "vitest run",
+    "check": "npm run db:generate && npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.12"
+  }
+}

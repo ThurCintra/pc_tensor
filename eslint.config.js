@@ -5,7 +5,8 @@ const prettier = require('eslint-config-prettier');
 const tseslint = require('typescript-eslint');
 
 module.exports = [
-  { ignores: ['dist/', 'release/', 'coverage/', 'resources/', 'node_modules/'] },
+  // cloud/ é um projeto à parte (Next.js + servidor de tempo real), verificado pelo tsc e testes de lá
+  { ignores: ['dist/', 'release/', 'coverage/', 'resources/', 'node_modules/', 'cloud/'] },
 
   js.configs.recommended,
 
