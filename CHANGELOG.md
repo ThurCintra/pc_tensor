@@ -7,6 +7,13 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ### Adicionado
 
+- Serviço nativo `PcSentinel.Service` (.NET 10, em `service/`), primeira parte da nova arquitetura descrita em
+  `docs/contrato-websocket.md`: WebSocket v2 na porta 3891 com o token de pareamento, previsão de thermal
+  throttling (dT/dt por mínimos quadrados em 10 s), detector de degradação térmica com linhas de base no SQLite,
+  curva de eficiência do silício, Juiz de Lag (rede × CPU × VRAM), perfis pelo app em foco (Game-Sense),
+  taxímetro de energia em kWh e R$ e o comando Stutter Buster (limpa a lista standby e baixa a prioridade de apps
+  de segundo plano). Ainda não é iniciado pelo app; os clientes migram nas próximas etapas.
+
 - Verificação de atualizações sempre que o app abre: a versão nova é baixada em segundo plano e instalada ao
   reiniciar (botão "Reiniciar e atualizar" no aviso ou em Configurações → Atualizações).
 

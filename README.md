@@ -70,6 +70,7 @@ rode o terminal como administrador.
 | `npm run build` | Compila a interface em `dist/` |
 | `npm run build:bridge` | Recompila a ponte de sensores C# (`resources/sensor-bridge/pc-sensor-bridge.exe`) |
 | `npm run dist` | Gera o instalador em `release/PC-Sentinel-Setup.exe` |
+| `dotnet test service/PcSentinel.sln` | Compila e testa o serviço nativo (.NET 10 SDK) |
 
 ### Publicar uma release
 
@@ -124,6 +125,7 @@ src/
 ├── preload/index.js          Ponte segura entre a interface e o processo principal
 ├── renderer/                 Interface React (mesma para desktop e celular)
 └── server/                   Servidor do celular (API, WebSocket, ações remotas)
+service/                      Serviço nativo .NET 10 (nova arquitetura, ver docs/contrato-websocket.md)
 native/sensor-bridge/         Código C# da ponte de sensores
 resources/sensor-bridge/      Ponte compilada e DLLs do LibreHardwareMonitor
 scripts/                      Scripts de build

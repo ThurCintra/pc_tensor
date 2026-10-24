@@ -34,6 +34,17 @@ SystemCollector ──► ThermalAlertMonitor ──► Notificação do Windows
 | Interface | `src/renderer/` | React + Vite; a mesma build roda na janela e no celular |
 | Transporte | `src/renderer/lib/transport.js` | IPC no desktop; WebSocket (telemetria) e REST (hardware, ações) no celular |
 
+## Serviço nativo (em migração)
+
+`service/PcSentinel.Service` é o backend .NET 10 da nova arquitetura: lê os sensores pelo LibreHardwareMonitorLib,
+calcula derivada térmica, degradação, eficiência do silício, Juiz de Lag e energia, guarda o histórico em SQLite
+(`%APPDATA%pc-sentinel	elemetry.db`) e transmite pelo WebSocket v2 descrito em
+[contrato-websocket.md](contrato-websocket.md). Usa o mesmo token de pareamento do app. Por enquanto roda separado
+(`dotnet run --project service/PcSentinel.Service`); as próximas etapas fazem o Electron iniciá-lo e migram a
+interface e o celular para o contrato v2, aposentando a ponte `pc-sensor-bridge.exe` e o servidor Node.
+
+Diagnóstico de sensores: `pc-sentinel-service --dump-sensors` lista todos os sensores lidos neste PC.
+
 ## Uma interface, dois modos
 
 O build do Vite (`dist/`) é carregado pela janela do Electron e também servido pelo `MobileLiveServer`

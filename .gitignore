@@ -5,6 +5,9 @@ node_modules/
 dist/
 release/
 coverage/
+service/**/bin/
+service/**/obj/
+service/**/TestResults/
 
 # Variáveis de ambiente
 .env
