@@ -5,50 +5,46 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.2.0] - 2026-10-24
+
 ### Adicionado
 
-- Serviço nativo `PcSentinel.Service` (.NET 10, em `service/`), primeira parte da nova arquitetura descrita em
-  `docs/contrato-websocket.md`: WebSocket v2 na porta 3891 com o token de pareamento, previsão de thermal
-  throttling (dT/dt por mínimos quadrados em 10 s), detector de degradação térmica com linhas de base no SQLite,
-  curva de eficiência do silício, Juiz de Lag (rede × CPU × VRAM), perfis pelo app em foco (Game-Sense),
-  taxímetro de energia em kWh e R$ e o comando Stutter Buster (limpa a lista standby e baixa a prioridade de apps
-  de segundo plano).
-- O app inicia o serviço nativo junto (e ele se encerra com o app); o instalador o inclui com o runtime .NET
-  embutido e libera a porta 3891 no firewall.
-- Camada de tempo real da interface em TypeScript (`src/renderer/realtime`): cliente do WebSocket v2 com comandos,
-  reconexão e detecção de PC travado (2 s sem quadros), caixa preta com os últimos 60 s em buffer circular
-  espelhado no IndexedDB do celular e relatórios de travamento, vibração por tipo de alerta durante jogos e o hook
-  `useSentinel`. As telas que usam essa camada chegam na próxima etapa.
-- TypeScript no projeto: `npm run typecheck`, incluído no `npm run check`.
-- Página **Pit Wall** (Etapa 4) com Bento Grid que muda de layout conforme o app em foco no PC (FPS competitivo,
-  jogo gráfico, trabalho, uso leve): temperatura com contagem regressiva até o throttling, Juiz de Lag, Raio-X do
-  gabinete em SVG com cores pela temperatura, taxímetro de energia em R$ com tarifa editável, Stutter Buster,
-  saúde térmica, eficiência do silício e a tela Post-Mortem com a linha do tempo até a queda.
-- Tailwind 4 para as telas novas, sem reset de estilos e usando os mesmos tokens de cor do app.
-- `PC_SENTINEL_DATA_DIR` roda uma cópia de desenvolvimento ao lado do app instalado.
-
-- Verificação de atualizações sempre que o app abre: a versão nova é baixada em segundo plano e instalada ao
-  reiniciar (botão "Reiniciar e atualizar" no aviso ou em Configurações → Atualizações).
+- **Pit Wall**: nova página (no PC e no celular) que muda de layout conforme o que está aberto no PC — FPS
+  competitivo, jogo gráfico pesado, trabalho ou uso leve.
+  - Temperatura de CPU e GPU com tendência e contagem regressiva até o limite (throttling).
+  - Juiz de Lag: diz se o travamento no jogo é culpa da rede, de um gargalo de CPU ou da memória de vídeo cheia.
+  - Raio-X: o gabinete desenhado com cada peça colorida pela temperatura real e as ventoinhas na rotação lida.
+  - Taxímetro de energia: quanto a sessão e o mês estão custando em reais, com a tarifa da sua conta.
+  - Stutter Buster: um botão que libera o cache de memória do Windows e baixa a prioridade de navegadores e
+    launchers por 5 minutos (exige o app aberto como administrador).
+  - Saúde térmica: avisa quando o PC esquenta mais que há semanas com o mesmo consumo (poeira ou pasta térmica).
+  - Eficiência do silício: MHz por watt e estabilidade da tensão sob carga.
+- **Caixa preta**: o celular guarda os últimos 60 segundos de telemetria. Se o PC travar ou der tela azul, abre o
+  **Post-Mortem** com a linha do tempo até o milissegundo da queda e os picos de temperatura, potência e VRAM.
+- Vibração no celular durante jogos: 2 toques curtos para problema de rede, 3 médios para "vai esquentar" e longa
+  para temperatura crítica.
+- **Atualização automática**: o app procura versões novas sempre que abre, baixa em segundo plano e instala ao
+  reiniciar (aviso "Reiniciar e atualizar" ou Configurações → Atualizações). Vale a partir desta versão.
+- Serviço de telemetria nativo (.NET 10), iniciado junto com o app, com histórico em SQLite. O instalador libera
+  a porta 3891 no firewall para o celular.
 
 ### Alterado
 
-- Numeração das versões segue o Versionamento Semântico a partir da 1.0.0: as releases 0.1.0 e 0.2.0 passaram a
-  ser 1.0.0 e 1.1.0.
-
-- React 19, Vite 8, ESLint 10 e eslint-plugin-react-hooks 7. O eslint-plugin-react saiu (ainda sem suporte ao
-  ESLint 10, que já reconhece os componentes usados no JSX).
-- Configurações do Vite e do Vitest em `.mjs`.
+- Versões no padrão de projetos grandes (Versionamento Semântico) a partir da 1.0.0: as antigas 0.1.0 e 0.2.0 são
+  a 1.0.0 e a 1.1.0.
+- Electron, React 19 e demais dependências atualizados.
 
 ### Corrigido
 
-- Pit Wall no celular: a grade passava da largura da tela (a classe `.grid` do app sobrescrevia a do Tailwind).
-- Juiz de Lag não acusa mais "Gargalo de CPU" com a placa de vídeo quase parada (sem jogo rodando).
-- A previsão de throttling só aparece até 2 minutos; antes extrapolava inclinações mínimas ("90 °C em 749 s").
-- Post-Mortem mostrava só os milissegundos no horário da queda.
-- Com a porta 3890 ocupada por outro programa, o app mostrava "A JavaScript error occurred in the main process"
-  (EADDRINUSE) e não abria a janela; agora usa a porta seguinte.
-- A página Hardware não dispara mais uma renderização extra ao abrir.
-- O filtro de tempo do Histórico usa a amostra mais recente como referência, e não o relógio a cada renderização.
+- Com a porta 3890 ocupada por outro programa, o app mostrava "A JavaScript error occurred in the main process" e
+  não abria; agora usa a porta seguinte.
+- A página Hardware não faz mais uma renderização extra ao abrir.
+
+### Para desenvolvedores
+
+- TypeScript (`npm run typecheck`), Tailwind 4 nas telas novas e configurações do Vite em `.mjs`.
+- Contrato do WebSocket v2 em `docs/contrato-websocket.md`; serviço em `service/` com 40 testes xUnit.
+- `PC_SENTINEL_DATA_DIR` roda uma cópia de desenvolvimento ao lado do app instalado.
 
 ## [1.1.0] - 2026-10-24
 
@@ -87,6 +83,7 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.1.0...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ThurCintra/pc_tensor/releases/tag/v1.0.0
