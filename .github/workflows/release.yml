@@ -61,4 +61,7 @@ jobs:
         with:
           name: PC Sentinel ${{ github.ref_name }}
           body_path: release-notes.md
-          files: release/PC-Sentinel-Setup.exe
+          files: |
+            release/PC-Sentinel-Setup.exe
+            release/PC-Sentinel-Setup.exe.blockmap
+            release/latest.yml

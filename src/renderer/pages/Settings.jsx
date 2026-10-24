@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PageHeader, Switch, InfoBar, Badge } from '../components/ui';
 import { getTransport } from '../lib/transport';
+import { describeUpdateState } from '../hooks/useUpdates';
 
 function Setting({ title, description, children }) {
   return (
@@ -19,7 +20,7 @@ function Setting({ title, description, children }) {
  * Interruptores salvam na hora; campos de texto salvam ao sair do campo
  * (o processo principal ajusta valores fora da faixa e a tela mostra o valor final).
  */
-export function Settings({ appInfo, onRelaunchAsAdmin }) {
+export function Settings({ appInfo, updates, onRelaunchAsAdmin }) {
   const transport = getTransport();
   const [saved, setSaved] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -130,6 +131,25 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
         </Setting>
       </div>
 
+      <h2 className="section-title">Atualizações</h2>
+      <div>
+        <Setting title={`PC Sentinel ${appInfo?.version || ''}`} description={describeUpdateState(updates?.state)}>
+          {updates?.state?.status === 'downloaded' ? (
+            <button className="btn accent" onClick={updates.install}>
+              Reiniciar e atualizar
+            </button>
+          ) : (
+            <button
+              className="btn"
+              onClick={updates?.check}
+              disabled={!updates?.state || ['unsupported', 'checking', 'downloading'].includes(updates.state.status)}
+            >
+              Verificar agora
+            </button>
+          )}
+        </Setting>
+      </div>
+
       <h2 className="section-title">Celular</h2>
       <div>
         <Setting
@@ -162,10 +182,6 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
           }
         />
       </div>
-
-      <p className="faint" style={{ fontSize: 12 }}>
-        PC Sentinel {appInfo?.version}
-      </p>
     </div>
   );
 }

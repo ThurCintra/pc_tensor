@@ -1,6 +1,6 @@
 {
   "name": "pc-sentinel",
-  "version": "0.2.0",
+  "version": "1.1.0",
   "description": "Monitor de hardware para Windows: temperaturas reais, processos, histórico térmico e acesso pelo celular.",
   "keywords": [
     "electron",
@@ -42,6 +42,7 @@
     "check": "npm run lint && npm run format:check && npm test"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "express": "^4.21.2",
     "qrcode": "^1.5.4",
     "systeminformation": "^5.25.11",
@@ -113,6 +114,13 @@
       "shortcutName": "PC Sentinel",
       "artifactName": "PC-Sentinel-Setup.${ext}",
       "include": "build/installer.nsh"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ThurCintra",
+        "repo": "pc_tensor"
+      }
+    ]
   }
 }

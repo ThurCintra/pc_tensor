@@ -74,12 +74,19 @@ rode o terminal como administrador.
 ### Publicar uma release
 
 ```bash
-npm version patch
+npm version minor
 git push --follow-tags
 ```
 
-`npm version` (ou `minor`/`major`) atualiza a versão e cria a tag `vX.Y.Z`. Ao receber a tag, o GitHub Actions
-roda os testes, gera o instalador e publica a release com o `PC-Sentinel-Setup.exe` anexado.
+As versões seguem o Versionamento Semântico (`1.2.0` → `1.3.0` para novidades, `1.3.1` para correções; veja o
+[guia de contribuição](CONTRIBUTING.md#versões)). Ao receber a tag, o GitHub Actions roda os testes, gera o
+instalador e publica a release com o `PC-Sentinel-Setup.exe` e o `latest.yml` anexados.
+
+## Atualizações
+
+O app instalado procura uma versão nova nas releases do GitHub sempre que abre. Se houver, ela é baixada em segundo
+plano e instalada ao reiniciar: pelo aviso "Reiniciar e atualizar", em **Configurações → Atualizações** ou na próxima
+vez que o app for fechado.
 
 ## Celular
 

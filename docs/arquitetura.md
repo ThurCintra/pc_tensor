@@ -19,6 +19,7 @@ SystemCollector ──► ThermalAlertMonitor ──► Notificação do Windows
 |---|---|---|
 | Inicialização | `src/main/index.js` | Cria os serviços, loop de métricas (1,2 s), instância única e encerramento |
 | Janelas e bandeja | `src/main/windows.js`, `src/main/tray.js` | Janela principal (destruída ao fechar para liberar RAM), QR Code, modo compacto e menu |
+| Atualizações | `src/main/updater.js` | Procura versão nova ao abrir (electron-updater + GitHub Releases), baixa e instala ao reiniciar |
 | IPC | `src/main/ipc.js` | Canais expostos à interface pelo `src/preload/index.js` |
 | Coletor | `src/main/telemetry/collector.js` | Junta as fontes num snapshot; dependências injetáveis para teste |
 | Ponte de sensores | `src/main/telemetry/sensor-bridge.js` | Mantém o `pc-sensor-bridge.exe` rodando e guarda a última leitura |

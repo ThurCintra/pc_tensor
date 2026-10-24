@@ -8,6 +8,7 @@ const { SettingsStore } = require('./settings-store');
 const { WindowManager } = require('./windows');
 const { TrayController } = require('./tray');
 const { registerIpcHandlers } = require('./ipc');
+const { UpdateService } = require('./updater');
 const system = require('./system');
 
 const METRICS_INTERVAL_MS = 1200;
@@ -30,6 +31,7 @@ const ctx = {
   alertMonitor: null,
   windows: null,
   tray: null,
+  updates: null,
   metricsTimer: null,
 };
 
@@ -51,8 +53,17 @@ const actions = {
   shutdown() {
     ctx.isQuitting = true;
     clearInterval(ctx.metricsTimer);
+    ctx.updates?.stop();
     ctx.collector?.stop();
     ctx.collector = null;
+  },
+
+  /** Encerra coleta e servidor (libera a porta para a versão nova) e roda o instalador baixado. */
+  async installUpdate() {
+    if (ctx.updates.getState().status !== 'downloaded') return false;
+    actions.shutdown();
+    await ctx.mobileServer?.stop();
+    return ctx.updates.install();
   },
 
   quit() {
@@ -139,11 +150,19 @@ async function bootstrap() {
 
   ctx.windows = new WindowManager(ctx);
   ctx.tray = new TrayController(ctx, actions);
+  ctx.updates = new UpdateService({
+    updater: app.isPackaged ? require('electron-updater').autoUpdater : null,
+    supported: app.isPackaged,
+    currentVersion: app.getVersion(),
+    notify: system.notify,
+  });
+  ctx.updates.on('state', (state) => ctx.windows.send('updates:state', state));
 
   registerIpcHandlers(ctx, actions);
   ctx.tray.create();
   await ctx.windows.createMain();
   startMetricsLoop();
+  ctx.updates.start();
 }
 
 // Instância única: abrir o atalho com o app rodando só traz a janela existente para frente

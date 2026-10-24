@@ -46,6 +46,10 @@ function registerIpcHandlers(ctx, actions) {
   }));
   ipcMain.handle('app:relaunch-as-admin', () => actions.relaunchAsAdmin());
 
+  ipcMain.handle('updates:get-state', () => ctx.updates.getState());
+  ipcMain.handle('updates:check', () => ctx.updates.check());
+  ipcMain.handle('updates:install', () => actions.installUpdate());
+
   ipcMain.handle('action:execute', (_event, payload) => mobileServer.actionRouter.handleAction(payload));
 }
 

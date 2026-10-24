@@ -29,4 +29,10 @@ contextBridge.exposeInMainWorld('sentinelAPI', {
   toggleMiniWidget: (toMini) => ipcRenderer.invoke('window:toggle-mini-widget', toMini),
   getAppInfo: () => ipcRenderer.invoke('app:info'),
   relaunchAsAdmin: () => ipcRenderer.invoke('app:relaunch-as-admin'),
+
+  // Atualizações (electron-updater)
+  getUpdateState: () => ipcRenderer.invoke('updates:get-state'),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateState: (callback) => subscribe('updates:state', callback),
 });

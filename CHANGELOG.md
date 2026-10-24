@@ -5,7 +5,15 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+### Adicionado
+
+- Verificação de atualizações sempre que o app abre: a versão nova é baixada em segundo plano e instalada ao
+  reiniciar (botão "Reiniciar e atualizar" no aviso ou em Configurações → Atualizações).
+
 ### Alterado
+
+- Numeração das versões segue o Versionamento Semântico a partir da 1.0.0: as releases 0.1.0 e 0.2.0 passaram a
+  ser 1.0.0 e 1.1.0.
 
 - React 19, Vite 8, ESLint 10 e eslint-plugin-react-hooks 7. O eslint-plugin-react saiu (ainda sem suporte ao
   ESLint 10, que já reconhece os componentes usados no JSX).
@@ -16,7 +24,7 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 - A página Hardware não dispara mais uma renderização extra ao abrir.
 - O filtro de tempo do Histórico usa a amostra mais recente como referência, e não o relógio a cada renderização.
 
-## [0.2.0] - 2026-10-24
+## [1.1.0] - 2026-10-24
 
 ### Alterado
 
@@ -42,7 +50,7 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 - A página Hardware dizia que havia temperatura de GPU mesmo sem nenhum sensor.
 - Os testes gravavam `thermal_history.json` na raiz do projeto.
 
-## [0.1.0] - 2026-10-23
+## [1.0.0] - 2026-10-23
 
 Primeira versão publicada.
 
@@ -53,6 +61,6 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/ThurCintra/pc_tensor/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/ThurCintra/pc_tensor/releases/tag/v0.1.0
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/ThurCintra/pc_tensor/releases/tag/v1.0.0

@@ -40,9 +40,20 @@ docs: explicar o pareamento pelo celular
 
 Tipos usados: `feat`, `fix`, `refactor`, `test`, `docs`, `ci`, `build` e `chore`.
 
+## Versões
+
+O projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/) no formato `MAIOR.MENOR.CORREÇÃO`:
+
+| Mudança | Comando | Exemplo |
+|---|---|---|
+| Correção de bug, sem recurso novo | `npm version patch` | 1.2.0 → 1.2.1 |
+| Recurso novo, compatível com o que já existe | `npm version minor` | 1.2.1 → 1.3.0 |
+| Mudança que quebra compatibilidade (configurações, API do celular) | `npm version major` | 1.3.0 → 2.0.0 |
+
 ## Publicar uma versão
 
 1. Mova as entradas de "Não lançado" no `CHANGELOG.md` para a nova versão.
-2. Rode `npm version patch` (ou `minor`/`major`) e depois `git push --follow-tags`.
+2. Rode o `npm version` adequado (tabela acima) e depois `git push --follow-tags`.
 
-O GitHub Actions gera o instalador e publica a release.
+O GitHub Actions gera o instalador e publica a release com as notas do CHANGELOG. Os apps já instalados encontram a
+versão nova sozinhos na próxima vez que forem abertos.

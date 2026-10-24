@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { getTransport } from './lib/transport';
 import { useTelemetry } from './hooks/useTelemetry';
+import { useUpdates } from './hooks/useUpdates';
 import { InfoBar, Badge } from './components/ui';
 import { MiniWidget } from './components/MiniWidget';
 import { SessionReportDialog } from './components/SessionReportDialog';
@@ -73,6 +74,8 @@ export default function App() {
   const [miniMode, setMiniMode] = useState(false);
   const [appInfo, setAppInfo] = useState(null);
   const [notice, setNotice] = useState(null);
+  const updates = useUpdates();
+  const updateReady = updates.state?.status === 'downloaded';
 
   const extraPages = DESKTOP_PAGES.filter((p) => transport.capabilities[p.capability]);
   const allPages = [...PAGES, ...extraPages];
@@ -116,7 +119,7 @@ export default function App() {
   }
 
   const [statusLabel, statusTone] = STATUS_BADGE[status] || STATUS_BADGE.connecting;
-  const pageProps = { metrics, history, appInfo, onNavigate: navigate, onRelaunchAsAdmin: relaunchAsAdmin };
+  const pageProps = { metrics, history, appInfo, updates, onNavigate: navigate, onRelaunchAsAdmin: relaunchAsAdmin };
 
   return (
     <div className="app">
@@ -150,11 +153,23 @@ export default function App() {
       </nav>
 
       <main className="content">
-        {(status === 'offline' || notice) && (
+        {(status === 'offline' || notice || updateReady) && (
           <div className="page" style={{ marginBottom: 16 }}>
             {status === 'offline' && (
               <InfoBar tone="caution" title="Sem conexão com o PC.">
                 Tentando reconectar…
+              </InfoBar>
+            )}
+            {updateReady && (
+              <InfoBar
+                title={`PC Sentinel ${updates.state.availableVersion} pronto para instalar.`}
+                actions={
+                  <button className="btn accent" onClick={updates.install}>
+                    Reiniciar e atualizar
+                  </button>
+                }
+              >
+                A atualização também é instalada na próxima vez que o app for fechado.
               </InfoBar>
             )}
             {notice && (

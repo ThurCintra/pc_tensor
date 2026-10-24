@@ -25,7 +25,7 @@ function safeStorage(action, value) {
 function createDesktopTransport(api) {
   return {
     mode: 'desktop',
-    capabilities: { settings: true, connection: true, miniWidget: true, elevation: true },
+    capabilities: { settings: true, connection: true, miniWidget: true, elevation: true, updates: true },
     subscribeMetrics: (cb) => api.onMetricsUpdate(cb),
     subscribeSessionReport: (cb) => api.onSessionReport(cb),
     subscribeStatus: (cb) => {
@@ -42,6 +42,10 @@ function createDesktopTransport(api) {
     toggleMiniWidget: (toMini) => api.toggleMiniWidget(toMini),
     getAppInfo: () => api.getAppInfo(),
     relaunchAsAdmin: () => api.relaunchAsAdmin(),
+    getUpdateState: () => api.getUpdateState(),
+    checkForUpdates: () => api.checkForUpdates(),
+    installUpdate: () => api.installUpdate(),
+    subscribeUpdates: (cb) => api.onUpdateState(cb),
   };
 }
 
@@ -123,7 +127,7 @@ function createWebTransport() {
 
   return {
     mode: 'web',
-    capabilities: { settings: false, connection: false, miniWidget: false, elevation: false },
+    capabilities: { settings: false, connection: false, miniWidget: false, elevation: false, updates: false },
     hasToken: Boolean(token),
     subscribeMetrics: (cb) => {
       metricsListeners.add(cb);
