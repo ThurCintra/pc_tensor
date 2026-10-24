@@ -1,4 +1,3 @@
-import React from 'react';
 import { Dialog } from './Dialog';
 import { Rows, Row } from './ui';
 import { isNum, DASH } from '../lib/format';
@@ -7,8 +6,18 @@ const temps = (part) => (isNum(part?.peakTemp) ? `${part.peakTemp} °C (média $
 
 export function SessionReportDialog({ report, onClose }) {
   return (
-    <Dialog title="Sessão de carga encerrada" onClose={onClose} footer={<button className="btn accent" onClick={onClose}>Fechar</button>}>
-      <p className="muted" style={{ marginTop: 0 }}>Resumo do período em que o PC ficou sob carga alta.</p>
+    <Dialog
+      title="Sessão de carga encerrada"
+      onClose={onClose}
+      footer={
+        <button className="btn accent" onClick={onClose}>
+          Fechar
+        </button>
+      }
+    >
+      <p className="muted" style={{ marginTop: 0 }}>
+        Resumo do período em que o PC ficou sob carga alta.
+      </p>
       <Rows>
         <Row label="Duração">{report.durationFormatted}</Row>
         <Row label="Pico da CPU">{temps(report.cpu)}</Row>

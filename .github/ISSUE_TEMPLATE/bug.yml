@@ -1,0 +1,37 @@
+name: Problema
+description: Algo não funciona como deveria
+labels: [bug]
+body:
+  - type: textarea
+    id: descricao
+    attributes:
+      label: O que aconteceu?
+      description: Descreva o problema e o que você esperava que acontecesse.
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Abra o PC Sentinel como administrador
+        2. Vá em ...
+    validations:
+      required: true
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do PC Sentinel
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Windows, processador e placa de vídeo
+      placeholder: Windows 11 24H2, Ryzen 5 9600X, Radeon RX 7600
+  - type: dropdown
+    id: admin
+    attributes:
+      label: O app estava aberto como administrador?
+      options: [Sim, Não, Não sei]

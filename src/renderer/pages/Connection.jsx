@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Copy, Check, KeyRound, Smartphone } from 'lucide-react';
 import { PageHeader, Card, Rows, Row, Badge, InfoBar, Switch } from '../components/ui';
 import { Dialog } from '../components/Dialog';
@@ -46,16 +46,26 @@ export function Connection() {
       <div className="grid-2">
         <Card title="Conectar" icon={Smartphone}>
           {info?.isRunning ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
-              {info.qrCodeDataUrl && <img className="qr" src={info.qrCodeDataUrl} alt="QR Code para conectar o celular" />}
-              <p className="muted" style={{ margin: 0 }}>Aponte a câmera do celular para o código.</p>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}
+            >
+              {info.qrCodeDataUrl && (
+                <img className="qr" src={info.qrCodeDataUrl} alt="QR Code para conectar o celular" />
+              )}
+              <p className="muted" style={{ margin: 0 }}>
+                Aponte a câmera do celular para o código.
+              </p>
               <button className="btn" onClick={copyLink} style={{ maxWidth: '100%' }}>
                 {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{copied ? 'Link copiado' : 'Copiar link'}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {copied ? 'Link copiado' : 'Copiar link'}
+                </span>
               </button>
             </div>
           ) : (
-            <p className="muted" style={{ margin: 0 }}>A transmissão está desligada. Ligue-a para gerar o código.</p>
+            <p className="muted" style={{ margin: 0 }}>
+              A transmissão está desligada. Ligue-a para gerar o código.
+            </p>
           )}
         </Card>
 
@@ -88,8 +98,12 @@ export function Connection() {
           onClose={() => setConfirmRevoke(false)}
           footer={
             <>
-              <button className="btn accent" onClick={revoke}>Desconectar</button>
-              <button className="btn" onClick={() => setConfirmRevoke(false)}>Cancelar</button>
+              <button className="btn accent" onClick={revoke}>
+                Desconectar
+              </button>
+              <button className="btn" onClick={() => setConfirmRevoke(false)}>
+                Cancelar
+              </button>
             </>
           }
         >

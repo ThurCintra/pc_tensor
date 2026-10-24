@@ -4,6 +4,12 @@
   <img src="assets/icon.png" width="72" alt="" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/ThurCintra/pc_tensor/actions/workflows/ci.yml"><img src="https://github.com/ThurCintra/pc_tensor/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/ThurCintra/pc_tensor/releases/latest"><img src="https://img.shields.io/github/v/release/ThurCintra/pc_tensor?label=vers%C3%A3o" alt="Última versão" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ThurCintra/pc_tensor?label=licen%C3%A7a" alt="Licença MIT" /></a>
+</p>
+
 Monitor de hardware para Windows: temperaturas, uso de CPU, memória, discos e rede em tempo real, com
 alertas quando o PC esquenta e acesso pelo celular na mesma rede Wi-Fi.
 
@@ -40,7 +46,7 @@ Fechar a janela mantém o app na bandeja do sistema; para sair, use **Sair** no 
 
 ## Desenvolvimento
 
-Pré-requisitos: Windows 10/11 x64 e Node.js 18 ou superior.
+Pré-requisitos: Windows 10/11 x64 e Node.js 20 ou superior.
 
 ```bash
 npm install
@@ -58,8 +64,11 @@ rode o terminal como administrador.
 | `npm run dev` | App em modo de desenvolvimento (Vite + Electron) |
 | `npm start` | Compila a interface e abre o app (no app, **Configurações → Reiniciar como administrador** libera os sensores) |
 | `npm test` | Testes unitários (Vitest) |
+| `npm run lint` | Análise estática (ESLint) |
+| `npm run format` | Formata o código (Prettier) |
+| `npm run check` | Lint, formatação e testes (o mesmo que o CI roda) |
 | `npm run build` | Compila a interface em `dist/` |
-| `npm run build:bridge` | Recompila a ponte de sensores C# (`tools/LibreHardwareMonitor/pc-sensor-bridge.exe`) |
+| `npm run build:bridge` | Recompila a ponte de sensores C# (`resources/sensor-bridge/pc-sensor-bridge.exe`) |
 | `npm run dist` | Gera o instalador em `release/PC-Sentinel-Setup.exe` |
 
 ### Publicar uma release
@@ -97,22 +106,32 @@ O histórico térmico de longo prazo fica em `%APPDATA%\pc-sentinel\thermal_hist
 
 ```
 src/
-├── main/                  Processo principal do Electron
-│   ├── main.js            Janela, bandeja, IPC, loop de métricas, reinício como admin
-│   ├── collector.js       Coleta de sensores (ponte C#, systeminformation, APIs do Node)
-│   ├── settings-store.js  Preferências e código de pareamento
-│   ├── thermal-alerts.js  Alertas de temperatura
-│   └── …                  Rede, processos, sessões de carga, histórico térmico
-├── preload/preload.js     Ponte segura entre a interface e o processo principal
-├── renderer/              Interface React (mesma para desktop e celular)
-│   ├── App.jsx            Navegação e estrutura
-│   ├── pages/             Visão geral, Histórico, Processos, Controles, Hardware, Celular, Configurações
-│   ├── components/        Componentes visuais e gráfico
-│   ├── lib/transport.js   IPC no desktop, WebSocket/REST no celular
-│   └── styles.css         Tema Windows 11 claro/escuro
-└── server/                Servidor do celular (API, WebSocket, ações remotas)
-scripts/build-bridge.js    Compila a ponte de sensores C#
-tools/LibreHardwareMonitor Biblioteca de sensores e a ponte compilada
+├── main/                     Processo principal do Electron
+│   ├── index.js              Inicialização, loop de métricas e encerramento
+│   ├── windows.js            Janela principal, QR Code e modo compacto
+│   ├── tray.js               Ícone e menu da bandeja
+│   ├── ipc.js                Canais IPC usados pela interface
+│   ├── system.js             Administrador, iniciar com o Windows, notificações
+│   ├── settings-store.js     Preferências e código de pareamento
+│   └── telemetry/            Coletor, ponte de sensores, rede, processos, histórico e alertas
+├── preload/index.js          Ponte segura entre a interface e o processo principal
+├── renderer/                 Interface React (mesma para desktop e celular)
+└── server/                   Servidor do celular (API, WebSocket, ações remotas)
+native/sensor-bridge/         Código C# da ponte de sensores
+resources/sensor-bridge/      Ponte compilada e DLLs do LibreHardwareMonitor
+scripts/                      Scripts de build
+tests/                        Testes, na mesma estrutura de src/
+docs/                         Arquitetura e modelo de segurança
 ```
 
 Detalhes de arquitetura e do modelo de segurança em [docs/arquitetura.md](docs/arquitetura.md).
+
+## Contribuindo
+
+Veja o [guia de contribuição](CONTRIBUTING.md). Falhas de segurança devem ser relatadas em privado, conforme a
+[política de segurança](SECURITY.md).
+
+## Licença
+
+[MIT](LICENSE). A ponte de sensores usa o [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)
+(MPL-2.0); veja [os avisos de terceiros](resources/sensor-bridge/THIRD_PARTY_NOTICES.md).

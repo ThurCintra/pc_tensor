@@ -17,11 +17,17 @@ SystemCollector ──► ThermalAlertMonitor ──► Notificação do Windows
 
 | Módulo | Arquivo | Responsabilidade |
 |---|---|---|
-| Processo principal | `src/main/main.js` | Janela, bandeja, IPC, loop de métricas (1,2 s) |
-| Coletor | `src/main/collector.js` | CPU/RAM nativos, sensores via bridge C#, discos e GPU via `systeminformation` |
+| Inicialização | `src/main/index.js` | Cria os serviços, loop de métricas (1,2 s), instância única e encerramento |
+| Janelas e bandeja | `src/main/windows.js`, `src/main/tray.js` | Janela principal (destruída ao fechar para liberar RAM), QR Code, modo compacto e menu |
+| IPC | `src/main/ipc.js` | Canais expostos à interface pelo `src/preload/index.js` |
+| Coletor | `src/main/telemetry/collector.js` | Junta as fontes num snapshot; dependências injetáveis para teste |
+| Ponte de sensores | `src/main/telemetry/sensor-bridge.js` | Mantém o `pc-sensor-bridge.exe` rodando e guarda a última leitura |
+| LibreHardwareMonitor | `src/main/telemetry/lhm-client.js` | Lê o servidor web do LHM (porta 8085), se estiver aberto |
+| Métricas nativas | `src/main/telemetry/native-metrics.js` | Carga de CPU e memória pelo Node, sem abrir processos |
+| Inventário | `src/main/telemetry/hardware-info.js` | Dados estáticos da página Hardware, com `null` para o que falhar |
 | Configurações | `src/main/settings-store.js` | Preferências e token de pareamento em `%APPDATA%\pc-sentinel\settings.json` |
-| Alertas | `src/main/thermal-alerts.js` | Limites de CPU/GPU com histerese de 5 °C e cooldown configurável |
-| Histórico | `src/main/thermal-history.js` | Agregados diários e relatórios de sessão em `%APPDATA%\pc-sentinel` |
+| Alertas | `src/main/telemetry/thermal-alerts.js` | Limites de CPU/GPU com histerese de 5 °C e cooldown configurável |
+| Histórico | `src/main/telemetry/thermal-history.js` | Agregados diários e relatórios de sessão em `%APPDATA%\pc-sentinel` |
 | Servidor mobile | `src/server/mobile-server.js` | API REST, WebSocket, QR Code, firewall |
 | Ações remotas | `src/server/action-router.js` | Encerrar processo, plano de energia, Boost, mídia |
 | Interface | `src/renderer/` | React + Vite; a mesma build roda na janela e no celular |
@@ -85,10 +91,20 @@ a rede doméstica do usuário.
   rode o terminal como administrador.
 - "Iniciar com o Windows" é ativado só na primeira execução do app instalado; depois a escolha é do
   usuário (bandeja ou Configurações).
-- A ponte de sensores C# é recompilada com `npm run build:bridge` (usa o `csc.exe` do .NET Framework 4).
+- A ponte de sensores C# (`native/sensor-bridge/`) é recompilada com `npm run build:bridge` (usa o `csc.exe` do
+  .NET Framework 4) e o executável vai para `resources/sensor-bridge/`, junto das DLLs do LibreHardwareMonitor.
+  O instalador copia essa pasta para fora do `app.asar`.
 
-## Testes
+## Testes e qualidade
 
-`npm test` (Vitest). Os testes injetam um `execFile` simulado (`tests/helpers/fake-exec.js`), então
-nenhum comando real de sistema é executado, e os servidores de teste escutam só em `127.0.0.1`.
-O workflow `.github/workflows/ci.yml` roda testes e build no Windows a cada push e pull request.
+`npm run check` roda ESLint, Prettier e Vitest; é o que o CI (`.github/workflows/ci.yml`) executa no Windows a
+cada push e pull request. A estrutura de `tests/` espelha a de `src/`.
+
+Os testes nunca dependem da máquina: o coletor recebe fontes simuladas (ponte, LHM, métricas nativas,
+processos), o histórico térmico fica em memória, os comandos de sistema usam um `execFile` simulado
+(`tests/helpers/fake-exec.js`) e os servidores de teste escutam só em `127.0.0.1`.
+
+## Releases
+
+Uma tag `vX.Y.Z` (criada por `npm version`) dispara `.github/workflows/release.yml`: confere se a tag bate com o
+`package.json`, roda `npm run check`, recompila a ponte, gera o instalador e publica a release no GitHub.

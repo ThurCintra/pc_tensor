@@ -1,5 +1,14 @@
-import React from 'react';
-import { Cpu, MonitorSmartphone, MemoryStick, Wifi, HardDrive, Stethoscope, Thermometer, ListOrdered, ChevronRight } from 'lucide-react';
+import {
+  Cpu,
+  MonitorSmartphone,
+  MemoryStick,
+  Wifi,
+  HardDrive,
+  Stethoscope,
+  Thermometer,
+  ListOrdered,
+  ChevronRight,
+} from 'lucide-react';
 import { PageHeader, Card, Meter, Badge, InfoBar, Rows, Row, StatValue, EmptyState } from '../components/ui';
 import { isNum, fixed, tempLevel, loadLevel, DASH } from '../lib/format';
 import { peakOf } from '../hooks/useTelemetry';
@@ -91,7 +100,11 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
               <span>Uso</span>
               <span className="tabular">{fixed(metrics.cpu?.loadPercent)}%</span>
             </div>
-            <Meter value={metrics.cpu?.loadPercent} level={loadLevel(metrics.cpu?.loadPercent)} label="Uso do processador" />
+            <Meter
+              value={metrics.cpu?.loadPercent}
+              level={loadLevel(metrics.cpu?.loadPercent)}
+              label="Uso do processador"
+            />
           </div>
         </Card>
 
@@ -100,7 +113,9 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
           <TempCaption temp={t.gpu} limit={thresholds.gpuTempC} peak={peakOf(history, 'gpuTemp')} />
           <div className="stat-caption" style={{ marginTop: 14 }}>
             {t.gpuName || 'GPU'}
-            {isNum(t.gpuVramUsedMB) && isNum(t.gpuVramTotalMB) && ` · VRAM ${(t.gpuVramUsedMB / 1024).toFixed(1)}/${(t.gpuVramTotalMB / 1024).toFixed(1)} GB`}
+            {isNum(t.gpuVramUsedMB) &&
+              isNum(t.gpuVramTotalMB) &&
+              ` · VRAM ${(t.gpuVramUsedMB / 1024).toFixed(1)}/${(t.gpuVramTotalMB / 1024).toFixed(1)} GB`}
             {isNum(t.gpuPowerWatts) && ` · ${t.gpuPowerWatts.toFixed(0)} W`}
           </div>
         </Card>
@@ -123,7 +138,8 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
         <Card title="Rede" icon={Wifi} action={<Badge tone={netTone}>{netLabel}</Badge>}>
           <StatValue value={network.latencyMs} unit="ms" emptyText={DASH} />
           <div className="stat-caption">
-            Latência até {network.host || '1.1.1.1'} · variação {fixed(network.jitterMs, 1)} ms · perda {fixed(network.packetLossPercent)}%
+            Latência até {network.host || '1.1.1.1'} · variação {fixed(network.jitterMs, 1)} ms · perda{' '}
+            {fixed(network.packetLossPercent)}%
           </div>
         </Card>
       </div>
@@ -158,7 +174,9 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
               </div>
             ))}
             <Row label="Leitura / gravação">
-              {metrics.diskIo?.isReal ? `${fixed(metrics.diskIo.readMBps, 1)} / ${fixed(metrics.diskIo.writeMBps, 1)} MB/s` : 'Sem sensor'}
+              {metrics.diskIo?.isReal
+                ? `${fixed(metrics.diskIo.readMBps, 1)} / ${fixed(metrics.diskIo.writeMBps, 1)} MB/s`
+                : 'Sem sensor'}
             </Row>
           </Rows>
         </Card>
@@ -186,10 +204,16 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
 
         <Card title="Outros sensores" icon={Thermometer}>
           <Rows>
-            <Row label="Placa-mãe">{isNum(t.motherboard?.temp) ? `${t.motherboard.temp.toFixed(0)} °C` : 'Sem sensor'}</Row>
+            <Row label="Placa-mãe">
+              {isNum(t.motherboard?.temp) ? `${t.motherboard.temp.toFixed(0)} °C` : 'Sem sensor'}
+            </Row>
             <Row label="SSD / HD">{isNum(t.storage?.temp) ? `${t.storage.temp.toFixed(0)} °C` : 'Sem sensor'}</Row>
-            <Row label="GPU (ponto mais quente)">{isNum(t.gpuHotspotTemp) ? `${t.gpuHotspotTemp.toFixed(0)} °C` : 'Sem sensor'}</Row>
-            <Row label="Ventoinha">{metrics.fan?.isReal && isNum(metrics.fan.rpm) ? `${metrics.fan.rpm} RPM` : 'Sem sensor'}</Row>
+            <Row label="GPU (ponto mais quente)">
+              {isNum(t.gpuHotspotTemp) ? `${t.gpuHotspotTemp.toFixed(0)} °C` : 'Sem sensor'}
+            </Row>
+            <Row label="Ventoinha">
+              {metrics.fan?.isReal && isNum(metrics.fan.rpm) ? `${metrics.fan.rpm} RPM` : 'Sem sensor'}
+            </Row>
           </Rows>
         </Card>
       </div>

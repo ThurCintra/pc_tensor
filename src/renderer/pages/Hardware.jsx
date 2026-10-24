@@ -1,5 +1,19 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshCw, Copy, Download, Check, Monitor, CircuitBoard, Cpu, MonitorSmartphone, MemoryStick, HardDrive, Network, Eye, EyeOff } from 'lucide-react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
+import {
+  RefreshCw,
+  Copy,
+  Download,
+  Check,
+  Monitor,
+  CircuitBoard,
+  Cpu,
+  MonitorSmartphone,
+  MemoryStick,
+  HardDrive,
+  Network,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { PageHeader, Card, Rows, Row, InfoBar, EmptyState } from '../components/ui';
 import { getTransport } from '../lib/transport';
 import { formatBytes, formatMHz, formatUptime, text, maskMac, isNum, DASH } from '../lib/format';
@@ -29,7 +43,9 @@ function toSummary(info) {
     `Processador: ${text(info.cpu?.name)} · ${info.cpu?.cores ?? DASH} núcleos / ${info.cpu?.threads ?? DASH} threads`,
     ...(info.gpus || []).map((g) => `Placa de vídeo: ${text(g.name)} · ${formatBytes(g.vramTotalBytes, 0)}`),
     `Memória: ${formatBytes(info.ram?.totalBytes, 0)} ${text(info.ram?.type)} · ${formatMHz(info.ram?.speedMHz)} · ${text(info.ram?.channelMode)}`,
-    ...(info.disks || []).map((d) => `Disco ${text(d.label)}: ${text(d.model)} · ${d.type} · ${formatBytes(d.totalBytes, 0)}`),
+    ...(info.disks || []).map(
+      (d) => `Disco ${text(d.label)}: ${text(d.model)} · ${d.type} · ${formatBytes(d.totalBytes, 0)}`,
+    ),
   ];
   return lines.join('\n');
 }
@@ -88,7 +104,11 @@ export function Hardware() {
         </button>
       </PageHeader>
 
-      {error && <InfoBar tone="critical" title="Não foi possível ler o hardware.">{error}</InfoBar>}
+      {error && (
+        <InfoBar tone="critical" title="Não foi possível ler o hardware.">
+          {error}
+        </InfoBar>
+      )}
       {!info && !error && (
         <Card>
           <EmptyState>Lendo componentes…</EmptyState>
@@ -136,11 +156,11 @@ export function Hardware() {
             <Rows>
               {(info.gpus || []).length === 0 && <Row label="GPU">{DASH}</Row>}
               {(info.gpus || []).map((g, i) => (
-                <React.Fragment key={i}>
-                  <Row label={(info.gpus.length > 1 ? `GPU ${i + 1}` : 'Modelo')}>{text(g.name)}</Row>
+                <Fragment key={i}>
+                  <Row label={info.gpus.length > 1 ? `GPU ${i + 1}` : 'Modelo'}>{text(g.name)}</Row>
                   <Row label="Memória de vídeo">{formatBytes(g.vramTotalBytes, 0)}</Row>
                   <Row label="Driver">{text(g.driverVersion)}</Row>
-                </React.Fragment>
+                </Fragment>
               ))}
             </Rows>
           </Card>
@@ -174,7 +194,11 @@ export function Hardware() {
             title="Rede"
             icon={Network}
             action={
-              <button className="btn subtle" onClick={() => setShowMac((v) => !v)} aria-label={showMac ? 'Ocultar endereço MAC' : 'Mostrar endereço MAC'}>
+              <button
+                className="btn subtle"
+                onClick={() => setShowMac((v) => !v)}
+                aria-label={showMac ? 'Ocultar endereço MAC' : 'Mostrar endereço MAC'}
+              >
                 {showMac ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             }
@@ -183,7 +207,9 @@ export function Hardware() {
               <Row label="Adaptador">{text(info.network?.interface)}</Row>
               <Row label="Tipo">{text(info.network?.type)}</Row>
               <Row label="IP local">{text(info.network?.localIp)}</Row>
-              <Row label="Velocidade do link">{isNum(info.network?.linkSpeedMbps) ? `${info.network.linkSpeedMbps} Mbps` : DASH}</Row>
+              <Row label="Velocidade do link">
+                {isNum(info.network?.linkSpeedMbps) ? `${info.network.linkSpeedMbps} Mbps` : DASH}
+              </Row>
               <Row label="MAC">{showMac ? text(info.network?.macAddress) : maskMac(info.network?.macAddress)}</Row>
             </Rows>
           </Card>

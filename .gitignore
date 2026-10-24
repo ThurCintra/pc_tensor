@@ -1,36 +1,38 @@
-# Dependencies
+# Dependências
 node_modules/
 
-# Production builds
+# Builds
 dist/
-dist-electron/
-out/
 release/
-
-# Testing & Coverage
 coverage/
 
-# Environment variables
+# Variáveis de ambiente
 .env
-.env*.local
+.env.*
 
 # Logs
-logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
-# OS Files
+# Sistema operacional
 .DS_Store
 Thumbs.db
-*.pdb
 
-# Local SQLite / JSON databases
+# Dados locais gravados por versões antigas (hoje ficam em %APPDATA%\pc-sentinel)
 *.db
 *.db-shm
 *.db-wal
 thermal_history.json
-*.old
+
+# Artefatos de compilação da ponte de sensores
+*.pdb
 *.old*
+
+# Editor e ferramentas de IA locais (não fazem parte do projeto)
+.vscode/
+.idea/
+.agents/
+.project/
+.github/skills/
+.github/copilot-instructions.md
+docs/superpowers/
+start_dev_universal.md

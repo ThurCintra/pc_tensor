@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 
 export function Dialog({ title, children, footer, onClose }) {
   useEffect(() => {

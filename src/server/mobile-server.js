@@ -9,11 +9,14 @@ const { execFile } = require('child_process');
 const QRCode = require('qrcode');
 const { ActionRouter } = require('./action-router');
 
+const DEFAULT_PORT = 3890;
+
 // Origens de navegador autorizadas a chamar a API de outra origem (dev server Vite)
 const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 // Adaptadores virtuais/VPN que não são alcançáveis pelo celular na LAN
-const VIRTUAL_IFACE_PATTERN = /(vethernet|wsl|hyper-v|virtualbox|vbox|vmware|docker|loopback|bluetooth|tailscale|zerotier|hamachi|radmin|npcap|teredo)/i;
+const VIRTUAL_IFACE_PATTERN =
+  /(vethernet|wsl|hyper-v|virtualbox|vbox|vmware|docker|loopback|bluetooth|tailscale|zerotier|hamachi|radmin|npcap|teredo)/i;
 
 /**
  * Escolhe o IPv4 mais provável de ser alcançável pelo celular na mesma rede:
@@ -51,7 +54,7 @@ function extractToken(req) {
 
 class MobileLiveServer {
   constructor(options = {}) {
-    this.port = options.port || 3890;
+    this.port = options.port || DEFAULT_PORT;
     this.host = options.host || '0.0.0.0';
     this.collector = null;
     this.lastMetrics = null;
@@ -102,9 +105,7 @@ class MobileLiveServer {
    * No app instalado o dist fica desempacotado em app.asar.unpacked.
    */
   resolveStaticDir() {
-    const candidates = this.staticDirOption
-      ? [this.staticDirOption]
-      : [path.join(__dirname, '..', '..', 'dist')];
+    const candidates = this.staticDirOption ? [this.staticDirOption] : [path.join(__dirname, '..', '..', 'dist')];
     for (let dir of candidates) {
       if (dir.includes('app.asar') && !dir.includes('app.asar.unpacked')) {
         const unpacked = dir.replace('app.asar', 'app.asar.unpacked');
@@ -169,7 +170,10 @@ class MobileLiveServer {
       this.app.use(express.static(staticDir));
     } else {
       this.app.get('/', (req, res) => {
-        res.status(503).type('text/plain').send('Interface não compilada. Rode "npm run build" e reinicie o PC Sentinel.');
+        res
+          .status(503)
+          .type('text/plain')
+          .send('Interface não compilada. Rode "npm run build" e reinicie o PC Sentinel.');
       });
     }
 
@@ -353,14 +357,24 @@ class MobileLiveServer {
       const bound = await new Promise((resolve) => {
         serverCandidate.once('error', (err) => {
           if (err.code === 'EADDRINUSE') {
-            console.warn(`[MobileLiveServer] Porta ${targetPort} já em uso. Tentando porta alternativa ${targetPort + 1}...`);
-            try { wssCandidate.close(); } catch {}
-            try { serverCandidate.close(); } catch {}
+            console.warn(
+              `[MobileLiveServer] Porta ${targetPort} já em uso. Tentando porta alternativa ${targetPort + 1}...`,
+            );
+            try {
+              wssCandidate.close();
+            } catch {}
+            try {
+              serverCandidate.close();
+            } catch {}
             resolve(false);
           } else {
             console.error(`[MobileLiveServer] Erro ao vincular servidor na porta ${targetPort}:`, err);
-            try { wssCandidate.close(); } catch {}
-            try { serverCandidate.close(); } catch {}
+            try {
+              wssCandidate.close();
+            } catch {}
+            try {
+              serverCandidate.close();
+            } catch {}
             resolve(false);
           }
         });
@@ -398,17 +412,36 @@ class MobileLiveServer {
     this.firewallRulesEnsured.add(port);
     const ruleName = `name=PC Sentinel LAN (${port})`;
     try {
-      this.execFile('netsh', ['advfirewall', 'firewall', 'show', 'rule', ruleName], { windowsHide: true }, (showErr) => {
-        if (!showErr) return;
-        this.execFile('netsh', [
-          'advfirewall', 'firewall', 'add', 'rule', ruleName,
-          'dir=in', 'action=allow', 'protocol=TCP', `localport=${port}`,
-        ], { windowsHide: true }, (addErr) => {
-          if (addErr) {
-            console.warn(`[MobileLiveServer] Não foi possível criar a regra de firewall da porta ${port} (requer Administrador).`);
-          }
-        });
-      });
+      this.execFile(
+        'netsh',
+        ['advfirewall', 'firewall', 'show', 'rule', ruleName],
+        { windowsHide: true },
+        (showErr) => {
+          if (!showErr) return;
+          this.execFile(
+            'netsh',
+            [
+              'advfirewall',
+              'firewall',
+              'add',
+              'rule',
+              ruleName,
+              'dir=in',
+              'action=allow',
+              'protocol=TCP',
+              `localport=${port}`,
+            ],
+            { windowsHide: true },
+            (addErr) => {
+              if (addErr) {
+                console.warn(
+                  `[MobileLiveServer] Não foi possível criar a regra de firewall da porta ${port} (requer Administrador).`,
+                );
+              }
+            },
+          );
+        },
+      );
     } catch (e) {}
   }
 
@@ -428,11 +461,13 @@ class MobileLiveServer {
 
       if (!this.isTokenValid(clientToken)) {
         try {
-          ws.send(JSON.stringify({
-            type: 'auth_error',
-            error: 'UNAUTHORIZED',
-            message: 'Acesso negado: token de autenticação ausente ou inválido.',
-          }));
+          ws.send(
+            JSON.stringify({
+              type: 'auth_error',
+              error: 'UNAUTHORIZED',
+              message: 'Acesso negado: token de autenticação ausente ou inválido.',
+            }),
+          );
           ws.close(4001, 'Unauthorized');
         } catch {}
         return;
@@ -443,24 +478,28 @@ class MobileLiveServer {
 
       // Envia confirmação de boas-vindas com dados de autenticação
       const serverUrl = `http://${this.localIp}:${this.port}/?token=${this.sessionToken}`;
-      ws.send(JSON.stringify({ 
-        type: 'connected', 
-        message: 'Conectado ao PC Sentinel Mobile Stream',
-        serverInfo: {
-          url: serverUrl,
-          localIp: this.localIp,
-          port: this.port,
-          authenticated: true,
-        }
-      }));
+      ws.send(
+        JSON.stringify({
+          type: 'connected',
+          message: 'Conectado ao PC Sentinel Mobile Stream',
+          serverInfo: {
+            url: serverUrl,
+            localIp: this.localIp,
+            port: this.port,
+            authenticated: true,
+          },
+        }),
+      );
 
       // Se já houver última métrica armazenada, envia imediatamente ao novo cliente
       if (this.lastMetrics) {
         try {
-          ws.send(JSON.stringify({
-            type: 'metrics_update',
-            data: this.lastMetrics,
-          }));
+          ws.send(
+            JSON.stringify({
+              type: 'metrics_update',
+              data: this.lastMetrics,
+            }),
+          );
         } catch (e) {}
       }
 
@@ -469,28 +508,33 @@ class MobileLiveServer {
           const msg = JSON.parse(data.toString());
 
           // FASE 2: Roteador de Comandos Bidirecionais (Mobile -> PC)
-          const isActionMsg = msg.type === 'action' || 
-                              msg.type === 'ACTION' || 
-                              ['KILL_PROCESS', 'SET_POWER_PLAN', 'BOOST_CLEANUP', 'MEDIA_AUDIO_CONTROL'].includes(msg.type);
+          const isActionMsg =
+            msg.type === 'action' ||
+            msg.type === 'ACTION' ||
+            ['KILL_PROCESS', 'SET_POWER_PLAN', 'BOOST_CLEANUP', 'MEDIA_AUDIO_CONTROL'].includes(msg.type);
 
           if (isActionMsg) {
             if (this.requireAuth && !ws.isAuthenticated) {
-              ws.send(JSON.stringify({
-                type: 'action_result',
-                requestId: msg.requestId,
-                success: false,
-                error: 'UNAUTHORIZED',
-                message: 'Cliente não autenticado para executar comandos remotos.',
-              }));
+              ws.send(
+                JSON.stringify({
+                  type: 'action_result',
+                  requestId: msg.requestId,
+                  success: false,
+                  error: 'UNAUTHORIZED',
+                  message: 'Cliente não autenticado para executar comandos remotos.',
+                }),
+              );
               return;
             }
 
-            const actionPayload = (msg.type === 'action' || msg.type === 'ACTION') ? msg : { ...msg, action: msg.type };
+            const actionPayload = msg.type === 'action' || msg.type === 'ACTION' ? msg : { ...msg, action: msg.type };
             const result = await this.actionRouter.handleAction(actionPayload);
-            ws.send(JSON.stringify({
-              type: 'action_result',
-              ...result,
-            }));
+            ws.send(
+              JSON.stringify({
+                type: 'action_result',
+                ...result,
+              }),
+            );
             return;
           }
 
@@ -658,4 +702,4 @@ class MobileLiveServer {
   }
 }
 
-module.exports = { MobileLiveServer, ActionRouter, pickLocalIp };
+module.exports = { MobileLiveServer, ActionRouter, pickLocalIp, DEFAULT_PORT };

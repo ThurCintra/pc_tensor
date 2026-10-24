@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Relatar uma vulnerabilidade
+    url: https://github.com/ThurCintra/pc_tensor/security/advisories/new
+    about: Falhas de segurança devem ser relatadas em privado.

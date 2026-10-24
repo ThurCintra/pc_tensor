@@ -1,5 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, LineChart as LineChartIcon, ListOrdered, SlidersHorizontal, Cpu, Smartphone, Settings as SettingsIcon, PictureInPicture2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  LayoutDashboard,
+  LineChart as LineChartIcon,
+  ListOrdered,
+  SlidersHorizontal,
+  Cpu,
+  Smartphone,
+  Settings as SettingsIcon,
+  PictureInPicture2,
+} from 'lucide-react';
 import { getTransport } from './lib/transport';
 import { useTelemetry } from './hooks/useTelemetry';
 import { InfoBar, Badge } from './components/ui';
@@ -45,7 +54,11 @@ function readStoredPage() {
 function NavItem({ page, active, onClick }) {
   const Icon = page.icon;
   return (
-    <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
+    <button
+      className={`nav-item ${active ? 'active' : ''}`}
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+    >
       <Icon size={18} />
       <span className="nav-label-long">{page.label}</span>
       <span className="nav-label-short">{page.short}</span>
@@ -94,8 +107,8 @@ export default function App() {
           <img src="icon-192.png" alt="" width={48} height={48} />
           <h1 style={{ font: '600 24px/32px var(--font-display)', margin: '12px 0 8px' }}>Pareie este aparelho</h1>
           <p className="muted" style={{ margin: 0 }}>
-            No PC, abra o PC Sentinel, vá em <b>Celular</b> e leia o QR Code com a câmera. Se o código foi trocado, leia o
-            novo.
+            No PC, abra o PC Sentinel, vá em <b>Celular</b> e leia o QR Code com a câmera. Se o código foi trocado, leia
+            o novo.
           </p>
         </div>
       </div>
@@ -112,7 +125,9 @@ export default function App() {
           <img src="icon-192.png" alt="" />
           <div>
             <div className="brand-name">PC Sentinel</div>
-            <Badge tone={statusTone} dot>{statusLabel}</Badge>
+            <Badge tone={statusTone} dot>
+              {statusLabel}
+            </Badge>
           </div>
         </div>
 
@@ -137,9 +152,20 @@ export default function App() {
       <main className="content">
         {(status === 'offline' || notice) && (
           <div className="page" style={{ marginBottom: 16 }}>
-            {status === 'offline' && <InfoBar tone="caution" title="Sem conexão com o PC.">Tentando reconectar…</InfoBar>}
+            {status === 'offline' && (
+              <InfoBar tone="caution" title="Sem conexão com o PC.">
+                Tentando reconectar…
+              </InfoBar>
+            )}
             {notice && (
-              <InfoBar tone="caution" actions={<button className="btn subtle" onClick={() => setNotice(null)}>Fechar</button>}>
+              <InfoBar
+                tone="caution"
+                actions={
+                  <button className="btn subtle" onClick={() => setNotice(null)}>
+                    Fechar
+                  </button>
+                }
+              >
                 {notice}
               </InfoBar>
             )}

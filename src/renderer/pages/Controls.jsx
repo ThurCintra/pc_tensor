@@ -1,4 +1,3 @@
-import React from 'react';
 import { Zap, Gauge, Music, SkipBack, SkipForward, Play, Volume1, Volume2, VolumeX, X } from 'lucide-react';
 import { PageHeader, Card, InfoBar } from '../components/ui';
 import { useAction } from '../hooks/useAction';
@@ -27,7 +26,14 @@ export function Controls() {
       <PageHeader title="Controles" subtitle="Atalhos para comandar o PC daqui" />
 
       {result && (
-        <InfoBar tone={result.tone} actions={<button className="btn subtle" onClick={clearResult} aria-label="Fechar"><X size={14} /></button>}>
+        <InfoBar
+          tone={result.tone}
+          actions={
+            <button className="btn subtle" onClick={clearResult} aria-label="Fechar">
+              <X size={14} />
+            </button>
+          }
+        >
           {result.message}
         </InfoBar>
       )}
@@ -53,13 +59,18 @@ export function Controls() {
       <Card title="Plano de energia" icon={Gauge}>
         <div className="btn-group">
           {POWER_PLANS.map((plan) => (
-            <button key={plan.id} className="btn" disabled={busy === plan.id} onClick={() => run('SET_POWER_PLAN', { plan: plan.id }, plan.id)}>
+            <button
+              key={plan.id}
+              className="btn"
+              disabled={busy === plan.id}
+              onClick={() => run('SET_POWER_PLAN', { plan: plan.id }, plan.id)}
+            >
               {plan.label}
             </button>
           ))}
         </div>
         <p className="faint" style={{ margin: '10px 0 0', fontSize: 12 }}>
-          "Desempenho máximo" só aparece no Windows se o plano tiver sido habilitado no sistema.
+          &ldquo;Desempenho máximo&rdquo; só aparece no Windows se o plano tiver sido habilitado no sistema.
         </p>
       </Card>
 

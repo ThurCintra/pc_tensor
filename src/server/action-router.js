@@ -70,7 +70,7 @@ const DEFAULT_BOOST_TARGETS = [
 class ActionRouter {
   constructor(options = {}) {
     this.criticalProcesses = new Set(
-      (options.criticalProcesses || Array.from(CRITICAL_SYSTEM_PROCESSES)).map((p) => p.toLowerCase())
+      (options.criticalProcesses || Array.from(CRITICAL_SYSTEM_PROCESSES)).map((p) => p.toLowerCase()),
     );
     this.boostTargets = options.boostTargets || [...DEFAULT_BOOST_TARGETS];
     this.powerPlans = options.powerPlans || POWER_PLANS;
@@ -85,11 +85,16 @@ class ActionRouter {
    */
   getProcessName(pid) {
     return new Promise((resolve) => {
-      this.execFile('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], { windowsHide: true }, (error, stdout) => {
-        if (error) return resolve(null);
-        const match = String(stdout || '').match(/^"([^"]+)","(\d+)"/m);
-        resolve(match && Number(match[2]) === pid ? match[1] : null);
-      });
+      this.execFile(
+        'tasklist',
+        ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'],
+        { windowsHide: true },
+        (error, stdout) => {
+          if (error) return resolve(null);
+          const match = String(stdout || '').match(/^"([^"]+)","(\d+)"/m);
+          resolve(match && Number(match[2]) === pid ? match[1] : null);
+        },
+      );
     });
   }
 
@@ -312,7 +317,7 @@ class ActionRouter {
       this.boostTargets.map((t) => {
         const exe = t.toLowerCase().endsWith('.exe') ? t : `${t}.exe`;
         return [exe.toLowerCase(), exe];
-      })
+      }),
     );
     const rejectedTargets = [];
     let targets = Array.from(allowed.values());
@@ -350,8 +355,8 @@ class ActionRouter {
               }
               resolve();
             });
-          })
-      )
+          }),
+      ),
     );
 
     // Pequena pausa assíncrona não-bloqueante para o SO desalocar a memória das páginas
@@ -367,9 +372,10 @@ class ActionRouter {
       freedMB,
       closedProcesses: closedList,
       rejectedTargets,
-      message: closedList.length > 0
-        ? `Modo Boost ativado: ${closedList.length} processo(s) finalizados. Aprox. ${freedMB} MB de RAM liberados.`
-        : 'Nenhum processo em segundo plano da lista estava em execução.',
+      message:
+        closedList.length > 0
+          ? `Modo Boost ativado: ${closedList.length} processo(s) finalizados. Aprox. ${freedMB} MB de RAM liberados.`
+          : 'Nenhum processo em segundo plano da lista estava em execução.',
     };
   }
 
@@ -438,24 +444,29 @@ class ActionRouter {
     const psScript = `(New-Object -ComObject WScript.Shell).SendKeys([char]${charCode})`;
 
     return new Promise((resolve) => {
-      this.execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', psScript], { windowsHide: true }, (error) => {
-        if (error) {
-          return resolve({
-            success: false,
-            requestId,
-            error: 'MEDIA_COMMAND_FAILED',
-            message: `Falha ao acionar comando de mídia: ${error.message}`,
-          });
-        }
+      this.execFile(
+        'powershell',
+        ['-NoProfile', '-NonInteractive', '-Command', psScript],
+        { windowsHide: true },
+        (error) => {
+          if (error) {
+            return resolve({
+              success: false,
+              requestId,
+              error: 'MEDIA_COMMAND_FAILED',
+              message: `Falha ao acionar comando de mídia: ${error.message}`,
+            });
+          }
 
-        resolve({
-          success: true,
-          requestId,
-          command: cmd,
-          label,
-          message: `${label} acionado com sucesso.`,
-        });
-      });
+          resolve({
+            success: true,
+            requestId,
+            command: cmd,
+            label,
+            message: `${label} acionado com sucesso.`,
+          });
+        },
+      );
     });
   }
 }

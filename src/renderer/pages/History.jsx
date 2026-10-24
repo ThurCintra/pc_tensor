@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Thermometer, Activity, Timer } from 'lucide-react';
 import { PageHeader, Card, Segmented, Rows, Row, EmptyState } from '../components/ui';
 import { LineChart } from '../components/LineChart';
@@ -31,7 +31,7 @@ export function History({ history, metrics, lastReport }) {
       cpuLoad: summarize(samples.map((s) => s.cpuLoad)),
       ram: summarize(samples.map((s) => s.ramPercent)),
     }),
-    [samples]
+    [samples],
   );
 
   const hasTemps = samples.some((s) => isNum(s.cpuTemp) || isNum(s.gpuTemp));

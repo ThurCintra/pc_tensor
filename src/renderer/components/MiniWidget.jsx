@@ -1,4 +1,3 @@
-import React from 'react';
 import { Maximize2 } from 'lucide-react';
 import { isNum, tempLevel } from '../lib/format';
 
@@ -22,7 +21,13 @@ export function MiniWidget({ metrics, onExpand }) {
       <Metric label="CPU" value={t.cpuMain} unit="°" level={tempLevel(t.cpuMain, limits.cpuTempC)} />
       <Metric label="GPU" value={t.gpu} unit="°" level={tempLevel(t.gpu, limits.gpuTempC)} />
       <Metric label="RAM" value={metrics?.memory?.percentUsed} unit="%" />
-      <button className="btn subtle" onClick={onExpand} title="Abrir janela completa" aria-label="Abrir janela completa" style={{ marginLeft: 'auto' }}>
+      <button
+        className="btn subtle"
+        onClick={onExpand}
+        title="Abrir janela completa"
+        aria-label="Abrir janela completa"
+        style={{ marginLeft: 'auto' }}
+      >
         <Maximize2 size={14} />
       </button>
     </div>

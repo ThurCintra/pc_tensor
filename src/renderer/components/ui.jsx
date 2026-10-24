@@ -1,4 +1,3 @@
-import React from 'react';
 import { Info, AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
 import { isNum } from '../lib/format';
 

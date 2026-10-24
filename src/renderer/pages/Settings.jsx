@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PageHeader, Switch, InfoBar, Badge } from '../components/ui';
 import { getTransport } from '../lib/transport';
 
@@ -49,7 +49,12 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
     }
   };
 
-  if (!saved || !draft) return <div className="page"><PageHeader title="Configurações" /></div>;
+  if (!saved || !draft)
+    return (
+      <div className="page">
+        <PageHeader title="Configurações" />
+      </div>
+    );
 
   const numberField = (key, saveAs) => (
     <input
@@ -65,11 +70,18 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
   return (
     <div className="page" style={{ maxWidth: 860 }}>
       <PageHeader title="Configurações" />
-      {error && <InfoBar tone="critical" title="Não foi possível salvar.">{error}</InfoBar>}
+      {error && (
+        <InfoBar tone="critical" title="Não foi possível salvar.">
+          {error}
+        </InfoBar>
+      )}
 
       <h2 className="section-title">Alertas de temperatura</h2>
       <div>
-        <Setting title="Avisar quando esquentar" description="Notificação do Windows, aviso no app e vibração no celular">
+        <Setting
+          title="Avisar quando esquentar"
+          description="Notificação do Windows, aviso no app e vibração no celular"
+        >
           <Switch checked={saved.alerts.enabled} onChange={(enabled) => save({ alerts: { enabled } })} />
         </Setting>
         <Setting title="Limite do processador" description="Em °C, entre 50 e 105">
@@ -78,7 +90,10 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
         <Setting title="Limite da placa de vídeo" description="Em °C, entre 50 e 105">
           {numberField('gpuTempC', (v) => ({ alerts: { gpuTempC: v } }))}
         </Setting>
-        <Setting title="Intervalo entre avisos" description="Minutos mínimos entre duas notificações do mesmo componente">
+        <Setting
+          title="Intervalo entre avisos"
+          description="Minutos mínimos entre duas notificações do mesmo componente"
+        >
           {numberField('cooldownMinutes', (v) => ({ alerts: { cooldownMinutes: v } }))}
         </Setting>
       </div>
@@ -87,7 +102,9 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
       <div>
         <Setting
           title="Iniciar com o Windows"
-          description={saved.autoLaunch?.supported ? 'Abre na bandeja ao entrar no Windows' : 'Disponível no app instalado'}
+          description={
+            saved.autoLaunch?.supported ? 'Abre na bandeja ao entrar no Windows' : 'Disponível no app instalado'
+          }
         >
           <Switch
             checked={Boolean(saved.autoLaunch?.enabled)}
@@ -100,9 +117,13 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
           description="Necessário para ler temperaturas, ventoinhas e criar a regra do firewall"
         >
           {appInfo?.isElevated ? (
-            <Badge tone="success" dot>Ativo</Badge>
+            <Badge tone="success" dot>
+              Ativo
+            </Badge>
           ) : appInfo?.canRelaunchElevated ? (
-            <button className="btn" onClick={onRelaunchAsAdmin}>Reiniciar como administrador</button>
+            <button className="btn" onClick={onRelaunchAsAdmin}>
+              Reiniciar como administrador
+            </button>
           ) : (
             <Badge tone="caution">Rode o terminal como administrador</Badge>
           )}
@@ -111,7 +132,10 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
 
       <h2 className="section-title">Celular</h2>
       <div>
-        <Setting title="Porta do servidor" description="Trocar reinicia a transmissão; os celulares precisam ler o novo QR Code">
+        <Setting
+          title="Porta do servidor"
+          description="Trocar reinicia a transmissão; os celulares precisam ler o novo QR Code"
+        >
           {numberField('mobilePort', (v) => ({ mobilePort: v }))}
         </Setting>
       </div>
@@ -128,11 +152,20 @@ export function Settings({ appInfo, onRelaunchAsAdmin }) {
           spellCheck={false}
           value={draft.boostTargets}
           onChange={(e) => setDraft({ ...draft, boostTargets: e.target.value })}
-          onBlur={() => save({ boostTargets: draft.boostTargets.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) })}
+          onBlur={() =>
+            save({
+              boostTargets: draft.boostTargets
+                .split(/\r?\n/)
+                .map((l) => l.trim())
+                .filter(Boolean),
+            })
+          }
         />
       </div>
 
-      <p className="faint" style={{ fontSize: 12 }}>PC Sentinel {appInfo?.version}</p>
+      <p className="faint" style={{ fontSize: 12 }}>
+        PC Sentinel {appInfo?.version}
+      </p>
     </div>
   );
 }

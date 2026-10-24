@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { PageHeader, Card, InfoBar, EmptyState } from '../components/ui';
 import { Dialog } from '../components/Dialog';
@@ -21,7 +21,14 @@ export function Processes({ metrics }) {
       <PageHeader title="Processos" subtitle="Programas que mais usam processador e memória agora" />
 
       {result && (
-        <InfoBar tone={result.tone} actions={<button className="btn subtle" onClick={clearResult} aria-label="Fechar"><X size={14} /></button>}>
+        <InfoBar
+          tone={result.tone}
+          actions={
+            <button className="btn subtle" onClick={clearResult} aria-label="Fechar">
+              <X size={14} />
+            </button>
+          }
+        >
           {result.message}
         </InfoBar>
       )}
@@ -43,7 +50,9 @@ export function Processes({ metrics }) {
             <tbody>
               {processes.map((p) => (
                 <tr key={p.pid}>
-                  <td className="name" title={p.name}>{p.name}</td>
+                  <td className="name" title={p.name}>
+                    {p.name}
+                  </td>
                   <td className="hide-sm faint">{p.pid}</td>
                   <td className="num">{fixed(p.cpuPercent, 1)}%</td>
                   <td className="num">{fixed(p.memoryMB)} MB</td>
@@ -69,8 +78,12 @@ export function Processes({ metrics }) {
           onClose={() => setConfirm(null)}
           footer={
             <>
-              <button className="btn accent" onClick={kill}>Encerrar</button>
-              <button className="btn" onClick={() => setConfirm(null)}>Cancelar</button>
+              <button className="btn accent" onClick={kill}>
+                Encerrar
+              </button>
+              <button className="btn" onClick={() => setConfirm(null)}>
+                Cancelar
+              </button>
             </>
           }
         >

@@ -1,0 +1,168 @@
+const { app } = require('electron');
+const path = require('path');
+
+const { SystemCollector } = require('./telemetry/collector');
+const { ThermalAlertMonitor } = require('./telemetry/thermal-alerts');
+const { MobileLiveServer } = require('../server/mobile-server');
+const { SettingsStore } = require('./settings-store');
+const { WindowManager } = require('./windows');
+const { TrayController } = require('./tray');
+const { registerIpcHandlers } = require('./ipc');
+const system = require('./system');
+
+const METRICS_INTERVAL_MS = 1200;
+
+// Mesma pasta de dados em dev (`electron .`) e no app instalado: %APPDATA%\pc-sentinel
+app.setPath('userData', path.join(app.getPath('appData'), 'pc-sentinel'));
+
+// Desativa o processo de renderer reserva do Chromium e não reduz timers em segundo plano
+app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+
+/** Estado compartilhado entre janelas, bandeja e IPC. */
+const ctx = {
+  isQuitting: false,
+  isElevated: false,
+  autoLaunch: system.autoLaunch,
+  settingsStore: null,
+  collector: null,
+  mobileServer: null,
+  alertMonitor: null,
+  windows: null,
+  tray: null,
+  metricsTimer: null,
+};
+
+const actions = {
+  showMain: () => ctx.windows.showMain(),
+  showQr: () => ctx.windows.showQr(),
+  refreshTray: () => ctx.tray.refresh(),
+
+  setAutoLaunch(enabled) {
+    ctx.autoLaunch.set(enabled);
+    ctx.tray.refresh();
+  },
+
+  async boost() {
+    const result = await ctx.mobileServer.actionRouter.boostCleanup();
+    system.notify({ title: 'PC Sentinel - Modo Boost', body: result.message });
+  },
+
+  shutdown() {
+    ctx.isQuitting = true;
+    clearInterval(ctx.metricsTimer);
+    ctx.collector?.stop();
+    ctx.collector = null;
+  },
+
+  quit() {
+    actions.shutdown();
+    ctx.mobileServer?.stop();
+    ctx.windows.destroyAll();
+    app.quit();
+  },
+
+  /**
+   * Reabre o app como administrador para liberar os sensores. Solta a trava de instância única e
+   * a porta antes, para a nova instância assumir; se o UAC for recusado, segue como estava.
+   */
+  async relaunchAsAdmin() {
+    if (ctx.isElevated) return { success: false, error: 'ALREADY_ELEVATED' };
+
+    app.releaseSingleInstanceLock();
+    await ctx.mobileServer.stop();
+
+    if (!(await system.launchElevatedCopy())) {
+      app.requestSingleInstanceLock();
+      await ctx.mobileServer.start();
+      return { success: false, error: 'UAC_DECLINED', message: 'A elevação foi cancelada.' };
+    }
+
+    actions.shutdown();
+    setTimeout(() => app.quit(), 200);
+    return { success: true };
+  },
+};
+
+function startMetricsLoop() {
+  let busy = false;
+  const tick = async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      const metrics = await ctx.collector.getMetricsSnapshot();
+      metrics.alerts = ctx.alertMonitor.evaluate(metrics);
+      ctx.windows.send('metrics:update', metrics);
+      ctx.mobileServer.broadcastMetrics(metrics);
+    } catch (err) {
+      console.error('[PC Sentinel] Erro no loop de métricas:', err);
+    } finally {
+      busy = false;
+    }
+  };
+
+  tick();
+  ctx.metricsTimer = setInterval(tick, METRICS_INTERVAL_MS);
+  ctx.collector.on('SESSION_REPORT_READY', (report) => ctx.windows.send('session:report', report));
+}
+
+async function bootstrap() {
+  system.autoLaunch.configureOnFirstRun();
+  ctx.isElevated = await system.detectElevation();
+
+  ctx.settingsStore = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
+  const settings = ctx.settingsStore.get();
+
+  ctx.collector = new SystemCollector({ thermalDbPath: system.resolveThermalDbPath() });
+  ctx.mobileServer = new MobileLiveServer({
+    port: settings.mobilePort,
+    collector: ctx.collector,
+    sessionToken: ctx.settingsStore.sessionToken,
+  });
+  ctx.mobileServer.actionRouter.setBoostTargets(settings.boostTargets);
+
+  ctx.alertMonitor = new ThermalAlertMonitor({
+    getSettings: () => ctx.settingsStore.get(),
+    notify: (alert) =>
+      system.notify({
+        title: `PC Sentinel - ${alert.label} acima de ${alert.limit} °C`,
+        body: `${alert.label} atingiu ${alert.temp.toFixed(1)} °C. Verifique a refrigeração ou reduza a carga.`,
+        urgency: 'critical',
+      }),
+  });
+
+  try {
+    await ctx.mobileServer.start();
+  } catch (err) {
+    console.warn('[PC Sentinel] Servidor do celular não iniciou:', err.message);
+  }
+
+  ctx.windows = new WindowManager(ctx);
+  ctx.tray = new TrayController(ctx, actions);
+
+  registerIpcHandlers(ctx, actions);
+  ctx.tray.create();
+  await ctx.windows.createMain();
+  startMetricsLoop();
+}
+
+// Instância única: abrir o atalho com o app rodando só traz a janela existente para frente
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => actions.showMain());
+  app.on('before-quit', () => {
+    ctx.isQuitting = true;
+  });
+  app.on('activate', () => ctx.windows && actions.showMain());
+
+  // Fechar a janela só esconde o app na bandeja; ele encerra pelo menu "Sair"
+  app.on('window-all-closed', async () => {
+    if (!ctx.isQuitting) return;
+    actions.shutdown();
+    await ctx.mobileServer?.stop();
+    app.quit();
+  });
+
+  app.whenReady().then(bootstrap);
+}

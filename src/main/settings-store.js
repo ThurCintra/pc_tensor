@@ -2,9 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { DEFAULT_BOOST_TARGETS } = require('../server/action-router');
+const { DEFAULT_PORT } = require('../server/mobile-server');
 
 const DEFAULT_SETTINGS = {
-  mobilePort: 3890,
+  mobilePort: DEFAULT_PORT,
   alerts: {
     enabled: true,
     cpuTempC: 85,
@@ -60,7 +61,7 @@ function sanitizeSettings(input = {}, base = DEFAULT_SETTINGS) {
       cooldownMinutes: clampNumber(
         alertsIn.cooldownMinutes ?? base.alerts.cooldownMinutes,
         LIMITS.cooldownMinutes,
-        base.alerts.cooldownMinutes
+        base.alerts.cooldownMinutes,
       ),
     },
     boostTargets: sanitizeBoostTargets(input.boostTargets ?? base.boostTargets, base.boostTargets),
@@ -92,9 +93,8 @@ class SettingsStore {
       raw = {};
     }
     this.settings = sanitizeSettings(raw);
-    this.sessionToken = typeof raw.sessionToken === 'string' && raw.sessionToken.length >= 32
-      ? raw.sessionToken
-      : crypto.randomUUID();
+    this.sessionToken =
+      typeof raw.sessionToken === 'string' && raw.sessionToken.length >= 32 ? raw.sessionToken : crypto.randomUUID();
     this.save();
   }
 
