@@ -15,5 +15,5 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vitest/globals"]
   },
-  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "tests/**/*.ts"]
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"]
 }

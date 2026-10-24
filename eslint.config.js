@@ -55,7 +55,7 @@ module.exports = [
 
   // Testes (Vitest com require de módulos CommonJS)
   {
-    files: ['tests/**/*.{js,ts}'],
+    files: ['tests/**/*.{js,ts,tsx}'],
     languageOptions: {
       sourceType: 'module',
       globals: { ...globals.node, ...globals.vitest },

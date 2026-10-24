@@ -34,6 +34,28 @@ describe('MobileLiveServer', () => {
     }
   });
 
+  it('usa a porta seguinte quando a configurada já está ocupada, sem exceção não tratada', async () => {
+    const net = require('net');
+    const blocker = net.createServer();
+    await new Promise((resolve) => blocker.listen(3893, '127.0.0.1', resolve));
+    const uncaught = [];
+    const onUncaught = (err) => uncaught.push(err);
+    process.on('uncaughtException', onUncaught);
+
+    try {
+      serverInstance = createServer({ port: 3893 });
+      const info = await serverInstance.start();
+      await new Promise((resolve) => setTimeout(resolve, 50)); // dá tempo de um erro tardio aparecer
+
+      expect(info.isRunning).toBe(true);
+      expect(info.port).toBe(3894);
+      expect(uncaught).toEqual([]);
+    } finally {
+      process.off('uncaughtException', onUncaught);
+      await new Promise((resolve) => blocker.close(resolve));
+    }
+  });
+
   it('deve inicializar o servidor e gerar URL com token efêmero e QR Code', async () => {
     serverInstance = createServer({ port: 3899 });
     const info = await serverInstance.start();

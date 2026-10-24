@@ -353,6 +353,9 @@ class MobileLiveServer {
         maxPayload: 64 * 1024,
         verifyClient: ({ origin, req }) => this.isOriginAllowed(origin, req.headers.host),
       });
+      // O WebSocketServer repete os erros do servidor HTTP (ex.: EADDRINUSE). Sem este ouvinte o erro vira
+      // exceção não tratada e o Electron mostra uma janela de erro; quem trata a porta ocupada é o 'error' abaixo
+      wssCandidate.on('error', () => {});
 
       const bound = await new Promise((resolve) => {
         serverCandidate.once('error', (err) => {

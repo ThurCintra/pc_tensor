@@ -1,0 +1,45 @@
+/*
+ * Tailwind 4 para as telas do Pit Wall (src/renderer/pit-wall).
+ * Sem o preflight (reset de estilos) para não mudar as telas existentes; as cores apontam para os mesmos
+ * tokens de styles.css, então o tema claro/escuro do Windows vale também aqui.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@source './pit-wall';
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-subtle: var(--subtle);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-secondary);
+  --color-fg-3: var(--text-tertiary);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-text);
+  --color-ok: var(--success);
+  --color-ok-bg: var(--success-bg);
+  --color-warn: var(--caution);
+  --color-warn-bg: var(--caution-bg);
+  --color-crit: var(--critical);
+  --color-crit-bg: var(--critical-bg);
+  --color-track: var(--track);
+  --radius-card: var(--radius);
+  --font-sans: var(--font);
+  --font-display: var(--font-display);
+  --font-mono: var(--mono);
+}
+
+/* Fluxo de ar do Raio-X: tracejado andando na direção do ar */
+@theme {
+  --animate-flow: flow 2s linear infinite;
+  @keyframes flow {
+    to {
+      stroke-dashoffset: -24;
+    }
+  }
+}

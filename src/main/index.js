@@ -14,8 +14,10 @@ const system = require('./system');
 
 const METRICS_INTERVAL_MS = 1200;
 
-// Mesma pasta de dados em dev (`electron .`) e no app instalado: %APPDATA%\pc-sentinel
-app.setPath('userData', path.join(app.getPath('appData'), 'pc-sentinel'));
+// Mesma pasta de dados em dev (`electron .`) e no app instalado: %APPDATA%\pc-sentinel.
+// PC_SENTINEL_DATA_DIR usa outra pasta (e outra trava de instância única): roda uma cópia de
+// desenvolvimento ao lado do app instalado sem misturar configurações.
+app.setPath('userData', process.env.PC_SENTINEL_DATA_DIR || path.join(app.getPath('appData'), 'pc-sentinel'));
 
 // Desativa o processo de renderer reserva do Chromium e não reduz timers em segundo plano
 app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess');

@@ -8,6 +8,7 @@ import {
   Smartphone,
   Settings as SettingsIcon,
   PictureInPicture2,
+  Flag,
 } from 'lucide-react';
 import { getTransport } from './lib/transport';
 import { useTelemetry } from './hooks/useTelemetry';
@@ -22,9 +23,11 @@ import { Controls } from './pages/Controls';
 import { Hardware } from './pages/Hardware';
 import { Connection } from './pages/Connection';
 import { Settings } from './pages/Settings';
+import { PitWall } from './pit-wall/PitWall';
 
 const PAGES = [
   { id: 'overview', label: 'Visão geral', short: 'Início', icon: LayoutDashboard },
+  { id: 'pitwall', label: 'Pit Wall', short: 'Pit Wall', icon: Flag },
   { id: 'history', label: 'Histórico', short: 'Histórico', icon: LineChartIcon },
   { id: 'processes', label: 'Processos', short: 'Processos', icon: ListOrdered },
   { id: 'controls', label: 'Controles', short: 'Controles', icon: SlidersHorizontal },
@@ -194,6 +197,7 @@ export default function App() {
         {currentPage === 'hardware' && <Hardware {...pageProps} />}
         {currentPage === 'connection' && <Connection {...pageProps} />}
         {currentPage === 'settings' && <Settings {...pageProps} />}
+        {currentPage === 'pitwall' && <PitWall />}
       </main>
 
       {sessionReport && <SessionReportDialog report={sessionReport} onClose={dismissSessionReport} />}

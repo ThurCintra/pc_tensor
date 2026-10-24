@@ -22,6 +22,8 @@ export interface SentinelState {
   status: ConnectionStatus;
   hello: HelloData | null;
   frame: TelemetryFrame | null;
+  /** Quando o último quadro chegou (ms, relógio deste aparelho). */
+  frameAt: number | null;
   /** Alertas mais recentes primeiro (até 20). */
   alerts: ReceivedAlert[];
   /** Relatório de travamento aberto no Post-Mortem (null quando não há queda para analisar). */
@@ -46,7 +48,7 @@ export interface SentinelStoreOptions {
  * Os componentes leem por useSentinel (useSyncExternalStore); o estado é imutável a cada mudança.
  */
 export class SentinelStore {
-  private state: SentinelState = { status: 'idle', hello: null, frame: null, alerts: [], crash: null };
+  private state: SentinelState = { status: 'idle', hello: null, frame: null, frameAt: null, alerts: [], crash: null };
   private readonly listeners = new Set<() => void>();
   private readonly createSocket: (options: SentinelSocketOptions) => SentinelSocket;
   private readonly storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
@@ -130,9 +132,10 @@ export class SentinelStore {
   }
 
   private onTelemetry(frame: TelemetryFrame): void {
-    this.recorder.record(frame, this.now());
+    const frameAt = this.now();
+    this.recorder.record(frame, frameAt);
     if (!this.liveMarked) this.writeMarker();
-    this.update({ frame });
+    this.update({ frame, frameAt });
   }
 
   private onAlert(alert: AlertData): void {

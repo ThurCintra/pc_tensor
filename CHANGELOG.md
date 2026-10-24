@@ -20,6 +20,12 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
   espelhado no IndexedDB do celular e relatórios de travamento, vibração por tipo de alerta durante jogos e o hook
   `useSentinel`. As telas que usam essa camada chegam na próxima etapa.
 - TypeScript no projeto: `npm run typecheck`, incluído no `npm run check`.
+- Página **Pit Wall** (Etapa 4) com Bento Grid que muda de layout conforme o app em foco no PC (FPS competitivo,
+  jogo gráfico, trabalho, uso leve): temperatura com contagem regressiva até o throttling, Juiz de Lag, Raio-X do
+  gabinete em SVG com cores pela temperatura, taxímetro de energia em R$ com tarifa editável, Stutter Buster,
+  saúde térmica, eficiência do silício e a tela Post-Mortem com a linha do tempo até a queda.
+- Tailwind 4 para as telas novas, sem reset de estilos e usando os mesmos tokens de cor do app.
+- `PC_SENTINEL_DATA_DIR` roda uma cópia de desenvolvimento ao lado do app instalado.
 
 - Verificação de atualizações sempre que o app abre: a versão nova é baixada em segundo plano e instalada ao
   reiniciar (botão "Reiniciar e atualizar" no aviso ou em Configurações → Atualizações).
@@ -35,6 +41,8 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ### Corrigido
 
+- Com a porta 3890 ocupada por outro programa, o app mostrava "A JavaScript error occurred in the main process"
+  (EADDRINUSE) e não abria a janela; agora usa a porta seguinte.
 - A página Hardware não dispara mais uma renderização extra ao abrir.
 - O filtro de tempo do Histórico usa a amostra mais recente como referência, e não o relógio a cada renderização.
 
