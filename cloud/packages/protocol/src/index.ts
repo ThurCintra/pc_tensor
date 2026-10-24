@@ -107,7 +107,8 @@ export type CommandAction = Command['action'];
 export const CommandResult = z.object({
   ok: z.boolean(),
   message: z.string().max(500),
-  data: z.record(z.string(), z.unknown()).optional(),
+  // .nullish(): agentes em outras linguagens costumam mandar null em vez de omitir o campo
+  data: z.record(z.string(), z.unknown()).nullish(),
 });
 export type CommandResult = z.infer<typeof CommandResult>;
 

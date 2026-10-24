@@ -1,4 +1,5 @@
 using System.Net;
+using PcSentinel.Service.Cloud;
 using PcSentinel.Service.Context;
 using PcSentinel.Service.Contracts;
 using PcSentinel.Service.Control;
@@ -8,14 +9,22 @@ using PcSentinel.Service.Persistence;
 using PcSentinel.Service.Sensors;
 using PcSentinel.Service.Server;
 
-// Serviço de telemetria do PC Sentinel. Uso: pc-sentinel-service [--Port 3891] [--DataDir <pasta>]
-// Contrato: docs/contrato-websocket.md
+// Serviço de telemetria do PC Sentinel.
+// Uso: pc-sentinel-service [--Port 3891] [--DataDir <pasta>] [--ParentPid <pid>]
+//      pc-sentinel-service --pair <código de 6 dígitos> --cloud-url <https://site>   (vincula à nuvem e sai)
+//      pc-sentinel-service --dump-sensors
+// Contrato local: docs/contrato-websocket.md; nuvem: cloud/README.md
 
 if (args.Contains("--dump-sensors"))
 {
     using var sampler = new HardwareSampler();
     sampler.Dump(Console.Out);
-    return;
+    return 0;
+}
+
+if (args.Contains("--pair"))
+{
+    return await PairFromCommandLineAsync(args);
 }
 
 var builder = WebApplication.CreateBuilder(args);
@@ -40,9 +49,22 @@ builder.Services.AddSingleton<HardwareSampler>();
 builder.Services.AddSingleton<NetworkProbe>();
 builder.Services.AddSingleton<ForegroundProfiler>();
 builder.Services.AddSingleton<StutterBuster>();
-builder.Services.AddSingleton<CommandHandler>();
+builder.Services.AddSingleton(sp => new CommandHandler(
+    sp.GetRequiredService<StutterBuster>(),
+    sp.GetRequiredService<TelemetryDb>(),
+    sp.GetRequiredService<EnergySettings>(),
+    sp.GetRequiredService<ILogger<CommandHandler>>(),
+    () => sp.GetService<CloudConnector>()));
 builder.Services.AddSingleton<WebSocketHub>();
-builder.Services.AddHostedService<TelemetryEngine>();
+// Registrados como singleton e como serviço em segundo plano: o conector da nuvem e o handler de comandos
+// precisam da mesma instância que roda
+builder.Services.AddSingleton<TelemetryEngine>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TelemetryEngine>());
+builder.Services.AddSingleton(new CloudCredentialStore(dataDir));
+builder.Services.AddSingleton(builder.Configuration.GetSection("Cloud").Get<CloudOptions>() ?? new CloudOptions());
+builder.Services.AddHttpClient<CloudApiClient>(http => http.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddSingleton<CloudConnector>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CloudConnector>());
 
 var app = builder.Build();
 bool elevated = WindowsMemory.IsElevated();
@@ -82,7 +104,8 @@ app.Map("/ws", async (HttpContext http, PairingToken token, WebSocketHub hub, Th
         ThrottleLimits: new ThrottleLimits(limits.CpuLimitC, limits.GpuLimitC),
         Profiles: Profiles.All,
         Capabilities: new Capabilities(StutterBuster: elevated, ForegroundDetection: true, Frametime: false));
-    await hub.RunClientAsync(socket, hello, http.RequestAborted);
+    bool isLocal = http.Connection.RemoteIpAddress is { } ip && IPAddress.IsLoopback(ip);
+    await hub.RunClientAsync(socket, hello, isLocal, http.RequestAborted);
 });
 
 app.Lifetime.ApplicationStopping.Register(() => app.Services.GetRequiredService<StutterBuster>().Restore());
@@ -112,6 +135,7 @@ if (builder.Configuration.GetValue<int?>("ParentPid") is int parentPid)
 
 app.Logger.LogInformation("PC Sentinel Service ouvindo em ws://0.0.0.0:{Port}/ws (dados em {DataDir})", port, dataDir);
 await app.RunAsync();
+return 0;
 
 // Navegadores só conectam de páginas servidas pelo próprio PC (qualquer porta) ou do dev server local.
 // Clientes nativos (Electron, testes) não mandam Origin e são aceitos; o token continua obrigatório.
@@ -121,6 +145,41 @@ static bool IsAllowedOrigin(HttpRequest request)
     if (string.IsNullOrEmpty(origin)) return true;
     if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
     return uri.IsLoopback || string.Equals(uri.Host, request.Host.Host, StringComparison.OrdinalIgnoreCase);
+}
+
+// --pair: pareia sem o app (instalação remota, servidores). Grava as credenciais na pasta de dados e sai.
+static async Task<int> PairFromCommandLineAsync(string[] args)
+{
+    string? Arg(string name) => Array.IndexOf(args, name) is var i && i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+    string? code = Arg("--pair");
+    if (code is null || !Uri.TryCreate(Arg("--cloud-url"), UriKind.Absolute, out var apiUrl))
+    {
+        Console.Error.WriteLine("Uso: pc-sentinel-service --pair <código> --cloud-url <https://site> [--DataDir <pasta>]");
+        return 2;
+    }
+    string dataDir = Arg("--DataDir") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "pc-sentinel");
+
+    using var sampler = new HardwareSampler();
+    var sample = sampler.Sample();
+    var hardware = new PairingHardware(
+        Environment.MachineName,
+        sample.CpuName,
+        sample.GpuName,
+        sample.MemoryTotalMb is double mb ? Math.Round(mb / 1024, 1) : null);
+
+    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+    try
+    {
+        var credentials = await new CloudApiClient(http).PairAsync(apiUrl, code.Trim(), hardware, CancellationToken.None);
+        new CloudCredentialStore(dataDir).Save(credentials, AlertLimits.Default);
+        Console.WriteLine($"PC pareado: {credentials.DeviceId}. A conexão começa quando o serviço iniciar.");
+        return 0;
+    }
+    catch (CloudApiException ex)
+    {
+        Console.Error.WriteLine($"Não foi possível parear: {ex.Message}");
+        return 1;
+    }
 }
 
 public partial class Program;

@@ -38,6 +38,8 @@ export interface RealtimeOptions {
   alertCooldownMs?: number;
   pingIntervalMs?: number;
   pingTimeoutMs?: number;
+  /** A cada quanto tempo confere se os PCs conectados ainda existem (removidos no site saem). */
+  revalidateIntervalMs?: number;
   now?: () => number;
   log?: Pick<Console, 'info' | 'warn' | 'error'>;
 }
@@ -372,9 +374,29 @@ export function createRealtimeServer(options: RealtimeOptions) {
     });
   });
 
+  // PC removido no site (outro processo): a conexão aberta não cai sozinha, então confere periodicamente
+  async function revalidateAgents() {
+    for (const [deviceId, state] of agents) {
+      try {
+        const device = await store.getDevice(deviceId);
+        if (!device) {
+          log.info(`[agent] ${deviceId} removido no site; desconectando`);
+          state.socket.disconnect(true);
+        } else {
+          state.device = device; // limites e nome atualizados no site
+        }
+      } catch (err) {
+        log.error('[agent] revalidação', err);
+      }
+    }
+  }
+  const revalidateTimer = setInterval(() => void revalidateAgents(), options.revalidateIntervalMs ?? 60_000);
+  revalidateTimer.unref();
+
   return {
     io,
     httpServer,
+    revalidateAgents,
     presence,
     /** Marca todos offline (ninguém conectado ao subir) e começa a ouvir. */
     async listen(port: number, host = '0.0.0.0'): Promise<number> {
@@ -384,6 +406,7 @@ export function createRealtimeServer(options: RealtimeOptions) {
       return typeof address === 'object' && address ? address.port : port;
     },
     async close(): Promise<void> {
+      clearInterval(revalidateTimer);
       for (const timer of pendingCrashes.values()) clearTimeout(timer);
       pendingCrashes.clear();
       await new Promise<void>((resolve) => io.close(() => resolve()));

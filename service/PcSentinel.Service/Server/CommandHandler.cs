@@ -1,4 +1,5 @@
 using System.Text.Json;
+using PcSentinel.Service.Cloud;
 using PcSentinel.Service.Contracts;
 using PcSentinel.Service.Control;
 using PcSentinel.Service.Persistence;
@@ -22,11 +23,16 @@ public sealed class CommandHandler(
     StutterBuster stutterBuster,
     TelemetryDb db,
     EnergySettings energy,
-    ILogger<CommandHandler> logger)
+    ILogger<CommandHandler> logger,
+    // Resolvido só quando usado: o conector depende do laço de telemetria, que depende do hub, que depende daqui
+    Func<CloudConnector?>? cloudAccessor = null)
 {
     private readonly SemaphoreSlim _stutterBusterGate = new(1, 1);
 
-    public async Task<CommandResult> HandleAsync(ReadOnlyMemory<byte> json, CancellationToken ct)
+    private CloudConnector? Cloud => cloudAccessor?.Invoke();
+
+    /// <param name="isLocal">A conexão veio do próprio PC (loopback). Comandos da nuvem exigem isso.</param>
+    public async Task<CommandResult> HandleAsync(ReadOnlyMemory<byte> json, CancellationToken ct, bool isLocal = true)
     {
         ClientCommand? command;
         try
@@ -51,6 +57,13 @@ public sealed class CommandHandler(
                 CommandActions.StutterBuster => await RunStutterBusterAsync(command.Id, ct),
                 CommandActions.SetEnergyConfig => SetEnergyConfig(command),
                 CommandActions.GetSiliconCurve => GetSiliconCurve(command),
+                CommandActions.CloudPair or CommandActions.CloudUnpair or CommandActions.CloudStatus when !isLocal =>
+                    CommandResult.Failure(command.Id, "Disponível só no app do próprio PC."),
+                CommandActions.CloudPair or CommandActions.CloudUnpair or CommandActions.CloudStatus when Cloud is null =>
+                    CommandResult.Failure(command.Id, "Conexão com a nuvem indisponível neste serviço."),
+                CommandActions.CloudPair => await CloudPairAsync(command, ct),
+                CommandActions.CloudUnpair => CloudUnpair(command.Id),
+                CommandActions.CloudStatus => CommandResult.Success(command.Id, Cloud!.Status),
                 _ => CommandResult.Failure(command.Id, $"Comando desconhecido: {command.Action}."),
             };
         }
@@ -113,6 +126,39 @@ public sealed class CommandHandler(
             return CommandResult.Failure(command.Id, "Componente deve ser \"cpu\" ou \"gpu\".");
         return CommandResult.Success(command.Id, new { component, points = db.GetSiliconCurve(component) });
     }
+
+    private async Task<CommandResult> CloudPairAsync(ClientCommand command, CancellationToken ct)
+    {
+        string? code = ReadString(command.Params, "code")?.Trim();
+        string? url = ReadString(command.Params, "apiUrl")?.Trim();
+        if (code is null || code.Length != 6 || !code.All(char.IsAsciiDigit))
+            return CommandResult.Failure(command.Id, "Digite o código de 6 dígitos mostrado no site.");
+        if (url is null || !Uri.TryCreate(url, UriKind.Absolute, out var apiUrl) || apiUrl.Scheme is not ("https" or "http"))
+            return CommandResult.Failure(command.Id, "Endereço do site inválido.");
+        // Fora do próprio PC (desenvolvimento), o token só trafega cifrado
+        if (apiUrl.Scheme == "http" && !apiUrl.IsLoopback)
+            return CommandResult.Failure(command.Id, "Use o endereço https:// do site.");
+
+        try
+        {
+            return CommandResult.Success(command.Id, await Cloud!.PairAsync(apiUrl, code, ct));
+        }
+        catch (CloudApiException ex)
+        {
+            return CommandResult.Failure(command.Id, ex.Message);
+        }
+    }
+
+    private CommandResult CloudUnpair(string? id)
+    {
+        Cloud!.Unpair();
+        return CommandResult.Success(id, Cloud!.Status);
+    }
+
+    private static string? ReadString(JsonElement obj, string name) =>
+        obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 
     private static double? ReadNumber(JsonElement obj, string name) =>
         obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number

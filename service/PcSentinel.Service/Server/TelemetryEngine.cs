@@ -47,6 +47,12 @@ public sealed class TelemetryEngine(
     /// <summary>Último quadro montado (para quem conecta entre dois ticks ou para diagnóstico).</summary>
     public TelemetryFrame? Latest { get; private set; }
 
+    /// <summary>
+    /// Cada quadro com os alertas que ele disparou e o instante (s, relógio monotônico). Usado pelo conector da
+    /// nuvem; os assinantes rodam no laço de telemetria e precisam ser rápidos (só enfileirar).
+    /// </summary>
+    public event Action<TelemetryFrame, IReadOnlyList<AlertData>, double>? FrameProduced;
+
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         energySettings.TariffBrlPerKwh = db.GetSetting(EnergySettings.TariffKey, EnergySettings.DefaultTariffBrlPerKwh);
@@ -131,7 +137,9 @@ public sealed class TelemetryEngine(
 
         Latest = frame;
         hub.Broadcast(MessageTypes.Telemetry, frame);
-        foreach (var alert in _alerts.Evaluate(frame)) hub.Broadcast(MessageTypes.Alert, alert);
+        var alerts = _alerts.Evaluate(frame);
+        foreach (var alert in alerts) hub.Broadcast(MessageTypes.Alert, alert);
+        FrameProduced?.Invoke(frame, alerts, t);
     }
 
     /// <summary>Grava energia, linhas de base e curva de silício, e reavalia a degradação.</summary>

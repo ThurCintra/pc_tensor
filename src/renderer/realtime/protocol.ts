@@ -150,6 +150,22 @@ export interface CommandMap {
   STUTTER_BUSTER: [Record<string, never>, StutterBusterResult];
   SET_ENERGY_CONFIG: [{ tariffBrlPerKwh?: number; baseLoadW?: number }, { tariffBrlPerKwh: number; baseLoadW: number }];
   GET_SILICON_CURVE: [{ component: 'cpu' | 'gpu' }, { component: 'cpu' | 'gpu'; points: SiliconCurvePoint[] }];
+  /** pc_tensor Cloud (só do app no próprio PC). */
+  CLOUD_PAIR: [{ code: string; apiUrl: string }, CloudStatus];
+  CLOUD_UNPAIR: [Record<string, never>, CloudStatus];
+  CLOUD_STATUS: [Record<string, never>, CloudStatus];
+}
+
+export type CloudState = 'UNPAIRED' | 'CONNECTING' | 'CONNECTED' | 'OFFLINE' | 'UNAUTHORIZED';
+
+/** Estado da conexão do serviço com o pc_tensor Cloud. */
+export interface CloudStatus {
+  state: CloudState;
+  apiUrl: string | null;
+  deviceId: string | null;
+  mode: 'LIVE' | 'HEARTBEAT' | null;
+  lastError: string | null;
+  connectedSince: string | null;
 }
 
 export type CommandAction = keyof CommandMap;

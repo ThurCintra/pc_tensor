@@ -6,7 +6,7 @@ import { unauthorized } from '@/server/errors';
 
 /**
  * GET /api/agent/me — o agente confere se o token ainda vale (o PC pode ter sido removido no site)
- * e recebe a configuração de alertas. Autenticação: cabeçalho X-Device-Token.
+ * e recebe a configuração de alertas e o endereço do tempo real. Autenticação: cabeçalho X-Device-Token.
  */
 export const GET = route(async (request) => {
   const device = await authenticateDevice(getDb(), request.headers.get('x-device-token'));
@@ -17,5 +17,7 @@ export const GET = route(async (request) => {
     maxCpuTempAlert: device.maxCpuTempAlert,
     maxGpuTempAlert: device.maxGpuTempAlert,
     alertsEnabled: device.alertsEnabled,
+    // Endereço público do servidor de tempo real; o agente conecta em <realtimeUrl>/agent
+    realtimeUrl: process.env.REALTIME_URL ?? null,
   });
 });

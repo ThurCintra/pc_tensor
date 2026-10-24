@@ -32,7 +32,7 @@ public sealed class WebSocketHub(CommandHandler commands, ILogger<WebSocketHub> 
             ServerEnvelope.Create(type, Interlocked.Increment(ref _seq), data), Protocol.Json);
 
     /// <summary>Atende um cliente até ele desconectar.</summary>
-    public async Task RunClientAsync(WebSocket socket, HelloData hello, CancellationToken ct)
+    public async Task RunClientAsync(WebSocket socket, HelloData hello, bool isLocal, CancellationToken ct)
     {
         var id = Guid.NewGuid();
         var channel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(QueueCapacity)
@@ -48,7 +48,7 @@ public sealed class WebSocketHub(CommandHandler commands, ILogger<WebSocketHub> 
         try
         {
             var send = SendLoopAsync(socket, channel.Reader, linked.Token);
-            await ReceiveLoopAsync(socket, channel.Writer, linked.Token);
+            await ReceiveLoopAsync(socket, channel.Writer, isLocal, linked.Token);
             await linked.CancelAsync();
             await send;
         }
@@ -85,7 +85,7 @@ public sealed class WebSocketHub(CommandHandler commands, ILogger<WebSocketHub> 
         catch (OperationCanceledException) { }
     }
 
-    private async Task ReceiveLoopAsync(WebSocket socket, ChannelWriter<byte[]> replies, CancellationToken ct)
+    private async Task ReceiveLoopAsync(WebSocket socket, ChannelWriter<byte[]> replies, bool isLocal, CancellationToken ct)
     {
         var buffer = new byte[MaxClientMessageBytes];
         while (socket.State == WebSocketState.Open && !ct.IsCancellationRequested)
@@ -107,7 +107,7 @@ public sealed class WebSocketHub(CommandHandler commands, ILogger<WebSocketHub> 
             if (result.MessageType == WebSocketMessageType.Close) return;
             if (result.MessageType != WebSocketMessageType.Text) continue;
 
-            var reply = await commands.HandleAsync(buffer.AsMemory(0, length), ct);
+            var reply = await commands.HandleAsync(buffer.AsMemory(0, length), ct, isLocal);
             replies.TryWrite(Serialize(MessageTypes.CommandResult, reply));
         }
     }

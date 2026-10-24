@@ -95,6 +95,34 @@ Regras:
 Limitação atual: a presença e as conexões ficam na memória de uma instância. Para rodar mais de uma, use o
 adaptador Redis do Socket.IO e troque a contagem de espectadores por `fetchSockets()`.
 
+## Agente no PC (Etapa 3)
+
+O agente é o serviço nativo do PC Sentinel (`service/PcSentinel.Service`, .NET 10), que já lê os sensores. A parte
+da nuvem fica em `service/PcSentinel.Service/Cloud`:
+
+- **Pareamento:** em *Configurações → pc_tensor Cloud* no app, o usuário informa o endereço do site e o código de
+  6 dígitos (uma vez). Sem o app: `pc-sentinel-service --pair 123456 --cloud-url https://site`. O hardware (CPU,
+  GPU, RAM) vai junto para o cadastro. O `DeviceToken` fica em `%APPDATA%pc-sentinelcloud.json`, cifrado com o
+  DPAPI do Windows (inútil se copiado para outro PC ou outra conta).
+- **Conexão reversa:** o PC conecta de dentro para fora em `<REALTIME_URL>/agent` (informado por
+  `/api/agent/me`). Reconecta sozinho com espera exponencial de 1 s a 60 s e variação aleatória de ±20%.
+- **Modos:** em `HEARTBEAT` manda 1 resumo por minuto (médias, máxima e Wh); em `LIVE`, o quadro completo a cada
+  250 ms. O resumo por minuto continua no modo ao vivo, para o histórico não ter buracos. Resumos e alertas que
+  não saíram ficam numa fila (2 horas de resumos) e são enviados quando a conexão volta.
+- **Alertas:** `OVERHEAT` na hora em que a temperatura passa do limite definido no site (rearma 3 °C abaixo),
+  `PREDICTIVE_THROTTLE` (derivada térmica) e `DUST_WARNING` (degradação térmica).
+- **Comandos:** um `switch` fechado com `ACTION_CLEAN_RAM` (lista standby via `NtSetSystemInformation`),
+  `ACTION_OPTIMIZE_PRIORITY` (prioridade BelowNormal por 5 minutos) e `ACTION_UPDATE_CONFIG` (limites entre 50 e
+  110 °C). Qualquer outra coisa é recusada; nada vindo da rede vira comando de terminal.
+- **PC removido no site:** o servidor derruba a conexão em até 1 minuto, o agente recebe 401, apaga o token e para
+  de tentar até um novo pareamento.
+
+Teste de ponta a ponta (serviço C# real + servidor de tempo real + navegador, banco em PGlite):
+
+```bash
+npm run e2e:agent
+```
+
 ## Hospedagem
 
 - **Site:** Vercel (ou qualquer host de Next.js). Use a URL com pool do banco (no Neon, o host `-pooler`).

@@ -171,6 +171,12 @@ Campos de cada bloco:
 | `SET_ENERGY_CONFIG` | `{ "tariffBrlPerKwh": 0.95, "baseLoadW": 60 }` | A configuração salva |
 | `GET_SILICON_CURVE` | `{ "component": "cpu" }` | `{ "points": [{ "clockMhz": 5300, "vcoreV": 1.27, "powerW": 86.2, "samples": 412 }] }` |
 | `PING` | `{}` | `{ "pong": true }` |
+| `CLOUD_PAIR` | `{ "code": "123456", "apiUrl": "https://site" }` | Estado da nuvem (abaixo). Só aceito do próprio PC (loopback) |
+| `CLOUD_UNPAIR` | `{}` | Estado da nuvem. Só do próprio PC |
+| `CLOUD_STATUS` | `{}` | `{ "state": "CONNECTED", "apiUrl", "deviceId", "mode": "LIVE", "lastError", "connectedSince" }` |
+
+`state` da nuvem: `UNPAIRED`, `CONNECTING`, `CONNECTED`, `OFFLINE` (tentando de novo) ou `UNAUTHORIZED` (PC removido no
+site; precisa parear de novo).
 
 Comando desconhecido ou parâmetro inválido devolve `ok: false` com `error` em português.
 

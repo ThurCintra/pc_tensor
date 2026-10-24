@@ -18,6 +18,11 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
     presença (`HEARTBEAT` de 60 s sem espectadores, `LIVE` de 250 ms com o painel aberto), comandos só da lista
     permitida e detecção de travamento sob carga.
   - 30 testes com PostgreSQL em memória (PGlite) e job próprio no CI.
+- **Agente da nuvem** (Etapa 3) no serviço nativo: pareamento pelo app (*Configurações → pc_tensor Cloud*) ou por
+  `--pair`, token cifrado com DPAPI, conexão reversa com reconexão exponencial, modos HEARTBEAT/LIVE com fila
+  offline, alertas de superaquecimento pelos limites do site e comandos só da lista permitida. Teste de ponta a
+  ponta com o serviço real (`npm run e2e:agent` em `cloud/`).
+- O servidor de tempo real derruba em até 1 minuto a conexão de um PC removido no site.
 
 ## [1.2.0] - 2026-10-24
 

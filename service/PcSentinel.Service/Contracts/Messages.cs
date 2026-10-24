@@ -46,6 +46,11 @@ public static class CommandActions
     public const string SetEnergyConfig = "SET_ENERGY_CONFIG";
     public const string GetSiliconCurve = "GET_SILICON_CURVE";
     public const string Ping = "PING";
+
+    // pc_tensor Cloud: só aceitos de clientes no próprio PC (o app), nunca do celular pela rede
+    public const string CloudPair = "CLOUD_PAIR";
+    public const string CloudUnpair = "CLOUD_UNPAIR";
+    public const string CloudStatus = "CLOUD_STATUS";
 }
 
 public sealed record HelloData(

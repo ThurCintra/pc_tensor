@@ -46,7 +46,8 @@ public sealed class StutterBuster : IDisposable
         return new StutterBusterResult(standbyOk, freedMb, standbyError, lowered, (int)RestoreAfter.TotalSeconds);
     }
 
-    private static (bool Ok, double? FreedMb, string? Error) PurgeStandby()
+    /// <summary>Só a limpeza da lista standby (comando ACTION_CLEAN_RAM da nuvem).</summary>
+    public static (bool Ok, double? FreedMb, string? Error) PurgeStandby()
     {
         try
         {
@@ -70,7 +71,8 @@ public sealed class StutterBuster : IDisposable
         }
     }
 
-    private List<string> LowerBackgroundPriorities()
+    /// <summary>Só o rebaixamento de prioridades (comando ACTION_OPTIMIZE_PRIORITY da nuvem).</summary>
+    public List<string> LowerBackgroundPriorities()
     {
         var (foregroundExe, foregroundPid) = ForegroundProfiler.GetForegroundProcess();
         int self = Environment.ProcessId;

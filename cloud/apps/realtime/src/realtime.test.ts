@@ -229,6 +229,19 @@ describe('histórico e alertas', () => {
   });
 });
 
+describe('PC removido no site', () => {
+  it('a revalidação derruba a conexão do agente', async () => {
+    const { deviceId, token } = await createDevice('removido@example.com');
+    const agent = await open('/agent', token);
+    const dropped = nextEvent<string>(agent, 'disconnect');
+
+    await db.device.delete({ where: { id: deviceId } });
+    await server.revalidateAgents();
+
+    expect(await dropped).toBe('io server disconnect');
+  });
+});
+
 describe('comandos remotos (allowlist)', () => {
   it('repassa ao PC só as ações permitidas e devolve a resposta', async () => {
     const { userId, deviceId, token } = await createDevice('cmd@example.com');

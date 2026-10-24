@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { PageHeader, Switch, InfoBar, Badge } from '../components/ui';
 import { getTransport } from '../lib/transport';
 import { describeUpdateState } from '../hooks/useUpdates';
+import { CloudSection } from '../cloud/CloudSection';
 
 function Setting({ title, description, children }) {
   return (
@@ -149,6 +150,9 @@ export function Settings({ appInfo, updates, onRelaunchAsAdmin }) {
           )}
         </Setting>
       </div>
+
+      <h2 className="section-title">pc_tensor Cloud</h2>
+      <CloudSection />
 
       <h2 className="section-title">Celular</h2>
       <div>
