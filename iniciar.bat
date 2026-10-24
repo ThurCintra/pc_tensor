@@ -58,36 +58,28 @@ if not exist "node_modules\" (
         pause
         exit /b 1
     )
-    echo.
-    echo [2/5] Compilando interface de producao (Vite)...
-    call npm run build
 ) else (
-    echo [1/5] Verificando se ha atualizacoes no repositorio...
-    where git >nul 2>&1
-    if !errorlevel! == 0 (
-        if exist ".git\" (
-            echo Conectando ao GitHub para verificar novidades...
-            git pull origin main
-            if !errorlevel! == 0 (
-                echo [OK] Repositorio sincronizado com a versao mais recente.
-            )
-        )
-    )
-    if not exist "dist\" (
-        echo [2/5] Compilando interface desktop...
-        call npm run build
-    ) else (
-        echo [2/5] Dependencias e build verificados.
-    )
+    rem Atualizacoes NAO sao baixadas automaticamente: este script roda como
+    rem Administrador e executaria qualquer codigo novo do repositorio sem revisao.
+    rem Para atualizar, rode "git pull" manualmente e revise as mudancas.
+    echo [1/5] Dependencias encontradas.
+)
+
+echo [2/5] Compilando interface de producao (Vite)...
+call npm run build
+if !errorlevel! neq 0 (
+    echo [ERRO] Falha ao compilar a interface.
+    pause
+    exit /b 1
 )
 
 :: ============================================================================
 :: 5. LIBERAÇÃO DA PORTA DO FIREWALL PARA O SMARTPHONE (PORTA 3890)
 :: ============================================================================
 echo [3/5] Verificando Firewall do Windows para conexao mobile...
-netsh advfirewall firewall show rule name="PC Sentinel Mobile HUD" >nul 2>&1
+netsh advfirewall firewall show rule name="PC Sentinel LAN (3890)" >nul 2>&1
 if %errorlevel% neq 0 (
-    netsh advfirewall firewall add rule name="PC Sentinel Mobile HUD" dir=in action=allow protocol=TCP localport=3890 profile=any >nul 2>&1
+    netsh advfirewall firewall add rule name="PC Sentinel LAN (3890)" dir=in action=allow protocol=TCP localport=3890 profile=any >nul 2>&1
     echo [OK] Regra criada: Porta 3890 liberada para o HUD mobile.
 ) else (
     echo [OK] Firewall configurado corretamente (Porta 3890 liberada).
@@ -115,13 +107,14 @@ echo [OK] Sensores fisicos de CPU (AMD Ryzen) e GPU (AMD Radeon) prontos.
 echo.
 echo ======================================================================
 echo    PC SENTINEL PRONTO PARA EXECUCAO!
-echo    - Dashboard Desktop: http://localhost:5173
+echo    - Dashboard Desktop: janela do PC Sentinel (build de producao)
 echo    - Mobile HUD: http://[SEU_IP_LOCAL]:3890 (QR Code na interface)
 echo    - Pressione Ctrl+C nesta janela quando desejar encerrar.
+echo    - Para desenvolvimento com hot reload use: npm run dev
 echo ======================================================================
 echo.
 
-call npm run dev
+call npm start
 
 if %errorlevel% neq 0 (
     echo.

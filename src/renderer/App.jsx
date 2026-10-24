@@ -25,6 +25,7 @@ import { HistoryTimelinePanel } from './components/telemetry/HistoryTimelinePane
 import { DiagnosticsPanel } from './components/telemetry/DiagnosticsPanel';
 import { SessionReportModal } from './components/telemetry/SessionReportModal';
 import { MiniWidget } from './components/widget/MiniWidget';
+import { backendUrl, backendWsUrl, authHeaders } from './lib/backend';
 
 export default function App() {
   const [metrics, setMetrics] = useState(null);
@@ -89,9 +90,7 @@ export default function App() {
       };
     } else {
       // Modo Web: Conecta ao WebSocket do backend Sentinel sem gerar dados falsos
-      const host = window.location.hostname || '127.0.0.1';
-
-      fetch(`http://${host}:3890/api/info`)
+      fetch(backendUrl('/api/info'), { headers: authHeaders() })
         .then((res) => res.json())
         .then((info) => {
           setMobileInfo(info);
@@ -104,14 +103,14 @@ export default function App() {
 
       const connectWebSocket = () => {
         try {
-          ws = new WebSocket(`ws://${host}:3890`);
+          ws = new WebSocket(backendWsUrl());
           ws.onmessage = (event) => {
             try {
               const msg = JSON.parse(event.data);
               if (msg.type === 'metrics_update' && msg.data) {
                 handleNewMetrics(msg.data);
-              } else if (msg.type === 'SESSION_REPORT_READY' && msg.report) {
-                setSessionReport(msg.report);
+              } else if (msg.type === 'session_report' && msg.data) {
+                setSessionReport(msg.data);
               }
             } catch (e) {}
           };
@@ -145,10 +144,9 @@ export default function App() {
       setIsMobileServerRunning(updatedInfo.isRunning);
     } else {
       try {
-        const host = window.location.hostname || '127.0.0.1';
-        const res = await fetch(`http://${host}:3890/api/server/toggle`, {
+        const res = await fetch(backendUrl('/api/server/toggle'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ shouldStart: nextState }),
         });
         if (res.ok) {

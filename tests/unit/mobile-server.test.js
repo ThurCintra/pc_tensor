@@ -1,6 +1,28 @@
 import { describe, it, expect, afterEach } from 'vitest';
-const { MobileLiveServer } = require('../../src/server/mobile-server');
+const EventEmitter = require('events');
+const { MobileLiveServer, pickLocalIp } = require('../../src/server/mobile-server');
+const { ActionRouter } = require('../../src/server/action-router');
+const { createFakeExec } = require('../helpers/fake-exec');
 const WebSocket = require('ws');
+
+// Servidor de teste isolado: só loopback, sem regras de firewall e sem comandos reais
+function createServer(options = {}) {
+  const execFile = createFakeExec();
+  return new MobileLiveServer({
+    host: '127.0.0.1',
+    manageFirewall: false,
+    actionRouter: new ActionRouter({ execFile }),
+    ...options,
+  });
+}
+
+function openClient(url, options) {
+  const client = new WebSocket(url, options);
+  return new Promise((resolve, reject) => {
+    client.on('open', () => resolve(client));
+    client.on('error', reject);
+  });
+}
 
 describe('MobileLiveServer', () => {
   let serverInstance = null;
@@ -13,7 +35,7 @@ describe('MobileLiveServer', () => {
   });
 
   it('deve inicializar o servidor e gerar URL com token efêmero e QR Code', async () => {
-    serverInstance = new MobileLiveServer({ port: 3899 });
+    serverInstance = createServer({ port: 3899 });
     const info = await serverInstance.start();
 
     expect(info.isRunning).toBe(true);
@@ -25,8 +47,65 @@ describe('MobileLiveServer', () => {
     expect(info.qrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
   });
 
+  it('não deve expor o token de sessão em /api/info sem autenticação', async () => {
+    serverInstance = createServer({ port: 3893 });
+    const info = await serverInstance.start();
+
+    const anon = await (await fetch('http://127.0.0.1:3893/api/info')).json();
+    expect(anon.authenticated).toBe(false);
+    expect(anon.sessionToken).toBeUndefined();
+    expect(anon.qrCodeDataUrl).toBeUndefined();
+    expect(JSON.stringify(anon)).not.toContain(info.sessionToken);
+
+    const authed = await (await fetch('http://127.0.0.1:3893/api/info', {
+      headers: { Authorization: `Bearer ${info.sessionToken}` },
+    })).json();
+    expect(authed.authenticated).toBe(true);
+    expect(authed.sessionToken).toBe(info.sessionToken);
+  });
+
+  it('deve bloquear requisições vindas de origens de navegador não autorizadas', async () => {
+    serverInstance = createServer({ port: 3892 });
+    const info = await serverInstance.start();
+
+    const evil = await fetch(`http://127.0.0.1:3892/api/action?token=${info.sessionToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://site-malicioso.example' },
+      body: JSON.stringify({ action: 'BOOST_CLEANUP' }),
+    });
+    expect(evil.status).toBe(403);
+    expect(evil.headers.get('access-control-allow-origin')).toBeNull();
+
+    const preflight = await fetch('http://127.0.0.1:3892/api/info', {
+      method: 'OPTIONS',
+      headers: { Origin: 'http://localhost:5173' },
+    });
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
+
+    // WebSocket com Origin estranha também é recusado no handshake
+    await expect(
+      openClient(`ws://127.0.0.1:3892/?token=${info.sessionToken}`, { origin: 'https://site-malicioso.example' })
+    ).rejects.toThrow();
+  });
+
+  it('deve exigir token nos endpoints de dados e de controle', async () => {
+    serverInstance = createServer({ port: 3891 });
+    await serverInstance.start();
+
+    for (const [method, path] of [['GET', '/api/metrics'], ['GET', '/api/hardware'], ['POST', '/api/server/toggle'], ['POST', '/api/action']]) {
+      const res = await fetch(`http://127.0.0.1:3891${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: method === 'POST' ? JSON.stringify({ shouldStart: false }) : undefined,
+      });
+      expect(res.status, `${method} ${path}`).toBe(401);
+    }
+    expect(serverInstance.isRunning).toBe(true);
+  });
+
   it('deve rejeitar conexões WebSocket sem token de autenticação quando requireAuth estiver ativo', async () => {
-    serverInstance = new MobileLiveServer({ port: 3895, requireAuth: true });
+    serverInstance = createServer({ port: 3895, requireAuth: true });
     await serverInstance.start();
 
     // Tenta conectar sem token
@@ -43,15 +122,11 @@ describe('MobileLiveServer', () => {
   });
 
   it('deve aceitar conexão WebSocket com token válido e transmitir dados de telemetria', async () => {
-    serverInstance = new MobileLiveServer({ port: 3898, requireAuth: true });
+    serverInstance = createServer({ port: 3898, requireAuth: true });
     const info = await serverInstance.start();
 
-    const client = new WebSocket(`ws://127.0.0.1:3898/?token=${info.sessionToken}`);
+    const client = await openClient(`ws://127.0.0.1:3898/?token=${info.sessionToken}`);
     const receivedMessages = [];
-
-    await new Promise((resolve) => {
-      client.on('open', resolve);
-    });
 
     client.on('message', (data) => {
       receivedMessages.push(JSON.parse(data.toString()));
@@ -78,11 +153,10 @@ describe('MobileLiveServer', () => {
   });
 
   it('deve processar comandos remotos bidirecionais (Stream Deck) via WebSocket', async () => {
-    serverInstance = new MobileLiveServer({ port: 3894, requireAuth: true });
+    serverInstance = createServer({ port: 3894, requireAuth: true });
     const info = await serverInstance.start();
 
-    const client = new WebSocket(`ws://127.0.0.1:3894/?token=${info.sessionToken}`);
-    await new Promise((resolve) => client.on('open', resolve));
+    const client = await openClient(`ws://127.0.0.1:3894/?token=${info.sessionToken}`);
 
     const received = [];
     client.on('message', (data) => received.push(JSON.parse(data.toString())));
@@ -114,8 +188,8 @@ describe('MobileLiveServer', () => {
 
     // Aguarda respostas do WebSocket
     const startTime = Date.now();
-    while (received.length < 3 && Date.now() - startTime < 6000) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    while (received.filter((m) => m.type === 'action_result').length < 3 && Date.now() - startTime < 6000) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     // Valida resposta da mídia
@@ -130,11 +204,12 @@ describe('MobileLiveServer', () => {
     expect(killRes.success).toBe(false);
     expect(killRes.error).toBe('INVALID_PID');
 
-    // Valida boost cleanup
+    // Valida boost cleanup: alvo fora da lista configurada é rejeitado
     const boostRes = received.find((m) => m.requestId === 'req_boost_1');
     expect(boostRes).toBeDefined();
     expect(boostRes.success).toBe(true);
     expect(boostRes.freedMB).toBeTypeOf('number');
+    expect(boostRes.rejectedTargets).toEqual(['NonExistentAppTest.exe']);
 
     client.close();
   });
@@ -152,18 +227,19 @@ describe('MobileLiveServer', () => {
       }),
     };
 
-    serverInstance = new MobileLiveServer({ port: 3897, collector: mockCollector });
+    serverInstance = createServer({ port: 3897, collector: mockCollector });
     const info = await serverInstance.start();
+    const auth = { Authorization: `Bearer ${info.sessionToken}` };
 
     // Teste REST /api/hardware
-    const hwRes = await fetch('http://127.0.0.1:3897/api/hardware');
+    const hwRes = await fetch('http://127.0.0.1:3897/api/hardware', { headers: auth });
     expect(hwRes.status).toBe(200);
     const hwData = await hwRes.json();
     expect(hwData.os.osName).toBe('Test OS');
     expect(hwData.cpu.name).toBe('Test CPU');
 
     // Teste REST /api/metrics
-    const metricsRes = await fetch('http://127.0.0.1:3897/api/metrics');
+    const metricsRes = await fetch('http://127.0.0.1:3897/api/metrics', { headers: auth });
     expect(metricsRes.status).toBe(200);
     const metricsData = await metricsRes.json();
     expect(metricsData.temperatures.cpuMain).toBe(45.0);
@@ -172,7 +248,7 @@ describe('MobileLiveServer', () => {
     const actionUnauth = await fetch('http://127.0.0.1:3897/api/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'MEDIA_AUDIO_CONTROL', command: 'MUTE_MIC' }),
+      body: JSON.stringify({ action: 'MEDIA_AUDIO_CONTROL', command: 'VOLUME_UP' }),
     });
     expect(actionUnauth.status).toBe(401);
 
@@ -180,7 +256,7 @@ describe('MobileLiveServer', () => {
     const actionAuth = await fetch(`http://127.0.0.1:3897/api/action?token=${info.sessionToken}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'MEDIA_AUDIO_CONTROL', command: 'MUTE_MIC' }),
+      body: JSON.stringify({ action: 'MEDIA_AUDIO_CONTROL', command: 'VOLUME_UP' }),
     });
     expect(actionAuth.status).toBe(200);
     const actionData = await actionAuth.json();
@@ -195,11 +271,10 @@ describe('MobileLiveServer', () => {
       getMetricsSnapshot: async () => ({}),
     };
 
-    serverInstance = new MobileLiveServer({ port: 3896, collector: mockCollector });
+    serverInstance = createServer({ port: 3896, collector: mockCollector });
     const info = await serverInstance.start();
 
-    const client = new WebSocket(`ws://127.0.0.1:3896/?token=${info.sessionToken}`);
-    await new Promise((resolve) => client.on('open', resolve));
+    const client = await openClient(`ws://127.0.0.1:3896/?token=${info.sessionToken}`);
 
     const received = [];
     client.on('message', (d) => received.push(JSON.parse(d.toString())));
@@ -224,5 +299,55 @@ describe('MobileLiveServer', () => {
     expect(reportMsg.data.sessionId).toBe('sess_abc');
 
     client.close();
+  });
+
+  it('não deve duplicar o listener de SESSION_REPORT_READY ao trocar de coletor', () => {
+    const first = new EventEmitter();
+    const second = new EventEmitter();
+    serverInstance = createServer({ collector: first });
+
+    serverInstance.setCollector(first);
+    serverInstance.setCollector(second);
+    serverInstance.setCollector(second);
+
+    expect(first.listenerCount('SESSION_REPORT_READY')).toBe(0);
+    expect(second.listenerCount('SESSION_REPORT_READY')).toBe(1);
+  });
+
+  it('deve criar a regra de firewall só quando ela ainda não existir', async () => {
+    const existing = createFakeExec();
+    const s1 = new MobileLiveServer({ execFile: existing, manageFirewall: true });
+    s1.ensureFirewallRule(3890);
+    s1.ensureFirewallRule(3890);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(existing.calls.map((c) => c.args[2])).toEqual(['show']);
+
+    const missing = createFakeExec({
+      netsh: (args) => (args[2] === 'show' ? { error: new Error('No rules match') } : {}),
+    });
+    const s2 = new MobileLiveServer({ execFile: missing, manageFirewall: true });
+    s2.ensureFirewallRule(3890);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(missing.calls.map((c) => c.args[2])).toEqual(['show', 'add']);
+    expect(missing.calls[1].args).toContain('localport=3890');
+  });
+});
+
+describe('pickLocalIp', () => {
+  it('deve preferir a interface física da LAN a adaptadores virtuais (WSL/Hyper-V)', () => {
+    const ip = pickLocalIp({
+      'vEthernet (WSL)': [{ family: 'IPv4', address: '172.29.80.1', internal: false }],
+      'Loopback Pseudo-Interface 1': [{ family: 'IPv4', address: '127.0.0.1', internal: true }],
+      'Ethernet': [
+        { family: 'IPv6', address: 'fe80::1', internal: false },
+        { family: 'IPv4', address: '192.168.0.42', internal: false },
+      ],
+    });
+    expect(ip).toBe('192.168.0.42');
+  });
+
+  it('deve ignorar link-local e cair para loopback sem interfaces válidas', () => {
+    expect(pickLocalIp({ 'Wi-Fi': [{ family: 'IPv4', address: '169.254.10.2', internal: false }] })).toBe('127.0.0.1');
+    expect(pickLocalIp({})).toBe('127.0.0.1');
   });
 });

@@ -715,14 +715,17 @@ class SystemCollector extends EventEmitter {
         lastReport: sessionState.lastReport,
       },
       degradationAlert: this.cachedDegradationResult,
+      // Sem bridge de sensores no modo injetado: nada de valores inventados
       fan: {
-        rpm: 1200,
-        pwmPercent: 50,
+        rpm: null,
+        pwmPercent: 0,
         maxRpm: 2400,
+        isReal: false,
       },
       diskIo: {
-        readMBps: 15.2,
-        writeMBps: 8.4,
+        readMBps: 0,
+        writeMBps: 0,
+        isReal: false,
       },
     };
   }

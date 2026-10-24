@@ -4,7 +4,8 @@ const path = require('path');
 /**
  * ThermalHistoryStore
  * Persistência ultraleve de agregados diários e detecção de degradação térmica ao longo do tempo.
- * Utiliza better-sqlite3 com fallback transparente para assegurar 100% de estabilidade.
+ * O armazenamento padrão é um arquivo JSON. better-sqlite3 é opcional (não está nas
+ * dependências por ser módulo nativo e exigir rebuild para o Electron) e só é usado se instalado.
  */
 class ThermalHistoryStore {
   constructor(dbPath = null) {

@@ -75,6 +75,22 @@ class ActionRouter {
     this.boostTargets = options.boostTargets || [...DEFAULT_BOOST_TARGETS];
     this.powerPlans = options.powerPlans || POWER_PLANS;
     this.collector = options.collector || null;
+    // Injeção do executor permite testar sem disparar comandos reais no sistema
+    this.execFile = options.execFile || execFile;
+  }
+
+  /**
+   * Resolve o nome real do executável de um PID via tasklist.
+   * Retorna null se o processo não existir.
+   */
+  getProcessName(pid) {
+    return new Promise((resolve) => {
+      this.execFile('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], { windowsHide: true }, (error, stdout) => {
+        if (error) return resolve(null);
+        const match = String(stdout || '').match(/^"([^"]+)","(\d+)"/m);
+        resolve(match && Number(match[2]) === pid ? match[1] : null);
+      });
+    });
   }
 
   setCollector(collector) {
@@ -154,23 +170,54 @@ class ActionRouter {
       };
     }
 
-    // 1. Valida nome do processo contra whitelist de processos críticos do Windows
-    const nameToCheck = (procName || '').toLowerCase().trim();
-    if (nameToCheck) {
-      const normalizedName = nameToCheck.endsWith('.exe') ? nameToCheck : `${nameToCheck}.exe`;
-      if (this.criticalProcesses.has(normalizedName) || this.criticalProcesses.has(nameToCheck)) {
-        return {
-          success: false,
-          requestId,
-          error: 'CRITICAL_PROCESS_BLOCKED',
-          message: `O processo "${procName}" é essencial para o funcionamento do Windows e não pode ser encerrado.`,
-        };
-      }
+    if (numPid === process.pid || numPid === process.ppid) {
+      return {
+        success: false,
+        requestId,
+        error: 'CRITICAL_PROCESS_BLOCKED',
+        message: 'O próprio PC Sentinel não pode ser encerrado remotamente.',
+      };
     }
 
-    // 2. Executa encerramento assíncrono via taskkill não-bloqueante
+    const isCritical = (name) => {
+      const n = (name || '').toLowerCase().trim();
+      if (!n) return false;
+      return this.criticalProcesses.has(n) || this.criticalProcesses.has(n.endsWith('.exe') ? n : `${n}.exe`);
+    };
+
+    // 1. Rejeita de imediato nomes críticos informados pelo cliente
+    if (isCritical(procName)) {
+      return {
+        success: false,
+        requestId,
+        error: 'CRITICAL_PROCESS_BLOCKED',
+        message: `O processo "${procName}" é essencial para o funcionamento do Windows e não pode ser encerrado.`,
+      };
+    }
+
+    // 2. Valida o nome REAL do PID: o nome enviado pelo cliente não é confiável
+    const realName = await this.getProcessName(numPid);
+    if (!realName) {
+      return {
+        success: false,
+        requestId,
+        error: 'PROCESS_NOT_FOUND',
+        message: `Nenhum processo encontrado com o PID ${numPid}.`,
+      };
+    }
+    if (isCritical(realName)) {
+      return {
+        success: false,
+        requestId,
+        error: 'CRITICAL_PROCESS_BLOCKED',
+        message: `O processo "${realName}" é essencial para o funcionamento do Windows e não pode ser encerrado.`,
+      };
+    }
+    procName = realName;
+
+    // 3. Executa encerramento assíncrono via taskkill não-bloqueante
     return new Promise((resolve) => {
-      execFile('taskkill', ['/F', '/PID', String(numPid)], (error, stdout, stderr) => {
+      this.execFile('taskkill', ['/F', '/PID', String(numPid)], { windowsHide: true }, (error, stdout, stderr) => {
         if (error) {
           return resolve({
             success: false,
@@ -227,7 +274,7 @@ class ActionRouter {
     }
 
     return new Promise((resolve) => {
-      execFile('powercfg', ['/setactive', targetGuid], (error, stdout, stderr) => {
+      this.execFile('powercfg', ['/setactive', targetGuid], { windowsHide: true }, (error, stdout, stderr) => {
         if (error) {
           return resolve({
             success: false,
@@ -253,9 +300,30 @@ class ActionRouter {
    * Encerra aplicações secundárias em segundo plano e calcula RAM liberada (BOOST_CLEANUP)
    */
   async boostCleanup(customTargets = null, requestId = null) {
-    const targets = Array.isArray(customTargets) && customTargets.length > 0
-      ? customTargets
-      : this.boostTargets;
+    // Alvos remotos só são aceitos se fizerem parte da lista configurada de Boost:
+    // impede curingas do taskkill (ex.: "*") e nomes arbitrários vindos da rede.
+    const allowed = new Map(
+      this.boostTargets.map((t) => {
+        const exe = t.toLowerCase().endsWith('.exe') ? t : `${t}.exe`;
+        return [exe.toLowerCase(), exe];
+      })
+    );
+    const rejectedTargets = [];
+    let targets = Array.from(allowed.values());
+
+    if (Array.isArray(customTargets) && customTargets.length > 0) {
+      targets = [];
+      for (const raw of customTargets) {
+        const name = String(raw || '').trim();
+        const exe = name.toLowerCase().endsWith('.exe') ? name : `${name}.exe`;
+        const canonical = allowed.get(exe.toLowerCase());
+        if (canonical && !targets.includes(canonical)) {
+          targets.push(canonical);
+        } else if (!canonical) {
+          rejectedTargets.push(name);
+        }
+      }
+    }
 
     const initialFree = os.freemem();
     const closedList = [];
@@ -263,15 +331,14 @@ class ActionRouter {
     // Encerra cada alvo da lista assincronamente
     await Promise.all(
       targets.map(
-        (target) =>
+        (exeName) =>
           new Promise((resolve) => {
-            const exeName = target.endsWith('.exe') ? target : `${target}.exe`;
-            // Protege contra inclusão acidental de processo crítico
+            // Protege contra inclusão acidental de processo crítico na configuração
             if (this.criticalProcesses.has(exeName.toLowerCase())) {
               return resolve();
             }
 
-            execFile('taskkill', ['/F', '/IM', exeName], (error) => {
+            this.execFile('taskkill', ['/F', '/IM', exeName], { windowsHide: true }, (error) => {
               if (!error) {
                 closedList.push(exeName);
               }
@@ -293,6 +360,7 @@ class ActionRouter {
       requestId,
       freedMB,
       closedProcesses: closedList,
+      rejectedTargets,
       message: closedList.length > 0
         ? `Modo Boost ativado: ${closedList.length} processo(s) finalizados. Aprox. ${freedMB} MB de RAM liberados.`
         : 'Nenhum processo em segundo plano da lista estava em execução.',
@@ -343,14 +411,13 @@ class ActionRouter {
         break;
 
       case 'MUTE_MIC':
-        // No Windows, MUTE_MIC pode ser simulado ou acionado via chave de atalho / script
-        // Padrão Discord/Windows: Ctrl+Shift+M ou SendKeys
+        // Windows não expõe tecla virtual global para mutar o microfone
         return {
-          success: true,
+          success: false,
           requestId,
           command: cmd,
-          label: 'Microfone Mudo',
-          message: 'Comando de microfone enviado com sucesso.',
+          error: 'NOT_SUPPORTED',
+          message: 'Mutar o microfone ainda não é suportado.',
         };
 
       default:
@@ -365,7 +432,7 @@ class ActionRouter {
     const psScript = `(New-Object -ComObject WScript.Shell).SendKeys([char]${charCode})`;
 
     return new Promise((resolve) => {
-      execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', psScript], (error) => {
+      this.execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', psScript], { windowsHide: true }, (error) => {
         if (error) {
           return resolve({
             success: false,

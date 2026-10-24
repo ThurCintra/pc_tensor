@@ -214,7 +214,16 @@ async function createWindow() {
 }
 
 function buildTrayMenuTemplate(options = {}) {
-  const { onOpenDashboard, onBoost, onShowQr, onQuit, serverPort } = options;
+  const { onOpenDashboard, onBoost, onShowQr, onQuit, serverPort, onToggleAutoLaunch, openAtLogin } = options;
+
+  const autoLaunchItems = onToggleAutoLaunch
+    ? [{
+        label: 'Iniciar com o Windows',
+        type: 'checkbox',
+        checked: Boolean(openAtLogin),
+        click: (item) => onToggleAutoLaunch(item ? item.checked : !openAtLogin),
+      }]
+    : [];
 
   return [
     {
@@ -234,12 +243,51 @@ function buildTrayMenuTemplate(options = {}) {
       label: `Servidor Mobile: Ativo (Porta ${serverPort || 3890})`,
       enabled: false,
     },
+    ...autoLaunchItems,
     { type: 'separator' },
     {
       label: 'Sair do PC Sentinel',
       click: () => onQuit && onQuit(),
     },
   ];
+}
+
+/**
+ * Ativa a inicialização com o Windows apenas na primeira execução do app instalado.
+ * Depois disso a escolha fica com o usuário (menu da bandeja) e nunca é sobrescrita.
+ */
+function configureAutoLaunchOnFirstRun() {
+  if (!app.isPackaged) return;
+  const markerPath = path.join(app.getPath('userData'), 'autolaunch-configured');
+  if (fs.existsSync(markerPath)) return;
+  try {
+    app.setLoginItemSettings({ openAtLogin: true, path: process.execPath, args: [] });
+    fs.mkdirSync(path.dirname(markerPath), { recursive: true });
+    fs.writeFileSync(markerPath, new Date().toISOString(), 'utf-8');
+  } catch (e) {
+    console.error('[PC Sentinel] Erro ao configurar loginItemSettings:', e);
+  }
+}
+
+/**
+ * Caminho persistente do histórico térmico em %APPDATA%: o diretório de trabalho
+ * do app instalado (System32 / Program Files) não é gravável.
+ */
+function resolveThermalDbPath() {
+  const userDataDir = app.getPath('userData');
+  fs.mkdirSync(userDataDir, { recursive: true });
+  const target = path.join(userDataDir, 'thermal_history.db');
+
+  // Migra o histórico gravado por versões anteriores no diretório de trabalho
+  const legacyJson = path.join(process.cwd(), 'thermal_history.json');
+  const targetJson = target.replace(/\.db$/i, '.json');
+  try {
+    if (!fs.existsSync(targetJson) && fs.existsSync(legacyJson)) {
+      fs.copyFileSync(legacyJson, targetJson);
+    }
+  } catch {}
+
+  return target;
 }
 
 function createTray() {
@@ -252,9 +300,25 @@ function createTray() {
 
   tray = new Tray(trayIcon);
   tray.setToolTip(`PC Sentinel - Hardware & Thermal Telemetry (Porta ${mobileServer?.port || 3890})`);
+  refreshTrayMenu();
+
+  tray.on('double-click', () => showMainWindow());
+  tray.on('click', () => showMainWindow());
+}
+
+function refreshTrayMenu() {
+  if (!tray) return;
+  const iconPath = path.join(__dirname, '../../assets/icon.png');
 
   const template = buildTrayMenuTemplate({
     serverPort: mobileServer?.port || 3890,
+    openAtLogin: app.isPackaged ? app.getLoginItemSettings().openAtLogin : false,
+    onToggleAutoLaunch: app.isPackaged
+      ? (enabled) => {
+          app.setLoginItemSettings({ openAtLogin: enabled, path: process.execPath, args: [] });
+          refreshTrayMenu();
+        }
+      : null,
     onOpenDashboard: () => showMainWindow(),
     onBoost: async () => {
       if (mobileServer?.actionRouter) {
@@ -281,9 +345,6 @@ function createTray() {
   });
 
   tray.setContextMenu(Menu.buildFromTemplate(template));
-
-  tray.on('double-click', () => showMainWindow());
-  tray.on('click', () => showMainWindow());
 }
 
 function setupIpc() {
@@ -399,20 +460,9 @@ if (app) {
     });
 
     app.whenReady().then(async () => {
-      // Configura inicialização automática no Windows para o aplicativo instalado
-      if (app.isPackaged) {
-        try {
-          app.setLoginItemSettings({
-            openAtLogin: true,
-            path: process.execPath,
-            args: [],
-          });
-        } catch (e) {
-          console.error('[PC Sentinel] Erro ao configurar loginItemSettings:', e);
-        }
-      }
+      configureAutoLaunchOnFirstRun();
 
-      collector = new SystemCollector();
+      collector = new SystemCollector(null, { thermalDbPath: resolveThermalDbPath() });
       mobileServer = new MobileLiveServer({ port: 3890, collector });
 
       // Inicia automaticamente o servidor mobile local (porta 3890 com fallback dinâmico)

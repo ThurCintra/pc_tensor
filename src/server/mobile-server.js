@@ -5,14 +5,55 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const QRCode = require('qrcode');
 const { ActionRouter } = require('./action-router');
+
+// Origens de navegador autorizadas a chamar a API de outra origem (dev server Vite)
+const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+// Adaptadores virtuais/VPN que não são alcançáveis pelo celular na LAN
+const VIRTUAL_IFACE_PATTERN = /(vethernet|wsl|hyper-v|virtualbox|vbox|vmware|docker|loopback|bluetooth|tailscale|zerotier|hamachi|radmin|npcap|teredo)/i;
+
+/**
+ * Escolhe o IPv4 mais provável de ser alcançável pelo celular na mesma rede:
+ * ignora loopback, link-local (169.254.x) e adaptadores virtuais (WSL, Hyper-V, VPNs),
+ * priorizando faixas privadas típicas de roteadores domésticos.
+ */
+function pickLocalIp(interfaces = os.networkInterfaces()) {
+  const candidates = [];
+  for (const name of Object.keys(interfaces || {})) {
+    for (const iface of interfaces[name] || []) {
+      const isV4 = iface.family === 'IPv4' || iface.family === 4;
+      if (!isV4 || iface.internal || !iface.address || iface.address.startsWith('169.254.')) continue;
+
+      let score = 0;
+      if (!VIRTUAL_IFACE_PATTERN.test(name)) score += 100;
+      if (iface.address.startsWith('192.168.')) score += 30;
+      else if (iface.address.startsWith('10.')) score += 20;
+      else if (/^172\.(1[6-9]|2\d|3[01])\./.test(iface.address)) score += 10;
+      candidates.push({ address: iface.address, score });
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates.length > 0 ? candidates[0].address : '127.0.0.1';
+}
+
+function extractToken(req) {
+  const fromQuery = req.query?.token;
+  if (fromQuery) return String(fromQuery);
+  const headers = req.headers || {};
+  if (headers['x-session-token']) return String(headers['x-session-token']);
+  const auth = headers['authorization'];
+  if (auth) return String(auth).replace(/^Bearer\s+/i, '');
+  return null;
+}
 
 class MobileLiveServer {
   constructor(options = {}) {
     this.port = options.port || 3890;
-    this.collector = options.collector || null;
+    this.host = options.host || '0.0.0.0';
+    this.collector = null;
     this.lastMetrics = null;
     this.app = express();
     this.server = null;
@@ -20,61 +61,88 @@ class MobileLiveServer {
     this.clients = new Set();
     this.isRunning = false;
     this.localIp = this.detectLocalIp();
+    this.allowedOrigins = new Set(options.allowedOrigins || DEFAULT_ALLOWED_ORIGINS);
+    this.execFile = options.execFile || execFile;
+    this.manageFirewall = options.manageFirewall ?? process.platform === 'win32';
+    this.firewallRulesEnsured = new Set();
+    this.handleSessionReport = (report) => this.broadcastSessionReport(report);
 
     // FASE 2: Autenticação por Token Efêmero de Sessão
     this.sessionToken = options.sessionToken || crypto.randomUUID();
     this.requireAuth = options.requireAuth ?? true;
 
     // FASE 2: Roteador de Ações Seguras (Stream Deck)
-    this.actionRouter = options.actionRouter || new ActionRouter({ collector: this.collector });
+    this.actionRouter = options.actionRouter || new ActionRouter({ collector: options.collector || null });
 
     this.setupRoutes();
-
-    if (this.collector && typeof this.collector.on === 'function') {
-      this.collector.on('SESSION_REPORT_READY', (report) => {
-        this.broadcastSessionReport(report);
-      });
-    }
+    this.setCollector(options.collector || null);
   }
 
   setCollector(collector) {
+    // Remove o listener do coletor anterior para não duplicar broadcasts
+    if (this.collector && typeof this.collector.off === 'function') {
+      this.collector.off('SESSION_REPORT_READY', this.handleSessionReport);
+    }
     this.collector = collector;
     if (this.actionRouter) {
       this.actionRouter.setCollector(collector);
     }
     if (this.collector && typeof this.collector.on === 'function') {
-      this.collector.on('SESSION_REPORT_READY', (report) => {
-        this.broadcastSessionReport(report);
-      });
+      this.collector.on('SESSION_REPORT_READY', this.handleSessionReport);
     }
   }
 
   detectLocalIp() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-      for (const iface of interfaces[name]) {
-        // Ignora endereços de loopback e IPv6 internos
-        if (iface.family === 'IPv4' && !iface.internal) {
-          return iface.address;
-        }
-      }
-    }
-    return '127.0.0.1';
+    return pickLocalIp();
+  }
+
+  isTokenValid(token) {
+    if (!this.requireAuth) return true;
+    if (!token || !this.sessionToken) return false;
+    const a = Buffer.from(String(token));
+    const b = Buffer.from(String(this.sessionToken));
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+
+  /**
+   * Aceita requisições sem Origin (clientes não-browser), da mesma origem do servidor
+   * ou de origens explicitamente autorizadas (dev server Vite).
+   */
+  isOriginAllowed(origin, hostHeader) {
+    if (!origin) return true;
+    if (hostHeader && (origin === `http://${hostHeader}` || origin === `https://${hostHeader}`)) return true;
+    return this.allowedOrigins.has(origin);
   }
 
   setupRoutes() {
-    // Permite requisições CORS de qualquer origem (necessário para dev server Vite e browsers)
+    // CORS restrito: impede que sites arbitrários abertos no navegador chamem a API local
     this.app.use((req, res, next) => {
-      res.header('Access-Control-Allow-Origin', '*');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      const origin = req.headers.origin;
+      if (!this.isOriginAllowed(origin, req.headers.host)) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN_ORIGIN', message: 'Origem não autorizada.' });
+      }
+      if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Vary', 'Origin');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token');
+      }
       if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
+        return res.sendStatus(204);
       }
       next();
     });
 
-    this.app.use(express.json());
+    this.app.use(express.json({ limit: '16kb' }));
+
+    const requireToken = (req, res, next) => {
+      if (this.isTokenValid(extractToken(req))) return next();
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Token de autenticação ausente ou inválido.',
+      });
+    };
 
     // Servir arquivos estáticos da aplicação web móvel compatível com app.asar
     let publicPath = path.join(__dirname, 'public');
@@ -86,20 +154,22 @@ class MobileLiveServer {
     }
     this.app.use(express.static(publicPath));
 
-    // Info do Servidor e Conectividade
+    // Info do Servidor: sem token devolve apenas o status público (nunca o token de sessão)
     this.app.get('/api/info', async (req, res) => {
-      const serverInfo = await this.getServerInfo();
-      res.json({
+      const base = {
         name: 'PC Sentinel Live Mobile Stream',
         status: this.isRunning ? 'online' : 'offline',
-        hostname: os.hostname(),
         platform: os.platform(),
-        ...serverInfo,
-      });
+      };
+      if (!this.isTokenValid(extractToken(req))) {
+        return res.json({ ...base, ...this.getPublicInfo(), authenticated: false });
+      }
+      const serverInfo = await this.getServerInfo();
+      return res.json({ ...base, hostname: os.hostname(), ...serverInfo, authenticated: true });
     });
 
     // Telemetria em tempo real (Snapshot)
-    this.app.get('/api/metrics', async (req, res) => {
+    this.app.get('/api/metrics', requireToken, async (req, res) => {
       try {
         if (this.collector) {
           const snapshot = await this.collector.getMetricsSnapshot();
@@ -116,7 +186,7 @@ class MobileLiveServer {
     });
 
     // Inventário Completo de Hardware (Raio-X do PC)
-    this.app.get('/api/hardware', async (req, res) => {
+    this.app.get('/api/hardware', requireToken, async (req, res) => {
       try {
         const forceRefresh = req.query.forceRefresh === 'true';
         if (this.collector && typeof this.collector.getHardwareInfo === 'function') {
@@ -132,7 +202,7 @@ class MobileLiveServer {
     });
 
     // Controle de Streaming (Ligar / Desligar)
-    this.app.post('/api/server/toggle', async (req, res) => {
+    this.app.post('/api/server/toggle', requireToken, async (req, res) => {
       try {
         const { shouldStart } = req.body || {};
         const targetState = typeof shouldStart === 'boolean' ? shouldStart : !this.isRunning;
@@ -149,17 +219,8 @@ class MobileLiveServer {
     });
 
     // Execução de Ações / Stream Deck (REST)
-    this.app.post('/api/action', async (req, res) => {
+    this.app.post('/api/action', requireToken, async (req, res) => {
       try {
-        const token = req.query.token || req.headers['x-session-token'] || req.headers['authorization']?.replace(/^Bearer\s+/i, '');
-        if (this.requireAuth && (!token || token !== this.sessionToken)) {
-          return res.status(401).json({
-            success: false,
-            error: 'UNAUTHORIZED',
-            message: 'Token de autenticação ausente ou inválido.',
-          });
-        }
-
         const result = await this.actionRouter.handleAction(req.body);
         return res.json(result);
       } catch (err) {
@@ -261,7 +322,11 @@ class MobileLiveServer {
       currentAttempt++;
 
       const serverCandidate = http.createServer(this.app);
-      const wssCandidate = new WebSocketServer({ server: serverCandidate });
+      const wssCandidate = new WebSocketServer({
+        server: serverCandidate,
+        maxPayload: 64 * 1024,
+        verifyClient: ({ origin, req }) => this.isOriginAllowed(origin, req.headers.host),
+      });
 
       const bound = await new Promise((resolve) => {
         serverCandidate.once('error', (err) => {
@@ -278,7 +343,7 @@ class MobileLiveServer {
           }
         });
 
-        serverCandidate.listen(targetPort, '0.0.0.0', () => {
+        serverCandidate.listen(targetPort, this.host, () => {
           this.port = targetPort;
           this.server = serverCandidate;
           this.wss = wssCandidate;
@@ -290,10 +355,8 @@ class MobileLiveServer {
 
       if (bound) {
         boundSuccessfully = true;
-        console.log(`[MobileLiveServer] Ouvindo em todas as interfaces de rede (0.0.0.0:${this.port}) - IP Local: ${this.localIp}`);
-        try {
-          exec(`netsh advfirewall firewall add rule name="PC Sentinel LAN (${this.port})" dir=in action=allow protocol=TCP localport=${this.port}`, () => {});
-        } catch (e) {}
+        console.log(`[MobileLiveServer] Ouvindo em ${this.host}:${this.port} - IP Local: ${this.localIp}`);
+        this.ensureFirewallRule(this.port);
       }
     }
 
@@ -302,6 +365,29 @@ class MobileLiveServer {
     }
 
     return this.getServerInfo();
+  }
+
+  /**
+   * Cria a regra de entrada do firewall apenas se ela ainda não existir
+   * (netsh aceita nomes repetidos e duplicaria a regra a cada inicialização).
+   */
+  ensureFirewallRule(port) {
+    if (!this.manageFirewall || this.firewallRulesEnsured.has(port)) return;
+    this.firewallRulesEnsured.add(port);
+    const ruleName = `name=PC Sentinel LAN (${port})`;
+    try {
+      this.execFile('netsh', ['advfirewall', 'firewall', 'show', 'rule', ruleName], { windowsHide: true }, (showErr) => {
+        if (!showErr) return;
+        this.execFile('netsh', [
+          'advfirewall', 'firewall', 'add', 'rule', ruleName,
+          'dir=in', 'action=allow', 'protocol=TCP', `localport=${port}`,
+        ], { windowsHide: true }, (addErr) => {
+          if (addErr) {
+            console.warn(`[MobileLiveServer] Não foi possível criar a regra de firewall da porta ${port} (requer Administrador).`);
+          }
+        });
+      });
+    } catch (e) {}
   }
 
   setupWebSocketListeners(wss) {
@@ -318,9 +404,7 @@ class MobileLiveServer {
         clientToken = req.headers['x-session-token'] || req.headers['authorization']?.replace(/^Bearer\s+/i, '');
       }
 
-      const isTokenValid = !this.requireAuth || (clientToken && clientToken === this.sessionToken);
-
-      if (this.requireAuth && !isTokenValid) {
+      if (!this.isTokenValid(clientToken)) {
         try {
           ws.send(JSON.stringify({
             type: 'auth_error',
@@ -473,6 +557,15 @@ class MobileLiveServer {
     }
   }
 
+  getPublicInfo() {
+    return {
+      isRunning: this.isRunning,
+      port: this.port,
+      localIp: this.localIp,
+      url: `http://${this.localIp}:${this.port}`,
+    };
+  }
+
   async getServerInfo() {
     const mobileUrl = this.sessionToken
       ? `http://${this.localIp}:${this.port}/?token=${this.sessionToken}`
@@ -503,4 +596,4 @@ class MobileLiveServer {
   }
 }
 
-module.exports = { MobileLiveServer, ActionRouter };
+module.exports = { MobileLiveServer, ActionRouter, pickLocalIp };

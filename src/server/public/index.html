@@ -1355,6 +1355,13 @@
     /* =========================================================
        STATE & VARIABLES
        ========================================================= */
+    // Token de sessão vindo do QR Code: exigido por toda a API e pelo WebSocket
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionToken = urlParams.get('token') || '';
+    function apiHeaders(extra = {}) {
+      return sessionToken ? { ...extra, 'Authorization': `Bearer ${sessionToken}` } : extra;
+    }
+
     let currentTab = 'dashboard';
     let isMiniMode = false;
     let rawHardwareData = null;
@@ -1782,8 +1789,7 @@
        ========================================================= */
     async function fetchHardware(forceRefresh = false) {
       try {
-        const host = window.location.hostname || '127.0.0.1';
-        const res = await fetch(`http://${host}:3890/api/hardware${forceRefresh ? '?forceRefresh=true' : ''}`);
+        const res = await fetch(`/api/hardware${forceRefresh ? '?forceRefresh=true' : ''}`, { headers: apiHeaders() });
         if (res.ok) {
           rawHardwareData = await res.json();
           renderHardwareSpecs(rawHardwareData);
@@ -1909,7 +1915,7 @@
        ========================================================= */
     async function fetchServerInfo() {
       try {
-        const res = await fetch('/api/info');
+        const res = await fetch('/api/info', { headers: apiHeaders() });
         if (res.ok) {
           const info = await res.json();
           document.getElementById('mobileUrlDisplay').textContent = info.url || `${window.location.protocol}//${window.location.host}`;
@@ -1941,7 +1947,7 @@
       try {
         const res = await fetch('/api/server/toggle', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ shouldStart: !isStreamingActive }),
         });
         if (res.ok) {
@@ -1954,7 +1960,7 @@
 
     async function fetchInitialMetrics() {
       try {
-        const res = await fetch('/api/metrics');
+        const res = await fetch('/api/metrics', { headers: apiHeaders() });
         if (res.ok) {
           const data = await res.json();
           updateTelemetryUI(data);
@@ -1965,8 +1971,6 @@
     /* =========================================================
        REMOTE ACTIONS & STREAM DECK CONTROLS (FASE 2 & 4)
        ========================================================= */
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionToken = urlParams.get('token') || '';
     let activeWs = null;
     let wakeLockSentinel = null;
     let lastVibrateTime = 0;
@@ -2020,10 +2024,7 @@
       try {
         const res = await fetch('/api/action', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {}),
-          },
+          headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ action, params, token: sessionToken }),
         });
         const result = await res.json();

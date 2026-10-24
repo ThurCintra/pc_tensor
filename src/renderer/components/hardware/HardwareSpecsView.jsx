@@ -19,6 +19,7 @@ import {
   XCircle,
   Monitor
 } from 'lucide-react';
+import { backendUrl, authHeaders } from '../../lib/backend';
 
 import { BentoCard } from '../ui/BentoCard';
 import { 
@@ -46,8 +47,9 @@ export function HardwareSpecsView({ initialInfo = null }) {
         // Modo Web: tenta buscar especificações reais da API REST
         let fetchedData = null;
         try {
-          const host = window.location.hostname || '127.0.0.1';
-          const res = await fetch(`http://${host}:3890/api/hardware${forceRefresh ? '?forceRefresh=true' : ''}`);
+          const res = await fetch(backendUrl(`/api/hardware${forceRefresh ? '?forceRefresh=true' : ''}`), {
+            headers: authHeaders(),
+          });
           if (res.ok) {
             fetchedData = await res.json();
           }
