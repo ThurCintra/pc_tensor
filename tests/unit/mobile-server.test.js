@@ -345,6 +345,34 @@ describe('MobileLiveServer', () => {
     await expect(fetch('http://127.0.0.1:3887/api/info')).rejects.toThrow();
   });
 
+  it('deve servir o build web (mesmo app do desktop) para o celular', async () => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sentinel-dist-'));
+    fs.writeFileSync(path.join(dir, 'index.html'), '<!doctype html><title>PC Sentinel</title>');
+
+    try {
+      serverInstance = createServer({ port: 3885, staticDir: dir });
+      await serverInstance.start();
+      const res = await fetch('http://127.0.0.1:3885/?token=x');
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain('PC Sentinel');
+    } finally {
+      await serverInstance.stop();
+      serverInstance = null;
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('deve avisar que a interface não foi compilada quando não houver build', async () => {
+    serverInstance = createServer({ port: 3884, staticDir: 'C:/caminho/que/nao/existe' });
+    await serverInstance.start();
+    const res = await fetch('http://127.0.0.1:3884/');
+    expect(res.status).toBe(503);
+    expect(await res.text()).toContain('npm run build');
+  });
+
   it('deve criar a regra de firewall só quando ela ainda não existir', async () => {
     const existing = createFakeExec();
     const s1 = new MobileLiveServer({ execFile: existing, manageFirewall: true });

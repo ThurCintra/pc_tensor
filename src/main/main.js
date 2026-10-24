@@ -1,15 +1,15 @@
 const electron = require('electron');
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } = typeof electron === 'object' && electron ? electron : {};
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification, nativeTheme } = typeof electron === 'object' && electron ? electron : {};
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const { execFile } = require('child_process');
 const { SystemCollector } = require('./collector');
 const { MobileLiveServer } = require('../server/mobile-server');
 const { SettingsStore } = require('./settings-store');
 const { ThermalAlertMonitor } = require('./thermal-alerts');
 
-// Em dev (`electron src/main/main.js`) o nome do app seria "Electron" e os dados iriam para
-// %APPDATA%\Electron; fixa a pasta para que dev e instalado usem %APPDATA%\pc-sentinel
+// Fixa a pasta de dados para que dev (`electron .`) e o app instalado usem %APPDATA%\pc-sentinel
 if (app?.setPath && app?.getPath) {
   app.setPath('userData', path.join(app.getPath('appData'), 'pc-sentinel'));
 }
@@ -30,6 +30,23 @@ let tray = null;
 let isQuitting = false;
 let settingsStore = null;
 let alertMonitor = null;
+let isElevated = false;
+let loadedFromViteDev = false;
+
+/**
+ * `net session` só funciona em um processo com privilégio de Administrador.
+ */
+function detectElevation() {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') return resolve(false);
+    execFile('net', ['session'], { windowsHide: true }, (error) => resolve(!error));
+  });
+}
+
+// Cores de fundo da janela iguais às do tema do Windows (evita flash branco/preto ao abrir)
+function windowBackground() {
+  return nativeTheme?.shouldUseDarkColors ? '#202020' : '#f3f3f3';
+}
 
 function isServerReachable(url) {
   return new Promise((resolve) => {
@@ -43,7 +60,7 @@ function isServerReachable(url) {
 }
 
 let isMiniWidget = false;
-let normalBounds = { width: 1100, height: 750 };
+let normalBounds = { width: 1180, height: 780 };
 
 /**
  * Hibernação do Renderer (Zero-Overhead):
@@ -92,13 +109,13 @@ async function showQrWindow() {
   const serverInfo = mobileServer ? await mobileServer.getServerInfo() : { url: 'http://127.0.0.1:3890', qrCodeDataUrl: '' };
 
   qrWindow = new BrowserWindow({
-    width: 380,
-    height: 480,
+    width: 360,
+    height: 470,
     resizable: false,
     minimizable: false,
     maximizable: false,
-    backgroundColor: '#0B0F19',
-    title: 'PC Sentinel - Pareamento Mobile',
+    backgroundColor: windowBackground(),
+    title: 'PC Sentinel - Conectar celular',
     autoHideMenuBar: true,
     alwaysOnTop: true,
     webPreferences: {
@@ -107,37 +124,29 @@ async function showQrWindow() {
     },
   });
 
+  const escapeHtml = (v) => String(v || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="pt-BR">
       <head>
         <meta charset="UTF-8">
-        <title>PC Sentinel Mobile QR</title>
+        <title>PC Sentinel - Conectar celular</title>
         <style>
-          body {
-            margin: 0; padding: 24px;
-            background: #0B0F19; color: #E2E8F0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center;
-          }
-          h2 { margin: 0 0 8px; color: #00F0FF; font-size: 1.15rem; letter-spacing: 0.05em; text-transform: uppercase; }
-          p { margin: 0 0 16px; font-size: 0.85rem; color: #94A3B8; }
-          .qr-box {
-            background: #111827; padding: 16px; border-radius: 12px;
-            border: 1px solid #1E293B; box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
-          }
-          .qr-img { width: 220px; height: 220px; display: block; border-radius: 8px; }
-          .url-box { margin-top: 16px; font-size: 0.78rem; color: #38BDF8; word-break: break-all; font-family: monospace; }
+          :root { color-scheme: light dark; --bg: #f3f3f3; --card: #ffffff; --text: #1a1a1a; --muted: #5f5f5f; --border: rgba(0,0,0,0.08); --accent: #005fb8; }
+          @media (prefers-color-scheme: dark) { :root { --bg: #202020; --card: #2b2b2b; --text: #ffffff; --muted: #c5c5c5; --border: rgba(255,255,255,0.08); --accent: #60cdff; } }
+          body { margin: 0; padding: 24px; background: var(--bg); color: var(--text); font: 14px 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; text-align: center; }
+          h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+          p { margin: 0 0 18px; color: var(--muted); }
+          .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: inline-block; }
+          img { width: 220px; height: 220px; display: block; image-rendering: pixelated; }
+          .url { margin-top: 14px; font: 12px Consolas, monospace; color: var(--accent); word-break: break-all; }
         </style>
       </head>
       <body>
-        <h2>HUD Mobile - Conexão LAN</h2>
-        <p>Aponte a câmera do celular para conectar em tempo real</p>
-        <div class="qr-box">
-          <img class="qr-img" src="${serverInfo.qrCodeDataUrl}" alt="QR Code" />
-        </div>
-        <div class="url-box">${serverInfo.url}</div>
+        <h1>Conectar celular</h1>
+        <p>Aponte a câmera do celular para o código</p>
+        <div class="card"><img src="${serverInfo.qrCodeDataUrl}" alt="QR Code de pareamento" /></div>
+        <div class="url">${escapeHtml(serverInfo.url)}</div>
       </body>
     </html>
   `;
@@ -151,14 +160,14 @@ async function createWindow() {
   const hasIcon = fs.existsSync(iconPath);
 
   mainWindow = new BrowserWindow({
-    width: normalBounds.width || 1100,
-    height: normalBounds.height || 750,
+    width: normalBounds.width || 1180,
+    height: normalBounds.height || 780,
     x: normalBounds.x,
     y: normalBounds.y,
-    minWidth: 900,
-    minHeight: 600,
-    backgroundColor: '#0B0F19',
-    title: 'PC Sentinel - Hardware & Thermal Telemetry',
+    minWidth: 760,
+    minHeight: 540,
+    backgroundColor: windowBackground(),
+    title: 'PC Sentinel',
     icon: hasIcon ? iconPath : undefined,
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
@@ -168,54 +177,25 @@ async function createWindow() {
     autoHideMenuBar: true,
   });
 
-  const isDev = process.env.NODE_ENV !== 'production' && !app.isPackaged;
+  const distPath = path.join(__dirname, '../../dist/index.html');
   const devUrl = 'http://localhost:5173';
-  let distPath = path.join(__dirname, '../../dist/index.html');
-  if (!fs.existsSync(distPath)) {
-    distPath = path.join(app.getAppPath(), 'dist/index.html');
-  }
-  let bootstrapPath = path.join(__dirname, '../server/public/index.html');
-  if (!fs.existsSync(bootstrapPath)) {
-    bootstrapPath = path.join(app.getAppPath(), 'src/server/public/index.html');
-  }
 
-  if (isDev) {
-    const isViteUp = await isServerReachable(devUrl);
-    if (isViteUp) {
-      console.log('[PC Sentinel] Conectado ao servidor Vite Dev:', devUrl);
-      await mainWindow.loadURL(devUrl);
-    } else if (fs.existsSync(distPath)) {
-      console.log('[PC Sentinel] Vite offline. Carregando dist compilado:', distPath);
-      await mainWindow.loadFile(distPath);
-    } else if (fs.existsSync(bootstrapPath)) {
-      console.log('[PC Sentinel] Carregando interface bootstrap:', bootstrapPath);
-      await mainWindow.loadFile(bootstrapPath);
-    }
+  // Em desenvolvimento (`npm run dev`) usa o Vite com hot reload; fora dele, o build em dist/
+  loadedFromViteDev = !app.isPackaged && (await isServerReachable(devUrl));
+  if (loadedFromViteDev) {
+    await mainWindow.loadURL(devUrl);
+  } else if (fs.existsSync(distPath)) {
+    await mainWindow.loadFile(distPath);
   } else {
-    // MODO PRODUÇÃO: carrega estritamente o bundle compilado em dist/
-    if (fs.existsSync(distPath)) {
-      console.log('[PC Sentinel] MODO PRODUÇÃO: Carregando bundle estático:', distPath);
-      await mainWindow.loadFile(distPath);
-    } else if (fs.existsSync(bootstrapPath)) {
-      console.log('[PC Sentinel] MODO PRODUÇÃO: dist não encontrado, carregando bootstrap:', bootstrapPath);
-      await mainWindow.loadFile(bootstrapPath);
-    } else {
-      console.error('[PC Sentinel] ERRO CRÍTICO: dist/index.html não encontrado! Execute npm run build.');
-    }
+    console.error('[PC Sentinel] dist/index.html não encontrado. Rode "npm run build".');
   }
 
-  // FASE 3: Ao fechar ou minimizar, hiberna o Renderer para zerar overhead
+  // Fechar a janela mantém o app na bandeja e libera o renderer (coleta e servidor seguem ativos)
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
       event.preventDefault();
       hibernateRenderer();
-      return false;
     }
-  });
-
-  mainWindow.on('minimize', (event) => {
-    event.preventDefault();
-    hibernateRenderer();
   });
 
   mainWindow.on('closed', () => {
@@ -298,6 +278,39 @@ function resolveThermalDbPath() {
   } catch {}
 
   return target;
+}
+
+/**
+ * Reabre o PC Sentinel com privilégio de Administrador (prompt do UAC) para liberar os sensores.
+ * Solta a trava de instância única e a porta do servidor antes, para a nova instância assumir;
+ * se o usuário recusar o UAC, restaura tudo e segue rodando sem elevação.
+ */
+async function relaunchAsAdmin() {
+  if (isElevated) return { success: false, error: 'ALREADY_ELEVATED' };
+
+  const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+  const args = process.argv.slice(1).filter(Boolean);
+  const argList = args.length > 0 ? ` -ArgumentList ${args.map(quote).join(',')}` : '';
+  const command = `Start-Process -FilePath ${quote(process.execPath)}${argList} -WorkingDirectory ${quote(process.cwd())} -Verb RunAs`;
+
+  app.releaseSingleInstanceLock();
+  await mobileServer.stop();
+
+  const launched = await new Promise((resolve) => {
+    execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true }, (error) => resolve(!error));
+  });
+
+  if (!launched) {
+    app.requestSingleInstanceLock();
+    await mobileServer.start();
+    return { success: false, error: 'UAC_DECLINED', message: 'A elevação foi cancelada.' };
+  }
+
+  isQuitting = true;
+  if (metricsInterval) clearInterval(metricsInterval);
+  if (collector) collector.stop();
+  setTimeout(() => app.quit(), 200);
+  return { success: true };
 }
 
 function getAutoLaunchState() {
@@ -407,8 +420,8 @@ function setupIpc() {
       normalBounds = { width: bounds.width, height: bounds.height, x: bounds.x, y: bounds.y };
 
       mainWindow.setAlwaysOnTop(true, 'screen-saver');
-      mainWindow.setMinimumSize(320, 68);
-      mainWindow.setSize(330, 72);
+      mainWindow.setMinimumSize(300, 84);
+      mainWindow.setSize(340, 84);
       try {
         const { screen } = require('electron');
         const primaryDisplay = screen.getPrimaryDisplay();
@@ -417,8 +430,8 @@ function setupIpc() {
       } catch (e) {}
     } else {
       mainWindow.setAlwaysOnTop(false);
-      mainWindow.setMinimumSize(900, 600);
-      mainWindow.setSize(normalBounds.width || 1100, normalBounds.height || 750);
+      mainWindow.setMinimumSize(760, 540);
+      mainWindow.setSize(normalBounds.width || 1180, normalBounds.height || 780);
       if (normalBounds.x && normalBounds.y) {
         mainWindow.setPosition(normalBounds.x, normalBounds.y);
       } else {
@@ -448,6 +461,16 @@ function setupIpc() {
     }
     return { ...next, autoLaunch: getAutoLaunchState(), serverInfo: await mobileServer.getServerInfo() };
   });
+
+  ipcMain.handle('app:info', async () => ({
+    version: app.getVersion(),
+    isPackaged: app.isPackaged,
+    isElevated,
+    // Em `npm run dev` o reinício mataria o Vite (concurrently -k); lá o terminal é que deve ser elevado
+    canRelaunchElevated: !isElevated && !loadedFromViteDev && process.platform === 'win32',
+  }));
+
+  ipcMain.handle('app:relaunch-as-admin', async () => relaunchAsAdmin());
 
   // Revoga o pareamento: novo token persistido e todos os celulares desconectados
   ipcMain.handle('mobile-server:revoke-token', async () => {
@@ -519,6 +542,7 @@ if (app) {
 
     app.whenReady().then(async () => {
       configureAutoLaunchOnFirstRun();
+      isElevated = await detectElevation();
 
       settingsStore = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
       const settings = settingsStore.get();

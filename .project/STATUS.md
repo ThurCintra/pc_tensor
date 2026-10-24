@@ -57,7 +57,11 @@
    - Interfaces desktop e mobile mostram "SEM SENSOR" em vez de inventar temperaturas, RPM e discos; aviso quando falta privilégio de Administrador.
    - Histórico térmico movido para `%APPDATA%`; dependência `mongodb` removida (não era usada).
 
+11. **Refatoração da Interface e da Execução (2026-10-23):**
+   - Interface refeita no visual do Windows 11 (tema claro/escuro do sistema), com páginas Visão geral, Histórico, Processos, Controles, Hardware, Celular e Configurações.
+   - HUD mobile unificado: o celular usa a mesma build React via `lib/transport.js` (WebSocket/REST); a página separada de 2.182 linhas foi removida.
+   - Todos os `.bat` removidos: instalador pede administrador sozinho, desenvolvimento via `npm run dev`, `npm start` com "Reiniciar como administrador" no app, `npm run build:bridge` para a ponte C#.
+
 ## Próximos Passos
-- Unificar o HUD mobile (`src/server/public/index.html`) com o React para eliminar a interface duplicada.
 - Alertas sonoros opcionais e histórico de alertas disparados.
 - Avaliar remover os binários de `tools/LibreHardwareMonitor` do Git (baixar/compilar no build).

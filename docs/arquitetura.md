@@ -9,8 +9,8 @@ pc-sensor-bridge.exe (C#, LibreHardwareMonitor)
 SystemCollector ──► ThermalAlertMonitor ──► Notificação do Windows
  (processo principal)        │
         │  snapshot + alerts  │
-        ├──────────► IPC (contextBridge) ──► Renderer React (dashboard desktop)
-        └──────────► MobileLiveServer (HTTP + WebSocket) ──► HUD mobile / navegador
+        ├──────────► IPC (contextBridge) ──► Interface React (janela do desktop)
+        └──────────► MobileLiveServer (HTTP + WebSocket) ──► Mesma interface React no celular
                               │
                               └──► ActionRouter ──► taskkill / powercfg / teclas de mídia
 ```
@@ -24,8 +24,22 @@ SystemCollector ──► ThermalAlertMonitor ──► Notificação do Windows
 | Histórico | `src/main/thermal-history.js` | Agregados diários e relatórios de sessão em `%APPDATA%\pc-sentinel` |
 | Servidor mobile | `src/server/mobile-server.js` | API REST, WebSocket, QR Code, firewall |
 | Ações remotas | `src/server/action-router.js` | Encerrar processo, plano de energia, Boost, mídia |
-| Desktop | `src/renderer/` | React + Vite |
-| HUD mobile | `src/server/public/index.html` | Página única servida pelo servidor mobile |
+| Interface | `src/renderer/` | React + Vite; a mesma build roda na janela e no celular |
+| Transporte | `src/renderer/lib/transport.js` | IPC no desktop; WebSocket (telemetria) e REST (hardware, ações) no celular |
+
+## Uma interface, dois modos
+
+O build do Vite (`dist/`) é carregado pela janela do Electron e também servido pelo `MobileLiveServer`
+para o celular. `lib/transport.js` decide o modo:
+
+- **desktop** (`window.sentinelAPI` existe): IPC com o processo principal; habilita Celular,
+  Configurações, modo compacto e reinício como administrador.
+- **web** (celular/navegador): WebSocket para a telemetria ao vivo e REST com o token para hardware e
+  ações. O token vem do link do QR Code e fica no `localStorage` do aparelho, para o atalho na tela
+  inicial continuar pareado.
+
+O visual segue o Windows 11 (tokens em `styles.css`) e troca entre claro e escuro por
+`prefers-color-scheme`. Abaixo de 760 px a navegação lateral vira uma barra inferior.
 
 ## Princípio dos dados reais
 
@@ -59,12 +73,19 @@ rede (e qualquer site aberto no navegador do próprio PC) consegue enviar requis
 O tráfego é HTTP sem TLS: na mesma rede, alguém capturando pacotes pode ler o token. O uso pretendido é
 a rede doméstica do usuário.
 
-## Inicialização
+## Execução e privilégios
 
-- `iniciar.bat` pede elevação (UAC), instala dependências na primeira vez, compila a interface e roda
-  `npm start`. Ele **não** faz `git pull`: atualizar é uma ação manual e revisada.
-- No app instalado, "Iniciar com o Windows" é ativado só na primeira execução; depois a escolha é do
+- **App instalado:** o manifesto do executável pede administrador (`requestedExecutionLevel:
+  requireAdministrator`), então o Windows mostra o UAC ao abrir e os sensores ficam disponíveis. O
+  instalador cria a regra de firewall da porta 3890 (removendo a anterior para não duplicar).
+- **`npm start`:** abre sem elevação; o app detecta isso (`net session`) e oferece **Reiniciar como
+  administrador**, que solta a trava de instância única e a porta, chama `Start-Process -Verb RunAs` e
+  encerra. Se o UAC for recusado, restaura a trava e o servidor e segue rodando.
+- **`npm run dev`:** o reinício é desativado (mataria o Vite via `concurrently -k`); para ler sensores,
+  rode o terminal como administrador.
+- "Iniciar com o Windows" é ativado só na primeira execução do app instalado; depois a escolha é do
   usuário (bandeja ou Configurações).
+- A ponte de sensores C# é recompilada com `npm run build:bridge` (usa o `csc.exe` do .NET Framework 4).
 
 ## Testes
 

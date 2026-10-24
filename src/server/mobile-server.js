@@ -66,6 +66,7 @@ class MobileLiveServer {
     this.manageFirewall = options.manageFirewall ?? process.platform === 'win32';
     this.firewallRulesEnsured = new Set();
     this.handleSessionReport = (report) => this.broadcastSessionReport(report);
+    this.staticDirOption = options.staticDir || null;
 
     // FASE 2: Autenticação por Token Efêmero de Sessão
     this.sessionToken = options.sessionToken || crypto.randomUUID();
@@ -94,6 +95,24 @@ class MobileLiveServer {
 
   detectLocalIp() {
     return pickLocalIp();
+  }
+
+  /**
+   * Pasta do build web: opção explícita (testes) ou dist/ na raiz do projeto.
+   * No app instalado o dist fica desempacotado em app.asar.unpacked.
+   */
+  resolveStaticDir() {
+    const candidates = this.staticDirOption
+      ? [this.staticDirOption]
+      : [path.join(__dirname, '..', '..', 'dist')];
+    for (let dir of candidates) {
+      if (dir.includes('app.asar') && !dir.includes('app.asar.unpacked')) {
+        const unpacked = dir.replace('app.asar', 'app.asar.unpacked');
+        if (fs.existsSync(unpacked)) dir = unpacked;
+      }
+      if (fs.existsSync(path.join(dir, 'index.html'))) return dir;
+    }
+    return null;
   }
 
   isTokenValid(token) {
@@ -144,15 +163,15 @@ class MobileLiveServer {
       });
     };
 
-    // Servir arquivos estáticos da aplicação web móvel compatível com app.asar
-    let publicPath = path.join(__dirname, 'public');
-    if (publicPath.includes('app.asar')) {
-      const unpacked = publicPath.replace('app.asar', 'app.asar.unpacked');
-      if (fs.existsSync(unpacked)) {
-        publicPath = unpacked;
-      }
+    // O celular usa o mesmo build React do desktop (dist/), em modo web
+    const staticDir = this.resolveStaticDir();
+    if (staticDir) {
+      this.app.use(express.static(staticDir));
+    } else {
+      this.app.get('/', (req, res) => {
+        res.status(503).type('text/plain').send('Interface não compilada. Rode "npm run build" e reinicie o PC Sentinel.');
+      });
     }
-    this.app.use(express.static(publicPath));
 
     // Info do Servidor: sem token devolve apenas o status público (nunca o token de sessão)
     this.app.get('/api/info', async (req, res) => {
@@ -619,8 +638,8 @@ class MobileLiveServer {
       qrDataUrl = await QRCode.toDataURL(mobileUrl, {
         margin: 1,
         color: {
-          dark: '#00f0ff',
-          light: '#0a0e17',
+          dark: '#000000',
+          light: '#ffffff',
         },
       });
     } catch (e) {

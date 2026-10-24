@@ -6,14 +6,14 @@
   "type": "commonjs",
   "author": "Arthur",
   "scripts": {
-    "dev": "concurrently -k -n \"vite,electron\" -c \"cyan,magenta\" \"npm run dev:vite\" \"wait-on tcp:5173 && npm run dev:electron\"",
+    "dev": "concurrently -k -n \"vite,electron\" -c \"cyan,magenta\" \"npm run dev:vite\" \"wait-on tcp:5173 && electron .\"",
     "dev:vite": "vite",
-    "dev:electron": "electron src/main/main.js",
+    "build": "vite build",
+    "start": "npm run build && electron .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "vite build",
-    "start": "electron src/main/main.js",
-    "dist:installer": "npm run build && electron-builder --win nsis --x64"
+    "build:bridge": "node scripts/build-bridge.js",
+    "dist": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -49,7 +49,7 @@
     ],
     "asar": true,
     "asarUnpack": [
-      "src/server/public/**/*"
+      "dist/**/*"
     ],
     "extraResources": [
       {
@@ -69,7 +69,8 @@
           ]
         }
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator"
     },
     "nsis": {
       "oneClick": false,

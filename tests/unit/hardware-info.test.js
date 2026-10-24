@@ -1,12 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 const { SystemCollector } = require('../../src/main/collector');
-import { 
-  formatBytes, 
-  formatMHz, 
-  formatUptime, 
-  formatFallback, 
-  EMPTY_PLACEHOLDER 
-} from '../../src/renderer/components/hardware/formatters';
 
 describe('Hardware Info Collector & Graceful Degradation', () => {
   it('should return complete hardware specification contract matching requirements', async () => {
@@ -243,42 +236,5 @@ describe('Hardware Info Collector & Graceful Degradation', () => {
     // Third call with forceRefresh = true -> should call again
     await collector.getHardwareInfo(true);
     expect(mockSi.osInfo).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe('Formatters and Em-Dash Fallbacks', () => {
-  it('formatFallback returns em-dash for null, undefined, and empty strings', () => {
-    expect(formatFallback(null)).toBe(' — ');
-    expect(formatFallback(undefined)).toBe(' — ');
-    expect(formatFallback('')).toBe(' — ');
-    expect(formatFallback('   ')).toBe(' — ');
-    expect(formatFallback('AMD Ryzen 5')).toBe('AMD Ryzen 5');
-    expect(formatFallback(0)).toBe('0');
-  });
-
-  it('formatBytes converts bytes into human readable binary units or returns em-dash', () => {
-    expect(formatBytes(null)).toBe(' — ');
-    expect(formatBytes(undefined)).toBe(' — ');
-    expect(formatBytes(0)).toBe('0 B');
-    expect(formatBytes(1024)).toBe('1.0 KB');
-    expect(formatBytes(1024 * 1024)).toBe('1.0 MB');
-    expect(formatBytes(8 * 1024 * 1024 * 1024)).toBe('8.0 GB');
-    expect(formatBytes(500 * 1000 * 1000 * 1000)).toMatch(/GB/);
-  });
-
-  it('formatMHz formats megahertz with unit or returns em-dash', () => {
-    expect(formatMHz(null)).toBe(' — ');
-    expect(formatMHz(undefined)).toBe(' — ');
-    expect(formatMHz(3900)).toBe('3900 MHz');
-    expect(formatMHz(5400)).toBe('5400 MHz');
-  });
-
-  it('formatUptime formats seconds into readable duration or returns em-dash', () => {
-    expect(formatUptime(null)).toBe(' — ');
-    expect(formatUptime(undefined)).toBe(' — ');
-    expect(formatUptime(45)).toBe('45s');
-    expect(formatUptime(130)).toBe('2m 10s');
-    expect(formatUptime(3700)).toBe('1h 1m');
-    expect(formatUptime(90000)).toBe('1d 1h 0m');
   });
 });

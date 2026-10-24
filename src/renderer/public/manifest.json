@@ -1,12 +1,12 @@
 {
-  "name": "PC Sentinel Mobile HUD",
-  "short_name": "Sentinel HUD",
-  "description": "HUD Mobile de Telemetria e Central de Controle para PC Sentinel",
-  "start_url": "/",
+  "name": "PC Sentinel",
+  "short_name": "Sentinel",
+  "description": "Telemetria de hardware do seu PC em tempo real",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0B0F19",
-  "theme_color": "#0B0F19",
+  "background_color": "#202020",
+  "theme_color": "#202020",
   "icons": [
     {
       "src": "icon-192.png",
