@@ -14,7 +14,15 @@ import {
   verifyCredentials,
 } from './users';
 import { createPairingCode, redeemPairingCode } from './pairing';
-import { authenticateDevice, deleteDevice, getDevice, listDevices, listHistory, updateDevice } from './devices';
+import {
+  authenticateDevice,
+  deleteDevice,
+  energySince,
+  getDevice,
+  listDevices,
+  listHistory,
+  updateDevice,
+} from './devices';
 import type { Mail } from './mailer';
 
 const { db, close } = await createTestDb();
@@ -221,6 +229,26 @@ describe('computadores', () => {
     expect((await getDevice(db, user.id, deviceId)).status).toBe('THERMAL_ALERT');
     expect(await listHistory(db, user.id, deviceId, 1)).toHaveLength(1);
     await expectApiError(listHistory(db, user.id, deviceId, 24 * 60), 400);
+  });
+
+  it('soma a energia do mês para o taxímetro', async () => {
+    const { user, deviceId } = await pairedDevice();
+    const other = await pairedDevice('outra@example.com');
+    const since = new Date(Date.now() - 3_600_000);
+    const row = { deviceId, avgCpuTemp: 50, avgGpuTemp: 50, maxTemp: 55 };
+    await db.telemetryHistory.createMany({
+      data: [
+        { ...row, timestamp: new Date(), energyConsumedWh: 4.5 },
+        { ...row, timestamp: new Date(), energyConsumedWh: 3 },
+        // Antes do período: fica de fora
+        { ...row, timestamp: new Date(since.getTime() - 1000), energyConsumedWh: 99 },
+      ],
+    });
+
+    expect(await energySince(db, user.id, deviceId, since)).toMatchObject({ wh: 7.5, minutes: 2 });
+    expect(await energySince(db, other.user.id, other.deviceId, since)).toMatchObject({ wh: 0, minutes: 0 });
+    await expectApiError(energySince(db, user.id, other.deviceId, since), 404);
+    await expectApiError(energySince(db, user.id, deviceId, new Date('x')), 400);
   });
 });
 

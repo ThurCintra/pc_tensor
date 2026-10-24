@@ -1,18 +1,22 @@
 /**
  * Banco de desenvolvimento local: PGlite (PostgreSQL em WASM) servido pelo protocolo do PostgreSQL, para o site
- * e o servidor de tempo real rodarem aqui sem instalar PostgreSQL nem Docker. Os dados ficam em cloud/.pglite.
+ * e o servidor de tempo real rodarem aqui sem instalar PostgreSQL nem Docker. Os dados ficam em
+ * ~/.pc-tensor-cloud/pglite (ou em PGLITE_DIR).
  *
  *   npm run db:dev        → postgresql://postgres@127.0.0.1:5433/postgres
  *
  * Só para desenvolvimento: em produção use Neon, Supabase ou outro PostgreSQL.
  */
 import { readFileSync, readdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 
 const root = resolve(import.meta.dirname, '..');
-const dataDir = resolve(root, '../../.pglite');
+// Fora do monorepo de propósito: o Turbopack observa cloud/ inteiro, e cada escrita do banco (WAL) dentro dele
+// recompilava o site e recarregava a página, que consultava o banco de novo, num ciclo sem fim
+const dataDir = process.env.PGLITE_DIR ?? join(homedir(), '.pc-tensor-cloud', 'pglite');
 const port = Number(process.env.PGLITE_PORT ?? 5433);
 
 const db = await PGlite.create(dataDir);

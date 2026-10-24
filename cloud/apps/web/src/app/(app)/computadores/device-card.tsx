@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Cpu, Gamepad2, MemoryStick, MonitorPlay, Settings2, Thermometer } from 'lucide-react';
+import Link from 'next/link';
+import { Activity, Cpu, Gamepad2, MemoryStick, MonitorPlay, Settings2, Thermometer } from 'lucide-react';
 import type { DeviceStatus, DeviceStatusEvent } from '@pc-tensor/protocol';
 import type { DeviceSummary } from '@/server/devices';
 
 export type LiveStatus = DeviceStatusEvent & { receivedAt: number };
 
-const STATUS: Record<DeviceStatus, { label: string; className: string; dot: string }> = {
+export const STATUS: Record<DeviceStatus, { label: string; className: string; dot: string }> = {
   ONLINE: { label: 'Online', className: 'bg-ok-bg text-ok', dot: 'bg-ok' },
   IN_GAME: { label: 'Em jogo', className: 'bg-game-bg text-game', dot: 'bg-game' },
   THERMAL_ALERT: { label: 'Alerta térmico', className: 'bg-crit-bg text-crit', dot: 'bg-crit' },
@@ -64,7 +65,9 @@ export function DeviceCard({
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate font-semibold" title={device.name}>
-            {device.name}
+            <Link href={`/computadores/${device.id}`} className="hover:text-accent">
+              {device.name}
+            </Link>
           </h3>
           <p className="mt-0.5 text-xs text-fg-3">
             {isOnline
@@ -100,17 +103,25 @@ export function DeviceCard({
         />
       </ul>
 
-      <footer className="mt-auto flex items-center justify-between border-t border-line pt-3 text-xs text-fg-3">
+      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-xs text-fg-3">
         <span className="inline-flex items-center gap-1">
           <Thermometer size={12} aria-hidden /> Alertas em {device.maxCpuTempAlert}° / {device.maxGpuTempAlert}°
           {!device.alertsEnabled && ' (desligados)'}
         </span>
-        <button
-          onClick={onSettings}
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-fg-2 hover:bg-surface-2 hover:text-fg"
-        >
-          <Settings2 size={14} aria-hidden /> Ajustes
-        </button>
+        <span className="flex items-center gap-1">
+          <button
+            onClick={onSettings}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-fg-2 hover:bg-surface-2 hover:text-fg"
+          >
+            <Settings2 size={14} aria-hidden /> Ajustes
+          </button>
+          <Link
+            href={`/computadores/${device.id}`}
+            className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-2 py-1 font-medium text-fg hover:bg-line"
+          >
+            <Activity size={14} aria-hidden /> Painel ao vivo
+          </Link>
+        </span>
       </footer>
     </article>
   );

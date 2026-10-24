@@ -27,7 +27,11 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
   cada PC ao vivo (online, em jogo, alerta térmico, offline) e as temperaturas; modal de pareamento com o código
   de 6 dígitos e confirmação automática; ajustes por PC (nome, limites de alerta, remoção) e página da conta com
   a tarifa de energia. Os limites alterados no site chegam ao PC em até 1 minuto.
-- `npm run db:dev` em `cloud/`: PostgreSQL local para desenvolver sem criar banco na nuvem.
+- `npm run db:dev` em `cloud/`: PostgreSQL local para desenvolver sem criar banco na nuvem (dados em
+  `~/.pc-tensor-cloud/pglite`, fora do projeto).
+- **Painel ao vivo de cada PC no site** (Etapa 5): Bento Grid camaleão com os cards do Pit Wall, Raio-X térmico em
+  SVG, taxímetro em reais com o mês somado na nuvem e projeção, caixa preta dos últimos 60 s com Post-Mortem
+  automático quando o servidor confirma um travamento, vibração no celular e Stutter Buster remoto.
 
 ## [1.2.0] - 2026-10-24
 

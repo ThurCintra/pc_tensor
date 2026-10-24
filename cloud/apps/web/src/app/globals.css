@@ -24,6 +24,11 @@
   --crit-bg: rgb(248 113 113 / 0.12);
   --game: #a78bfa;
   --game-bg: rgb(167 139 250 / 0.14);
+  --track: rgb(255 255 255 / 0.1);
+  --border-strong: #33435a;
+  --chart-1: #38bdf8;
+  --chart-2: #a78bfa;
+  --chart-3: #fbbf24;
 }
 
 @media (prefers-color-scheme: light) {
@@ -47,6 +52,11 @@
     --crit-bg: rgb(220 38 38 / 0.08);
     --game: #7c3aed;
     --game-bg: rgb(124 58 237 / 0.1);
+    --track: rgb(0 0 0 / 0.08);
+    --border-strong: #c3ccd7;
+    --chart-1: #0284c7;
+    --chart-2: #7c3aed;
+    --chart-3: #b45309;
   }
 }
 
@@ -69,6 +79,8 @@
   --color-crit-bg: var(--crit-bg);
   --color-game: var(--game);
   --color-game-bg: var(--game-bg);
+  --color-track: var(--track);
+  --color-line-strong: var(--border-strong);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono-face), ui-monospace, monospace;
 }
@@ -103,5 +115,15 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse-dot {
     animation: none;
+  }
+}
+
+/* Fluxo de ar do Raio-X: tracejado andando na direção do ar */
+@theme {
+  --animate-flow: flow 2s linear infinite;
+  @keyframes flow {
+    to {
+      stroke-dashoffset: -24;
+    }
   }
 }

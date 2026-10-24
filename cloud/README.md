@@ -23,7 +23,8 @@ PC (agente)  ──wss /agent──►  Servidor de tempo real (Socket.IO)  ◄�
 
 1. Crie um banco PostgreSQL gratuito no [Neon](https://neon.tech) ou no [Supabase](https://supabase.com). Para
    só desenvolver, dá para pular esse passo: `npm run db:dev` sobe um PostgreSQL local (PGlite, sem instalar nada)
-   em `postgresql://postgres@127.0.0.1:5433/postgres`, já com as migrações aplicadas e os dados em `cloud/.pglite`.
+   em `postgresql://postgres@127.0.0.1:5433/postgres`, já com as migrações aplicadas e os dados em `~/.pc-tensor-cloud/pglite` (fora do projeto, para o
+   Turbopack não recarregar o site a cada escrita do banco).
 2. Copie `apps/web/.env.example` para `apps/web/.env` e preencha (gere `AUTH_SECRET` com `npx auth secret` e um
    `REALTIME_JWT_SECRET` com pelo menos 32 caracteres).
 3. Instale, gere o cliente e aplique as migrações:
@@ -68,6 +69,27 @@ Tema escuro por padrão (segue o tema do sistema), Tailwind 4 e ícones Lucide; 
 - **Ajustes do PC:** nome, limites de alerta (50 a 110 °C) e remoção com confirmação. Os novos limites chegam ao
   agente em até 1 minuto, sem reiniciar nada.
 - **Conta** (`/conta`): nome e tarifa de energia (R$/kWh) usada no taxímetro.
+
+## Painel ao vivo do PC (Etapa 5)
+
+`/computadores/{id}`: abrir a página põe o navegador na sala `device:{id}`, o que liga o modo `LIVE` no agente
+(quadros de 250 ms); fechar devolve o PC ao `HEARTBEAT`. Os cards são os mesmos do Pit Wall do app.
+
+- **Bento Grid camaleão:** a ordem e o tamanho dos 9 cards mudam com o perfil do app em foco no PC
+  (`COMPETITIVE_FPS`, `AAA_GAMING`, `WORKSTATION`, `IDLE`), sem recarregar a página.
+- **Raio-X:** o gabinete em SVG com CPU, GPU, VRM e SSD coloridos pela temperatura real (azul → vermelho) e as
+  ventoinhas girando na rotação lida.
+- **Taxímetro:** custo da sessão em reais 4 vezes por segundo, custo por hora no ritmo atual e o mês somado dos
+  resumos gravados na nuvem (`GET /api/devices/{id}/energy?since=`), com projeção até o fim do mês, pela tarifa
+  da conta.
+- **Caixa preta e Post-Mortem:** os últimos 60 s ficam num buffer circular no navegador, espelhado no IndexedDB.
+  Se a conexão do PC cai com ele em jogo ou com CPU/GPU acima de 50%, a janela é congelada; quando o servidor
+  confirma o `ABRUPT_CRASH` (20 s depois), o Post-Mortem abre com a linha do tempo até o milissegundo da queda e
+  os picos de temperatura, potência, VRAM e tensão. Se o PC volta antes, era a rede, e a gravação é descartada.
+- **Vibração no celular:** padrões diferentes para temperatura acima do limite do site, throttling previsto,
+  perda de pacotes (só em jogo) e travamento, via `navigator.vibrate` (Android; o Safari não expõe a API).
+- **Stutter Buster remoto:** um botão que manda `ACTION_CLEAN_RAM` e `ACTION_OPTIMIZE_PRIORITY` pela allowlist e
+  mostra o resultado de cada um. A limpeza da memória exige o PC Sentinel aberto como administrador.
 
 ## API (Etapa 1)
 

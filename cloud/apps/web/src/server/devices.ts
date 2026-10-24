@@ -128,6 +128,23 @@ export async function listHistory(db: Db, userId: string, deviceId: string, hour
   }));
 }
 
+/**
+ * Energia gravada desde `since` (os resumos de 1 minuto continuam chegando com o painel aberto), para o
+ * taxímetro mostrar o mês inteiro mesmo que o PC tenha sido reiniciado. O navegador manda o início do mês
+ * no fuso dele.
+ */
+export async function energySince(db: Db, userId: string, deviceId: string, since: Date) {
+  if (Number.isNaN(since.getTime()) || Date.now() - since.getTime() > 40 * 86_400_000)
+    throw badRequest('Período inválido (até 40 dias).');
+  await getDevice(db, userId, deviceId);
+  const total = await db.telemetryHistory.aggregate({
+    where: { deviceId, timestamp: { gte: since } },
+    _sum: { energyConsumedWh: true },
+    _count: true,
+  });
+  return { since: since.toISOString(), wh: total._sum.energyConsumedWh ?? 0, minutes: total._count };
+}
+
 /** Autenticação do agente pelo cabeçalho X-Device-Token (só o hash fica no banco). */
 export async function authenticateDevice(db: Db, token: string | null | undefined) {
   if (!token || !token.startsWith('pct_dev_')) return null;
