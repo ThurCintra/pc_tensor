@@ -55,7 +55,7 @@ export function EnergyCard({ frame, store, highlight, className }: EnergyCardPro
           {brl(e.sessionCostBrl)}
         </div>
       </div>
-      <dl className="m-0 grid grid-cols-3 gap-2 text-sm">
+      <dl className="m-0 [display:grid] grid-cols-3 gap-2 text-sm">
         <div>
           <dt className="text-xs text-fg-3">Agora</dt>
           <dd className="m-0 font-semibold tabular-nums">{num(e.systemPowerW)} W</dd>
@@ -66,7 +66,7 @@ export function EnergyCard({ frame, store, highlight, className }: EnergyCardPro
         </div>
         <div>
           <dt className="text-xs text-fg-3">Consumo do mês</dt>
-          <dd className="m-0 font-semibold tabular-nums">{num(e.monthKwh, 1)} kWh</dd>
+          <dd className="m-0 font-semibold tabular-nums">{num(e.monthKwh, e.monthKwh < 10 ? 2 : 1)} kWh</dd>
         </div>
       </dl>
 
@@ -92,7 +92,8 @@ export function EnergyCard({ frame, store, highlight, className }: EnergyCardPro
           {error && <span className="w-full text-crit">{error}</span>}
         </form>
       ) : (
-        <Muted>
+        // mt-auto: a tarifa fica no rodapé quando o card ocupa duas linhas da grade
+        <Muted className="mt-auto">
           Tarifa {brl(e.tariffBrlPerKwh)}/kWh ·{' '}
           <button
             type="button"

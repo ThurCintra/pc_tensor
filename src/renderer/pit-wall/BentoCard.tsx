@@ -54,6 +54,6 @@ export function Bar({ pct, color }: { pct: number | null; color: string }) {
   );
 }
 
-export function Muted({ children }: { children: ReactNode }) {
-  return <p className="m-0 text-xs text-fg-3">{children}</p>;
+export function Muted({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <p className={`m-0 text-xs text-fg-3 ${className}`}>{children}</p>;
 }

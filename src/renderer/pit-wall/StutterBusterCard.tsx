@@ -37,7 +37,9 @@ export function StutterBusterCard({ store, hello, online, highlight, className }
     <BentoCard title="Stutter Buster" icon={Rocket} highlight={highlight} className={className}>
       <button
         type="button"
-        className="btn accent min-h-12 w-full text-base font-semibold"
+        className="btn accent w-full text-base font-semibold"
+        // .btn (styles.css) fixa altura e uma linha; aqui o texto pode quebrar no celular
+        style={{ minHeight: 48, height: 'auto', whiteSpace: 'normal' }}
         disabled={!online || !available || state.kind === 'running'}
         onClick={run}
       >

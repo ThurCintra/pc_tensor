@@ -10,6 +10,12 @@ namespace PcSentinel.Service.Analytics;
 /// </summary>
 public sealed class ThermalTrendTracker(double limitC, double windowSeconds = 10, double minSlopeCPerS = 0.05)
 {
+    /// <summary>
+    /// Horizonte máximo da previsão. Além disso a extrapolação de uma inclinação pequena não diz nada útil
+    /// (ex.: "chega a 90 °C em 749 s" com a GPU a 45 °C), então só a tendência é informada.
+    /// </summary>
+    public const double MaxHorizonS = 120;
+
     /// <summary>Janela mínima para confiar na inclinação (evita prever com 1–2 leituras).</summary>
     private const double MinSpanSeconds = 3;
 
@@ -37,7 +43,8 @@ public sealed class ThermalTrendTracker(double limitC, double windowSeconds = 10
         double? timeToThrottle = null;
         if (!throttling && slope is double s && s >= minSlopeCPerS)
         {
-            timeToThrottle = Math.Round((LimitC - temp) / s, 1);
+            double seconds = (LimitC - temp) / s;
+            if (seconds <= MaxHorizonS) timeToThrottle = Math.Round(seconds, 1);
         }
 
         return new ThermalTrend(slope is double v ? Math.Round(v, 3) : null, timeToThrottle, LimitC, throttling);

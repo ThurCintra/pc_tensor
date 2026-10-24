@@ -52,7 +52,7 @@ export function PitWall() {
       <StatusBar status={status} alert={recentAlert} />
 
       {frame ? (
-        <div className="grid grid-flow-dense auto-rows-[minmax(140px,auto)] grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="[display:grid] grid-flow-dense auto-rows-[minmax(140px,auto)] grid-cols-2 gap-4 md:grid-cols-4">
           {slots.map((slot) => (
             <Card key={slot.id} slot={slot} frame={frame} store={store} hello={hello} online={status === 'online'} />
           ))}

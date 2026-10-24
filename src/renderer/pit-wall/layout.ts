@@ -61,7 +61,7 @@ export const LAYOUTS: Record<Profile, readonly CardSlot[]> = {
   ],
   // PC à toa: custo de energia e manutenção em primeiro plano
   IDLE: [
-    { id: 'energy', size: 'lg', highlight: true },
+    { id: 'energy', size: 'wide', highlight: true },
     { id: 'xray', size: 'wide' },
     { id: 'maintenance', size: 'sm' },
     { id: 'efficiency', size: 'sm' },

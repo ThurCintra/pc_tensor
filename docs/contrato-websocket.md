@@ -126,9 +126,10 @@ Campos de cada bloco:
 | `cpu.tempSource` | `sensor` (núcleos, exige administrador), `amdDriver` (driver da placa AMD) ou `ioDie` (die de E/S do Ryzen pela GPU integrada: real, porém mais frio que os núcleos). Com `ioDie` a previsão de throttling e a linha de base de degradação da CPU ficam desligadas |
 | `cpu.vcoreV` | Tensão medida (SVI2/SVI3 na AMD, "CPU Core" na Intel); o VID pedido pelo processador não é usado |
 | `thermal.slopeCPerS` | dT/dt em °C/s: inclinação da reta de mínimos quadrados sobre os últimos 10 s |
-| `thermal.timeToThrottleS` | Segundos até `limitC` mantida a inclinação; `null` se a temperatura está estável ou caindo |
+| `thermal.timeToThrottleS` | Segundos até `limitC` mantida a inclinação; `null` se a temperatura está estável, caindo ou levaria mais de 120 s |
 | `thermal.throttling` | Temperatura já está no limite |
 | `lag.verdict` | `NORMAL`, `CAUSE_NETWORK`, `CAUSE_CPU_BOTTLENECK` ou `CAUSE_VRAM_OVERFLOW` |
+| `lag.verdict` (CPU) | `CAUSE_CPU_BOTTLENECK` exige um núcleo a 95% ou mais com a GPU entre 30% e 85% (jogo rodando, mas esperando a CPU) |
 | `lag.reasons` | Frases curtas explicando o veredito (ex.: `"Perda de pacotes de 4%"`) |
 | `context.profile` | `COMPETITIVE_FPS`, `AAA_GRAPHICS`, `DEV_WORKSTATION` ou `IDLE` |
 | `energy.systemPowerW` | P_CPU + P_GPU + carga base estimada |

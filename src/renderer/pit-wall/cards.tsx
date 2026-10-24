@@ -1,5 +1,5 @@
 import { Cpu, Gauge, HardDrive, MonitorPlay, Network, Wrench } from 'lucide-react';
-import type { CpuData, GpuData, LagVerdict, TelemetryFrame } from '../realtime/protocol';
+import type { CpuData, GpuData, LagVerdict, SiliconEfficiency, TelemetryFrame } from '../realtime/protocol';
 import { Bar, BentoCard, BigValue, Muted } from './BentoCard';
 import { thermalColor } from './thermal-color';
 import { DASH, num } from './format';
@@ -100,7 +100,7 @@ export function LagJudgeCard({ frame, highlight, className }: CardProps) {
     <BentoCard title="Juiz de Lag" icon={Network} highlight={highlight} className={className}>
       <div className={`self-start rounded-full px-3 py-1 text-sm font-semibold ${verdict.tone}`}>{verdict.label}</div>
       <p className="m-0 text-sm text-fg-2">{frame.lag.reasons[0] ?? verdict.hint}</p>
-      <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+      <dl className="m-0 [display:grid] grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <Stat label="Internet" value={`${num(n.internetLatencyMs)} ms`} />
         <Stat label="Roteador" value={`${num(n.gatewayLatencyMs)} ms`} />
         <Stat label="Jitter" value={`${num(n.jitterMs, 1)} ms`} />
@@ -154,6 +154,13 @@ export function MaintenanceCard({ frame, highlight, className }: CardProps) {
   );
 }
 
+/** Abaixo disso a média e o desvio ainda não dizem nada (ex.: "±0,0 mV" com 3 leituras). */
+const MIN_EFFICIENCY_SAMPLES = 40;
+
+function enough(e: SiliconEfficiency | null): e is SiliconEfficiency {
+  return e !== null && e.samples >= MIN_EFFICIENCY_SAMPLES;
+}
+
 export function EfficiencyCard({ frame, highlight, className }: CardProps) {
   const rows = [
     ['CPU', frame.efficiency.cpu],
@@ -173,15 +180,17 @@ export function EfficiencyCard({ frame, highlight, className }: CardProps) {
           {rows.map(([label, e]) => (
             <tr key={label}>
               <td className="py-0.5 text-fg-2">{label}</td>
-              <td className="font-semibold tabular-nums">{num(e?.mhzPerWatt, 1)}</td>
+              <td className="font-semibold tabular-nums">{enough(e) ? num(e.mhzPerWatt, 1) : DASH}</td>
               <td className="tabular-nums">
-                {e?.vcoreStdDevMv === null || !e ? DASH : `±${num(e.vcoreStdDevMv, 1)} mV`}
+                {enough(e) && e.vcoreStdDevMv !== null ? `±${num(e.vcoreStdDevMv, 1)} mV` : DASH}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <Muted>Medido sob carga (80% ou mais). Mais MHz/W = chip mais eficiente.</Muted>
+      <Muted>
+        Medido sob carga (80% ou mais), a partir de {MIN_EFFICIENCY_SAMPLES} leituras. Mais MHz/W = chip mais eficiente.
+      </Muted>
     </BentoCard>
   );
 }

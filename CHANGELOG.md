@@ -41,6 +41,10 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ### Corrigido
 
+- Pit Wall no celular: a grade passava da largura da tela (a classe `.grid` do app sobrescrevia a do Tailwind).
+- Juiz de Lag não acusa mais "Gargalo de CPU" com a placa de vídeo quase parada (sem jogo rodando).
+- A previsão de throttling só aparece até 2 minutos; antes extrapolava inclinações mínimas ("90 °C em 749 s").
+- Post-Mortem mostrava só os milissegundos no horário da queda.
 - Com a porta 3890 ocupada por outro programa, o app mostrava "A JavaScript error occurred in the main process"
   (EADDRINUSE) e não abria a janela; agora usa a porta seguinte.
 - A página Hardware não dispara mais uma renderização extra ao abrir.

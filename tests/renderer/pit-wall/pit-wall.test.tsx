@@ -7,7 +7,7 @@ import { ThermalCard, LagJudgeCard, MaintenanceCard } from '../../../src/rendere
 import { XRayCard } from '../../../src/renderer/pit-wall/XRayCard';
 import { EnergyCard } from '../../../src/renderer/pit-wall/EnergyCard';
 import { StutterBusterCard } from '../../../src/renderer/pit-wall/StutterBusterCard';
-import { PostMortem } from '../../../src/renderer/pit-wall/PostMortem';
+import { PostMortem, crashTime } from '../../../src/renderer/pit-wall/PostMortem';
 import { summarizeCrash, type CrashReport } from '../../../src/renderer/realtime/flight-recorder';
 import type { SentinelStore } from '../../../src/renderer/realtime/sentinel-store';
 import type { HelloData } from '../../../src/renderer/realtime/protocol';
@@ -143,6 +143,11 @@ describe('Stutter Buster', () => {
 });
 
 describe('Post-Mortem', () => {
+  it('mostra data e hora da queda até o milissegundo', () => {
+    const ms = new Date(2026, 9, 24, 13, 42, 7, 250).getTime();
+    expect(crashTime(ms)).toMatch(/^24\/10\/2026,? 13:42:07[,.]250$/);
+  });
+
   function crashState() {
     const frames = Array.from({ length: 20 }, (_, i) => ({
       t: 1_000_000 + i * 250,

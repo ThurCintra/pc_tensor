@@ -67,6 +67,24 @@ const PEAK_LABELS: Record<keyof CrashSummary['peaks'], [string, string, number]>
   gpuVcoreV: ['Tensão da GPU', 'V', 3],
 };
 
+/**
+ * Data e hora da queda até o milissegundo ("24/10/2026 13:42:07,250").
+ * Hora, minuto e segundo precisam ser pedidos junto com os milissegundos: só fractionalSecondDigits
+ * faz o Chromium devolver apenas "250".
+ */
+export function crashTime(ms: number): string {
+  return new Date(ms).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
+    hour12: false,
+  });
+}
+
 interface PostMortemProps {
   crash: CrashState;
   onClose: () => void;
@@ -103,14 +121,8 @@ export function PostMortem({ crash, onClose, onDelete }: PostMortemProps) {
               Post-Mortem
             </h1>
             <p className="m-0 text-fg-2">
-              {REASONS[report.reason]} Último sinal às{' '}
-              <strong>
-                {new Date(report.lastFrameAt).toLocaleTimeString('pt-BR', {
-                  hour12: false,
-                  fractionalSecondDigits: 3,
-                } as Intl.DateTimeFormatOptions)}
-              </strong>
-              . {num(summary.frameCount)} leituras em {num(summary.durationMs / 1000, 1)} s.
+              {REASONS[report.reason]} Último sinal às <strong>{crashTime(report.lastFrameAt)}</strong>.{' '}
+              {num(summary.frameCount)} leituras em {num(summary.durationMs / 1000, 1)} s.
             </p>
           </div>
           <button ref={closeRef} type="button" className="btn subtle" onClick={onClose} aria-label="Fechar">
@@ -148,7 +160,7 @@ export function PostMortem({ crash, onClose, onDelete }: PostMortemProps) {
 
         <section className="rounded-card border border-line bg-card p-4">
           <h2 className="m-0 mb-2 text-base font-semibold">Picos antes da queda</h2>
-          <ul className="m-0 grid list-none gap-1 p-0 sm:grid-cols-2">
+          <ul className="m-0 [display:grid] list-none gap-x-8 gap-y-1 p-0 sm:grid-cols-2">
             {(Object.keys(PEAK_LABELS) as (keyof CrashSummary['peaks'])[]).map((key) => {
               const peak = summary.peaks[key];
               const [label, unit, digits] = PEAK_LABELS[key];
@@ -197,7 +209,7 @@ function FrameDetails({ entry, lastFrameAt }: { entry: RecordedFrame; lastFrameA
     ['Em foco', f.context.foregroundExe ?? '—'],
   ];
   return (
-    <dl className="m-0 mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm md:grid-cols-3">
+    <dl className="m-0 mt-3 [display:grid] grid-cols-2 gap-x-4 gap-y-1 text-sm md:grid-cols-3">
       {items.map(([label, value]) => (
         <div key={label}>
           <dt className="text-xs text-fg-3">{label}</dt>

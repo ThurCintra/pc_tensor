@@ -19,6 +19,18 @@ public class ThermalTrendTrackerTests
     }
 
     [Fact]
+    public void NaoPreveAlemDeDoisMinutos()
+    {
+        var tracker = new ThermalTrendTracker(limitC: 90);
+        // 0,06 °C/s a partir de 45 °C: chegaria ao limite em ~750 s
+        Contracts.ThermalTrend trend = null!;
+        for (int i = 0; i <= 40; i++) trend = tracker.Add(i * 0.25, 45 + i * 0.015);
+
+        Assert.Equal(0.06, trend.SlopeCPerS!.Value, precision: 3);
+        Assert.Null(trend.TimeToThrottleS);
+    }
+
+    [Fact]
     public void DescartaAmostrasForaDaJanelaDe10Segundos()
     {
         var tracker = new ThermalTrendTracker(limitC: 95);

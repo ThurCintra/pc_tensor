@@ -125,8 +125,10 @@ export function XRayCard({ frame, highlight, className }: XRayCardProps) {
           );
         })}
 
-        <Fan cx={233} cy={66} rpm={cpuFan} small />
-        <Fan cx={235} cy={163} rpm={frame.gpu.fanRpm} small />
+        {/* Cooler no canto da CPU e duas ventoinhas nas pontas da placa de vídeo, fora dos textos */}
+        <Fan cx={256} cy={46} rpm={cpuFan} tiny />
+        <Fan cx={176} cy={163} rpm={frame.gpu.fanRpm} tiny />
+        <Fan cx={304} cy={163} rpm={frame.gpu.fanRpm} tiny />
 
         {/* Legenda */}
         <rect x="160" y="240" width="160" height="8" rx="4" fill="url(#xray-legend)" />
@@ -201,14 +203,16 @@ function Fan({
   rpm,
   label,
   small,
+  tiny,
 }: {
   cx: number;
   cy: number;
   rpm: number | null;
   label?: string;
   small?: boolean;
+  tiny?: boolean;
 }) {
-  const r = small ? 10 : 18;
+  const r = tiny ? 7 : small ? 10 : 18;
   const s = spinSeconds(rpm);
   return (
     <g>

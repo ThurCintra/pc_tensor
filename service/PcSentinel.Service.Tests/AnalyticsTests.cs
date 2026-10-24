@@ -76,6 +76,9 @@ public class LagJudgeTests
         Assert.Equal(LagVerdicts.CpuBottleneck, LagJudge.Judge(Inputs(maxCore: 99, gpu: 60)).Verdict);
         // GPU também no máximo: o jogo está pesado nos dois, não é gargalo de CPU
         Assert.Equal(LagVerdicts.Normal, LagJudge.Judge(Inputs(maxCore: 99, gpu: 98)).Verdict);
+        // GPU quase parada (sem jogo): núcleo a 100% por um instante é uso normal
+        Assert.Equal(LagVerdicts.Normal, LagJudge.Judge(Inputs(maxCore: 100, gpu: 19)).Verdict);
+        Assert.Equal(LagVerdicts.Normal, LagJudge.Judge(Inputs(maxCore: 100, gpu: null)).Verdict);
     }
 
     [Fact]

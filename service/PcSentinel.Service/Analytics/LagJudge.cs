@@ -17,7 +17,8 @@ public sealed record LagInputs(
 /// <summary>
 /// Juiz de Lag: decide se uma anomalia vem da rede ou do hardware.
 /// Ordem de prioridade: rede (o servidor do jogo não depende do PC), VRAM cheia (causa stutter grave por
-/// troca com a RAM) e gargalo de CPU (um núcleo saturado com a GPU ociosa esperando quadros).
+/// troca com a RAM) e gargalo de CPU (um núcleo saturado com a GPU trabalhando abaixo do que poderia).
+/// Com a GPU quase parada não há jogo rodando: um núcleo a 100% por um instante é uso normal do Windows.
 /// </summary>
 public static class LagJudge
 {
@@ -28,6 +29,7 @@ public static class LagJudge
     public const double VramThreshold = 0.95;
     public const double CoreSaturationPct = 95;
     public const double GpuStarvedPct = 85;
+    public const double GpuRenderingPct = 30;
 
     public static LagData Judge(LagInputs i)
     {
@@ -45,10 +47,9 @@ public static class LagJudge
             return new LagData(LagVerdicts.VramOverflow, [$"Memória de vídeo em {used / total * 100:0}% ({used:0} de {total:0} MB)"]);
 
         if (i.MaxCoreLoadPct is double core && core >= CoreSaturationPct &&
-            (i.GpuLoadPct is not double gpu || gpu < GpuStarvedPct))
+            i.GpuLoadPct is double gpu && gpu >= GpuRenderingPct && gpu < GpuStarvedPct)
         {
-            string gpuText = i.GpuLoadPct is double g ? $", GPU em {g:0}%" : string.Empty;
-            return new LagData(LagVerdicts.CpuBottleneck, [$"Núcleo da CPU em {core:0}%{gpuText}"]);
+            return new LagData(LagVerdicts.CpuBottleneck, [$"Núcleo da CPU em {core:0}%, GPU em {gpu:0}%"]);
         }
 
         return new LagData(LagVerdicts.Normal, []);
