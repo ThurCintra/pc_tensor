@@ -3,19 +3,26 @@ import { Maximize2 } from 'lucide-react';
 import { NumberTicker } from '../ui/NumberTicker';
 
 export function MiniWidget({
-  cpuTemp = 42,
-  gpuTemp = 45,
-  ramPercent = 48,
+  cpuTemp = null,
+  gpuTemp = null,
+  ramPercent = 0,
+  cpuLimit = 85,
+  gpuLimit = 85,
   onExpand,
 }) {
-  const maxTemp = Math.max(cpuTemp, gpuTemp);
-  const isCritical = maxTemp >= 76;
-  const isWarning = maxTemp >= 56 && maxTemp < 76;
+  const hasCpu = typeof cpuTemp === 'number';
+  const hasGpu = typeof gpuTemp === 'number';
+  const cpuCritical = hasCpu && cpuTemp >= cpuLimit;
+  const gpuCritical = hasGpu && gpuTemp >= gpuLimit;
+  const isCritical = cpuCritical || gpuCritical;
+  const isWarning = !isCritical && ((hasCpu && cpuTemp >= cpuLimit - 14) || (hasGpu && gpuTemp >= gpuLimit - 14));
 
-  const statusColor = isCritical 
-    ? 'var(--color-critical)' 
-    : isWarning 
-    ? 'var(--color-elevated)' 
+  const statusColor = !hasCpu && !hasGpu
+    ? 'var(--text-muted)'
+    : isCritical
+    ? 'var(--color-critical)'
+    : isWarning
+    ? 'var(--color-elevated)'
     : 'var(--color-nominal)';
 
   return (
@@ -65,8 +72,8 @@ export function MiniWidget({
         >
           <div>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem', marginRight: '4px' }}>CPU</span>
-            <strong style={{ color: cpuTemp >= 76 ? 'var(--color-critical)' : 'var(--text-primary)' }}>
-              <NumberTicker value={Math.round(cpuTemp)} />°
+            <strong style={{ color: cpuCritical ? 'var(--color-critical)' : 'var(--text-primary)' }}>
+              {hasCpu ? <><NumberTicker value={Math.round(cpuTemp)} />°</> : '--'}
             </strong>
           </div>
 
@@ -74,8 +81,8 @@ export function MiniWidget({
 
           <div>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem', marginRight: '4px' }}>GPU</span>
-            <strong style={{ color: gpuTemp >= 76 ? 'var(--color-critical)' : 'var(--text-primary)' }}>
-              <NumberTicker value={Math.round(gpuTemp)} />°
+            <strong style={{ color: gpuCritical ? 'var(--color-critical)' : 'var(--text-primary)' }}>
+              {hasGpu ? <><NumberTicker value={Math.round(gpuTemp)} />°</> : '--'}
             </strong>
           </div>
 

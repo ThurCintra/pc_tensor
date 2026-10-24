@@ -5,6 +5,14 @@ const http = require('http');
 const fs = require('fs');
 const { SystemCollector } = require('./collector');
 const { MobileLiveServer } = require('../server/mobile-server');
+const { SettingsStore } = require('./settings-store');
+const { ThermalAlertMonitor } = require('./thermal-alerts');
+
+// Em dev (`electron src/main/main.js`) o nome do app seria "Electron" e os dados iriam para
+// %APPDATA%\Electron; fixa a pasta para que dev e instalado usem %APPDATA%\pc-sentinel
+if (app?.setPath && app?.getPath) {
+  app.setPath('userData', path.join(app.getPath('appData'), 'pc-sentinel'));
+}
 
 // Otimizações de processo: desativa processos sobressalentes do Chromium
 if (app?.commandLine) {
@@ -20,6 +28,8 @@ let metricsInterval = null;
 let isCollecting = false;
 let tray = null;
 let isQuitting = false;
+let settingsStore = null;
+let alertMonitor = null;
 
 function isServerReachable(url) {
   return new Promise((resolve) => {
@@ -290,6 +300,30 @@ function resolveThermalDbPath() {
   return target;
 }
 
+function getAutoLaunchState() {
+  return {
+    supported: Boolean(app.isPackaged),
+    enabled: app.isPackaged ? app.getLoginItemSettings().openAtLogin : false,
+  };
+}
+
+function setAutoLaunch(enabled) {
+  if (!app.isPackaged) return;
+  app.setLoginItemSettings({ openAtLogin: Boolean(enabled), path: process.execPath, args: [] });
+  refreshTrayMenu();
+}
+
+function showThermalNotification(alert) {
+  if (!Notification || !Notification.isSupported()) return;
+  const iconPath = path.join(__dirname, '../../assets/icon.png');
+  new Notification({
+    title: `PC Sentinel - ${alert.label} acima de ${alert.limit} °C`,
+    body: `${alert.label} atingiu ${alert.temp.toFixed(1)} °C. Verifique a refrigeração ou reduza a carga.`,
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    urgency: 'critical',
+  }).show();
+}
+
 function createTray() {
   if (tray) return;
 
@@ -313,12 +347,7 @@ function refreshTrayMenu() {
   const template = buildTrayMenuTemplate({
     serverPort: mobileServer?.port || 3890,
     openAtLogin: app.isPackaged ? app.getLoginItemSettings().openAtLogin : false,
-    onToggleAutoLaunch: app.isPackaged
-      ? (enabled) => {
-          app.setLoginItemSettings({ openAtLogin: enabled, path: process.execPath, args: [] });
-          refreshTrayMenu();
-        }
-      : null,
+    onToggleAutoLaunch: app.isPackaged ? (enabled) => setAutoLaunch(enabled) : null,
     onOpenDashboard: () => showMainWindow(),
     onBoost: async () => {
       if (mobileServer?.actionRouter) {
@@ -400,6 +429,32 @@ function setupIpc() {
     return isMiniWidget;
   });
 
+  ipcMain.handle('settings:get', async () => ({
+    ...settingsStore.get(),
+    autoLaunch: getAutoLaunchState(),
+  }));
+
+  ipcMain.handle('settings:update', async (event, partial = {}) => {
+    const previousPort = settingsStore.get().mobilePort;
+    const next = settingsStore.update(partial);
+    mobileServer.actionRouter.setBoostTargets(next.boostTargets);
+
+    if (typeof partial.autoLaunch === 'boolean') {
+      setAutoLaunch(partial.autoLaunch);
+    }
+    if (next.mobilePort !== previousPort) {
+      await mobileServer.changePort(next.mobilePort);
+      refreshTrayMenu();
+    }
+    return { ...next, autoLaunch: getAutoLaunchState(), serverInfo: await mobileServer.getServerInfo() };
+  });
+
+  // Revoga o pareamento: novo token persistido e todos os celulares desconectados
+  ipcMain.handle('mobile-server:revoke-token', async () => {
+    const token = settingsStore.rotateToken();
+    return mobileServer.rotateToken(token);
+  });
+
   // FASE 4: Execução de ações de controle (Stream Deck) disparadas pelo Desktop
   ipcMain.handle('action:execute', async (event, payload) => {
     if (mobileServer && mobileServer.actionRouter) {
@@ -415,6 +470,9 @@ function startMetricsLoop() {
     isCollecting = true;
     try {
       const metrics = await collector.getMetricsSnapshot();
+      if (alertMonitor) {
+        metrics.alerts = alertMonitor.evaluate(metrics);
+      }
 
       // Envia para o processo Desktop (React)
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -462,8 +520,21 @@ if (app) {
     app.whenReady().then(async () => {
       configureAutoLaunchOnFirstRun();
 
+      settingsStore = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
+      const settings = settingsStore.get();
+
       collector = new SystemCollector(null, { thermalDbPath: resolveThermalDbPath() });
-      mobileServer = new MobileLiveServer({ port: 3890, collector });
+      mobileServer = new MobileLiveServer({
+        port: settings.mobilePort,
+        collector,
+        sessionToken: settingsStore.sessionToken,
+      });
+      mobileServer.actionRouter.setBoostTargets(settings.boostTargets);
+
+      alertMonitor = new ThermalAlertMonitor({
+        getSettings: () => settingsStore.get(),
+        notify: showThermalNotification,
+      });
 
       // Inicia automaticamente o servidor mobile local (porta 3890 com fallback dinâmico)
       try {

@@ -14,6 +14,13 @@ contextBridge.exposeInMainWorld('sentinelAPI', {
   // Liga/desliga o streaming mobile
   toggleMobileServer: (start) => ipcRenderer.invoke('mobile-server:toggle', start),
 
+  // Revoga o pareamento atual (novo token, desconecta todos os celulares)
+  revokeMobileToken: () => ipcRenderer.invoke('mobile-server:revoke-token'),
+
+  // Preferências persistentes (alertas térmicos, Boost, porta, iniciar com o Windows)
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  updateSettings: (partial) => ipcRenderer.invoke('settings:update', partial),
+
   // Snapshot manual sob demanda
   fetchSnapshot: () => ipcRenderer.invoke('metrics:snapshot'),
 

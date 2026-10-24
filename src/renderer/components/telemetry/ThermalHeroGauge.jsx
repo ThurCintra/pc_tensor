@@ -4,15 +4,15 @@ import { NumberTicker } from '../ui/NumberTicker';
 import { Thermometer, Cpu, Activity } from 'lucide-react';
 
 export function ThermalHeroGauge({
-  cpuTemp = 42,
-  gpuTemp = 45,
-  cpuMax = 46,
-  gpuMax = 48,
+  cpuTemp = null,
+  gpuTemp = null,
+  cpuMax = null,
+  gpuMax = null,
+  cpuLimit = 85,
+  gpuLimit = 85,
+  requiresElevation = false,
   cpuModel = 'Processador Central',
   gpuModel = 'Placa de Vídeo',
-  isEstimated = false,
-  isCpuEstimated = undefined,
-  isGpuEstimated = undefined,
   className = '',
 }) {
   const [selectedTarget, setSelectedTarget] = useState('CPU'); // 'CPU' | 'GPU'
@@ -20,20 +20,23 @@ export function ThermalHeroGauge({
   const currentTemp = selectedTarget === 'CPU' ? cpuTemp : gpuTemp;
   const currentMax = selectedTarget === 'CPU' ? cpuMax : gpuMax;
   const currentModel = selectedTarget === 'CPU' ? cpuModel : gpuModel;
-  const currentIsEstimated = selectedTarget === 'CPU'
-    ? (typeof isCpuEstimated === 'boolean' ? isCpuEstimated : isEstimated)
-    : (typeof isGpuEstimated === 'boolean' ? isGpuEstimated : isEstimated);
 
-  // Estado Térmico Funcional
-  const isCritical = currentTemp >= 76;
-  const isWarning = currentTemp >= 56 && currentTemp < 76;
+  const currentLimit = selectedTarget === 'CPU' ? cpuLimit : gpuLimit;
+  // Sem leitura física o mostrador fica vazio: nenhum valor é inventado
+  const hasReading = typeof currentTemp === 'number' && Number.isFinite(currentTemp);
+
+  // Estado Térmico Funcional, relativo ao limite de alerta configurado
+  const isCritical = hasReading && currentTemp >= currentLimit;
+  const isWarning = hasReading && !isCritical && currentTemp >= currentLimit - 14;
   const status = isCritical ? 'critical' : isWarning ? 'warning' : 'stable';
 
   // Cores Sólidas de Instrumento (Sem gradientes artificiais)
-  const statusColor = isCritical 
-    ? 'var(--color-critical)' 
-    : isWarning 
-    ? 'var(--color-elevated)' 
+  const statusColor = !hasReading
+    ? 'var(--text-muted)'
+    : isCritical
+    ? 'var(--color-critical)'
+    : isWarning
+    ? 'var(--color-elevated)'
     : 'var(--color-nominal)';
 
   // Geometria de Disco de Bancada com Escala Calibrada
@@ -45,7 +48,9 @@ export function ThermalHeroGauge({
   // Escala útil: 20°C a 100°C (80°C de amplitude total)
   const minTemp = 20;
   const maxTempScale = 100;
-  const normalized = Math.max(0, Math.min(1, (currentTemp - minTemp) / (maxTempScale - minTemp)));
+  const normalized = hasReading
+    ? Math.max(0, Math.min(1, (currentTemp - minTemp) / (maxTempScale - minTemp)))
+    : 0;
   const arcLength = circumference * 0.75; // 270 graus de arco para formato manômetro
   const dashoffset = arcLength * (1 - normalized);
 
@@ -214,7 +219,7 @@ export function ThermalHeroGauge({
                 letterSpacing: '-0.03em',
               }}
             >
-              <NumberTicker value={Math.round(currentTemp)} />
+              {hasReading ? <NumberTicker value={Math.round(currentTemp)} /> : '--'}
             </span>
             <span
               style={{
@@ -240,16 +245,24 @@ export function ThermalHeroGauge({
               color: 'var(--text-muted)',
             }}
           >
-            <span>
-              Pico:{' '}
-              <strong style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                {Math.round(currentMax)}°C
-              </strong>
-            </span>
-            <span style={{ color: 'var(--border-subtle)' }}>•</span>
-            <span style={{ color: statusColor, fontWeight: 500 }}>
-              {isCritical ? 'Alerta Térmico' : isWarning ? 'Elevada' : 'Nominal'}
-            </span>
+            {hasReading ? (
+              <>
+                <span>
+                  Pico:{' '}
+                  <strong style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                    {typeof currentMax === 'number' ? `${Math.round(currentMax)}°C` : '--'}
+                  </strong>
+                </span>
+                <span style={{ color: 'var(--border-subtle)' }}>•</span>
+                <span style={{ color: statusColor, fontWeight: 500 }}>
+                  {isCritical ? 'Alerta Térmico' : isWarning ? 'Elevada' : 'Nominal'}
+                </span>
+              </>
+            ) : (
+              <span style={{ maxWidth: '150px', lineHeight: 1.35 }}>
+                {requiresElevation ? 'Sem sensor: execute como administrador' : 'Sensor indisponível'}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -287,13 +300,13 @@ export function ThermalHeroGauge({
         </div>
 
         <span
-          title={currentIsEstimated ? 'Modelo preditivo baseado em carga de trabalho' : 'Leitura física direta via sensores de silício'}
+          title={!hasReading ? 'Nenhuma leitura física disponível para este componente' : 'Leitura física direta via sensores de silício'}
           style={{
             fontSize: '0.65rem',
             padding: '2px 8px',
             borderRadius: 'var(--border-radius-sm)',
             background: 'var(--bg-inset)',
-            color: currentIsEstimated ? 'var(--text-muted)' : 'var(--color-nominal)',
+            color: !hasReading ? 'var(--text-muted)' : 'var(--color-nominal)',
             border: '1px solid var(--border-hairline)',
             fontWeight: 600,
             letterSpacing: '0.02em',
@@ -301,7 +314,7 @@ export function ThermalHeroGauge({
             flexShrink: 0,
           }}
         >
-          {currentIsEstimated ? 'ESTIMADO' : 'SENSOR REAL'}
+          {!hasReading ? 'SEM SENSOR' : `LIMITE ${currentLimit}°C`}
         </span>
       </div>
     </BentoCard>

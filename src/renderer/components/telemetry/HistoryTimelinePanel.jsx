@@ -40,11 +40,11 @@ export function HistoryTimelinePanel({
     return [
       {
         time: nowStr,
-        cpuTemp: cpuTemp ?? 45,
-        gpuTemp: gpuTemp ?? 48,
-        cpuLoad: cpuLoad || 15,
-        gpuLoad: gpuLoad || 10,
-        ramPercent: ramPercent || 40,
+        cpuTemp,
+        gpuTemp,
+        cpuLoad,
+        gpuLoad,
+        ramPercent,
       },
     ];
   }, [history, cpuTemp, gpuTemp, cpuLoad, gpuLoad, ramPercent]);

@@ -1029,10 +1029,10 @@
           <span class="card-unit">RPM</span>
         </div>
         <div class="progress-track" style="margin: 4px 0 8px;">
-          <div id="fanPwmFill" class="progress-fill" style="width: 50%;"></div>
+          <div id="fanPwmFill" class="progress-fill" style="width: 0%;"></div>
         </div>
         <div class="subtext">
-          <span>PWM: <strong id="valFanPwm" style="color: #00F0FF;">50%</strong></span>
+          <span>PWM: <strong id="valFanPwm" style="color: #00F0FF;">--</strong></span>
           <span id="tagFanStatus" class="gauge-tag" style="background: rgba(0, 240, 255, 0.15); color: #00F0FF; padding: 1px 6px;">SILENCIOSO</span>
         </div>
       </div>
@@ -1598,8 +1598,48 @@
     /* =========================================================
        METRICS UPDATE LOGIC
        ========================================================= */
+    // Escapa textos vindos do PC (nomes de processos, discos) antes de usar em innerHTML
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
+    // Limites de alerta: vêm do servidor (configuráveis no desktop); 85 °C como padrão
+    let alertThresholds = { cpuTempC: 85, gpuTempC: 85 };
+
+    // Sem sensor (valor null) a interface mostra "--" em vez de inventar números
+    function tempColor(t, limit) {
+      if (t === null) return '#475569';
+      if (t >= limit) return '#FF2A54';
+      if (t >= limit - 14) return '#FF8A00';
+      return '#00F0FF';
+    }
+
+    function tempStatus(t, limit) {
+      if (t === null) return { text: 'SEM SENSOR', bg: 'rgba(71, 85, 105, 0.18)', color: '#94A3B8' };
+      if (t >= limit) return { text: 'CRÍTICO', bg: 'rgba(255, 42, 84, 0.15)', color: '#FF2A54' };
+      if (t >= limit - 14) return { text: 'ALERTA', bg: 'rgba(255, 138, 0, 0.15)', color: '#FF8A00' };
+      return { text: 'OTIMIZADO', bg: 'rgba(16, 185, 129, 0.15)', color: '#10B981' };
+    }
+
+    function renderTempGauge({ temp, limit, valEl, peakEl, tagEl, gauge, peak }) {
+      valEl.textContent = temp ?? '--';
+      peakEl.textContent = peak > 0 ? peak : '--';
+      const status = tempStatus(temp, limit);
+      tagEl.textContent = status.text;
+      tagEl.style.background = status.bg;
+      tagEl.style.color = status.color;
+      const color = tempColor(temp, limit);
+      setGaugeOffset(gauge, temp === null ? 0 : Math.min(100, Math.max(0, ((temp - 25) / 70) * 100)), color);
+      return color;
+    }
+
     function updateTelemetryUI(data) {
       if (!data) return;
+      if (data.alerts?.thresholds) {
+        alertThresholds = { ...alertThresholds, ...data.alerts.thresholds };
+      }
       const { temperatures, cpu, memory, fan, disks, diskIo } = data;
       const isCpuEst = Boolean(temperatures?.isCpuEstimated ?? temperatures?.isEstimated);
       const isGpuEst = Boolean(temperatures?.isGpuEstimated ?? temperatures?.isEstimated);
@@ -1608,10 +1648,10 @@
       const badgeThermal = document.getElementById('badgeThermalOrigin');
       if (badgeThermal) {
         if (isCpuEst && isGpuEst) {
-          badgeThermal.textContent = 'ESTIMADO';
-          badgeThermal.style.background = 'rgba(0, 240, 255, 0.12)';
-          badgeThermal.style.color = '#00F0FF';
-          badgeThermal.style.border = '1px solid rgba(0, 240, 255, 0.25)';
+          badgeThermal.textContent = temperatures?.requiresElevation ? 'SEM SENSOR · REQUER ADMIN' : 'SEM SENSOR';
+          badgeThermal.style.background = 'rgba(71, 85, 105, 0.18)';
+          badgeThermal.style.color = '#94A3B8';
+          badgeThermal.style.border = '1px solid rgba(148, 163, 184, 0.25)';
         } else {
           badgeThermal.textContent = 'SENSOR REAL';
           badgeThermal.style.background = 'rgba(16, 185, 129, 0.12)';
@@ -1621,46 +1661,24 @@
       }
 
       // 1. CPU Temp
-      const cpuT = typeof temperatures?.cpuMain === 'number'
-        ? temperatures.cpuMain
-        : Math.round(39 + ((cpu?.loadPercent || 0) * 0.42));
-
-      valCpuTemp.textContent = cpuT;
-      if (cpuT > cpuPeak) cpuPeak = cpuT;
-      valCpuPeak.textContent = cpuPeak;
-
-      const cpuColor = cpuT >= 78 ? '#FF2A54' : (cpuT >= 64 ? '#FF8A00' : '#00F0FF');
-      const cpuStatusText = isCpuEst ? 'ESTIMADO' : (cpuT >= 78 ? 'CRÍTICO' : (cpuT >= 64 ? 'ALERTA' : 'OTIMIZADO'));
-      const cpuStatusBg = isCpuEst ? 'rgba(0, 240, 255, 0.12)' : (cpuT >= 78 ? 'rgba(255, 42, 84, 0.15)' : (cpuT >= 64 ? 'rgba(255, 138, 0, 0.15)' : 'rgba(16, 185, 129, 0.15)'));
-      const cpuStatusColor = isCpuEst ? '#00F0FF' : (cpuT >= 78 ? '#FF2A54' : (cpuT >= 64 ? '#FF8A00' : '#10B981'));
-
-      tagCpuStatus.textContent = cpuStatusText;
-      tagCpuStatus.style.background = cpuStatusBg;
-      tagCpuStatus.style.color = cpuStatusColor;
-      setGaugeOffset(gaugeCpuCircle, Math.min(100, Math.max(0, ((cpuT - 25) / 70) * 100)), cpuColor);
+      const cpuT = typeof temperatures?.cpuMain === 'number' ? temperatures.cpuMain : null;
+      if (cpuT !== null && cpuT > cpuPeak) cpuPeak = cpuT;
+      const cpuColor = renderTempGauge({
+        temp: cpuT, limit: alertThresholds.cpuTempC, valEl: valCpuTemp, peakEl: valCpuPeak,
+        tagEl: tagCpuStatus, gauge: gaugeCpuCircle, peak: cpuPeak,
+      });
 
       if (valCpuModelName) {
         valCpuModelName.textContent = (cpu?.model || cpu?.brand || temperatures?.cpuName || 'Processador');
       }
 
       // 2. GPU Temp
-      const gpuT = typeof temperatures?.gpu === 'number'
-        ? temperatures.gpu
-        : Math.round(42 + ((cpu?.loadPercent || 0) * 0.35));
-
-      valGpuTemp.textContent = gpuT;
-      if (gpuT > gpuPeak) gpuPeak = gpuT;
-      valGpuPeak.textContent = gpuPeak;
-
-      const gpuColor = gpuT >= 78 ? '#FF2A54' : (gpuT >= 64 ? '#FF8A00' : '#00F0FF');
-      const gpuStatusText = isGpuEst ? 'ESTIMADO' : (gpuT >= 78 ? 'CRÍTICO' : (gpuT >= 64 ? 'ALERTA' : 'OTIMIZADO'));
-      const gpuStatusBg = isGpuEst ? 'rgba(0, 240, 255, 0.12)' : (gpuT >= 78 ? 'rgba(255, 42, 84, 0.15)' : (gpuT >= 64 ? 'rgba(255, 138, 0, 0.15)' : 'rgba(16, 185, 129, 0.15)'));
-      const gpuStatusColor = isGpuEst ? '#00F0FF' : (gpuT >= 78 ? '#FF2A54' : (gpuT >= 64 ? '#FF8A00' : '#10B981'));
-
-      tagGpuStatus.textContent = gpuStatusText;
-      tagGpuStatus.style.background = gpuStatusBg;
-      tagGpuStatus.style.color = gpuStatusColor;
-      setGaugeOffset(gaugeGpuCircle, Math.min(100, Math.max(0, ((gpuT - 25) / 70) * 100)), gpuColor);
+      const gpuT = typeof temperatures?.gpu === 'number' ? temperatures.gpu : null;
+      if (gpuT !== null && gpuT > gpuPeak) gpuPeak = gpuT;
+      const gpuColor = renderTempGauge({
+        temp: gpuT, limit: alertThresholds.gpuTempC, valEl: valGpuTemp, peakEl: valGpuPeak,
+        tagEl: tagGpuStatus, gauge: gaugeGpuCircle, peak: gpuPeak,
+      });
 
       if (valGpuModelName) {
         valGpuModelName.textContent = temperatures?.gpuName || 'GPU Primária';
@@ -1699,17 +1717,25 @@
       valRamText.textContent = `${memory?.usedGB ?? 0} / ${memory?.totalGB ?? 0} GB`;
 
       // 5. Fan Speed & RPM
-      const rpm = fan?.rpm ?? Math.round(900 + (loadPct * 12));
-      const pwm = fan?.pwmPercent ?? Math.min(100, Math.round((rpm / 2400) * 100));
-      valFanRpm.textContent = rpm;
-      valFanPwm.textContent = `${pwm}%`;
-      fanPwmFill.style.width = `${pwm}%`;
+      const rpm = typeof fan?.rpm === 'number' ? fan.rpm : null;
+      const pwm = rpm === null ? null : (fan?.pwmPercent ?? Math.min(100, Math.round((rpm / 2400) * 100)));
+      valFanRpm.textContent = rpm ?? '--';
+      valFanPwm.textContent = pwm === null ? '--' : `${pwm}%`;
+      fanPwmFill.style.width = `${pwm ?? 0}%`;
 
-      // Velocidade de rotação do ícone da ventoinha proporcional ao RPM
-      const duration = Math.max(0.2, (2400 / Math.max(rpm, 400)) * 0.4).toFixed(2);
-      fanSpinIcon.style.animationDuration = `${duration}s`;
+      // Velocidade de rotação do ícone da ventoinha proporcional ao RPM (parada sem sensor)
+      if (rpm === null) {
+        fanSpinIcon.style.animationPlayState = 'paused';
+      } else {
+        fanSpinIcon.style.animationPlayState = 'running';
+        fanSpinIcon.style.animationDuration = `${Math.max(0.2, (2400 / Math.max(rpm, 400)) * 0.4).toFixed(2)}s`;
+      }
 
-      if (pwm >= 75) {
+      if (pwm === null) {
+        tagFanStatus.textContent = 'SEM SENSOR';
+        tagFanStatus.style.background = 'rgba(71, 85, 105, 0.18)';
+        tagFanStatus.style.color = '#94A3B8';
+      } else if (pwm >= 75) {
         tagFanStatus.textContent = 'ALTO DESEMPENHO';
         tagFanStatus.style.background = 'rgba(255, 42, 84, 0.15)';
         tagFanStatus.style.color = '#FF2A54';
@@ -1732,31 +1758,32 @@
           item.className = 'storage-item';
           item.innerHTML = `
             <div class="storage-header">
-              <span>${d.mount || d.fs || 'Disco'} (${d.type || 'SSD'})</span>
-              <span>${d.usedGB} GB / ${d.sizeGB} GB (${d.percentUsed}%)</span>
+              <span>${escapeHtml(d.mount || d.fs || 'Disco')} (${escapeHtml(d.type || 'SSD')})</span>
+              <span>${Number(d.usedGB) || 0} GB / ${Number(d.sizeGB) || 0} GB (${Number(d.percentUsed) || 0}%)</span>
             </div>
             <div class="progress-track">
-              <div class="progress-fill" style="width: ${d.percentUsed}%;"></div>
+              <div class="progress-fill" style="width: ${Number(d.percentUsed) || 0}%;"></div>
             </div>
           `;
           disksListContainer.appendChild(item);
         });
       }
 
-      const rMBps = diskIo?.readMBps ?? 0;
-      const wMBps = diskIo?.writeMBps ?? 0;
-      valDiskRead.textContent = rMBps.toFixed(1);
-      valDiskWrite.textContent = wMBps.toFixed(1);
+      const hasDiskIo = diskIo && diskIo.isReal !== false;
+      valDiskRead.textContent = hasDiskIo ? Number(diskIo.readMBps || 0).toFixed(1) : '--';
+      valDiskWrite.textContent = hasDiskIo ? Number(diskIo.writeMBps || 0).toFixed(1) : '--';
 
-      // 7. Histórico Spline
-      historyPoints.push({ temp: cpuT, load: loadPct, time: Date.now() });
-      if (historyPoints.length > MAX_POINTS) historyPoints.shift();
+      // 7. Histórico Spline (só com leitura real de temperatura)
+      if (cpuT !== null) {
+        historyPoints.push({ temp: cpuT, load: loadPct, time: Date.now() });
+        if (historyPoints.length > MAX_POINTS) historyPoints.shift();
+      }
       drawChart();
 
       // 8. Mini Widget
-      miniCpuVal.textContent = `${cpuT}°C`;
+      miniCpuVal.textContent = cpuT === null ? '--' : `${cpuT}°C`;
       miniCpuVal.style.color = cpuColor;
-      miniGpuVal.textContent = `${gpuT}°C`;
+      miniGpuVal.textContent = gpuT === null ? '--' : `${gpuT}°C`;
       miniGpuVal.style.color = gpuColor;
       miniRamVal.textContent = `${Math.round(ramPct)}%`;
       miniLoadVal.textContent = `${loadPct}%`;
@@ -1994,7 +2021,7 @@
 
     // 2. Alerta Háptico (Vibration API) e Borda Pulsante (>85°C)
     function checkThermalAlert(cpuT, gpuT) {
-      const isOverheating = (cpuT && cpuT >= 85) || (gpuT && gpuT >= 85);
+      const isOverheating = (cpuT !== null && cpuT >= alertThresholds.cpuTempC) || (gpuT !== null && gpuT >= alertThresholds.gpuTempC);
       if (isOverheating) {
         document.body.classList.add('thermal-alert-pulsing');
         const now = Date.now();
@@ -2112,19 +2139,27 @@
       tbody.innerHTML = processes.slice(0, 5).map(proc => {
         const cpu = typeof proc.cpuPercent === 'number' ? proc.cpuPercent.toFixed(1) : '0';
         const mem = typeof proc.memMB === 'number' ? proc.memMB.toFixed(0) : '0';
+        const pid = Number(proc.pid) || 0;
+        const name = escapeHtml(proc.name);
         return `
           <tr>
-            <td style="font-weight: 600; color: #F3F4F6; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${proc.name}</td>
-            <td style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem;">${proc.pid}</td>
+            <td style="font-weight: 600; color: #F3F4F6; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</td>
+            <td style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem;">${pid}</td>
             <td style="font-family: var(--font-mono); font-weight: 700; color: ${proc.cpuPercent > 30 ? '#FF8A00' : '#00F0FF'};">${cpu}%</td>
             <td style="font-family: var(--font-mono); color: var(--text-secondary);">${mem} MB</td>
             <td style="text-align: right;">
-              <button class="btn-kill-proc" onclick="handleKillProc(${proc.pid}, '${proc.name}')">Matar</button>
+              <button class="btn-kill-proc" data-pid="${pid}" data-name="${name}">Matar</button>
             </td>
           </tr>
         `;
       }).join('');
     }
+
+    // Delegação de clique: evita montar JavaScript inline com nomes de processos
+    document.addEventListener('click', (event) => {
+      const btn = event.target.closest('.btn-kill-proc[data-pid]');
+      if (btn) handleKillProc(Number(btn.dataset.pid), btn.dataset.name);
+    });
 
     function connectWs() {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

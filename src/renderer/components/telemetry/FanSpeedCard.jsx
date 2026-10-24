@@ -42,14 +42,16 @@ function PropellerSvg({ size = 26, color = 'var(--text-secondary)', isSpinning =
 }
 
 export function FanSpeedCard({
-  rpm = 1250,
-  pwmPercent = 52,
+  rpm = null,
+  pwmPercent = null,
   className = '',
 }) {
-  const isSpinning = rpm > 0;
+  // Sem sensor de ventoinha o card informa a ausência em vez de exibir RPM fictício
+  const hasReading = typeof rpm === 'number' && Number.isFinite(rpm);
+  const isSpinning = hasReading && rpm > 0;
 
   let durationSeconds = 1.4;
-  if (rpm <= 0) {
+  if (!hasReading || rpm <= 0) {
     durationSeconds = 0;
   } else if (rpm <= 800) {
     durationSeconds = 1.8;
@@ -60,13 +62,17 @@ export function FanSpeedCard({
     durationSeconds = Number((1.8 - ratio * (1.8 - 0.35)).toFixed(2));
   }
 
-  const fanColor = rpm >= 2000 
+  const fanColor = !hasReading
+    ? 'var(--text-muted)'
+    : rpm >= 2000 
     ? 'var(--color-critical)' 
     : rpm >= 1400 
     ? 'var(--color-elevated)' 
     : 'var(--color-nominal)';
 
-  const mode = rpm >= 2000 ? 'Alto Desempenho' : rpm >= 1200 ? 'Equilibrado' : 'Silencioso';
+  const mode = !hasReading
+    ? 'Sensor de ventoinha indisponível'
+    : rpm >= 2000 ? 'Alto Desempenho' : rpm >= 1200 ? 'Equilibrado' : 'Silencioso';
 
   return (
     <BentoCard className={className} style={{ padding: '14px 16px' }}>
@@ -97,7 +103,7 @@ export function FanSpeedCard({
               Arrefecimento
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              {mode}, ciclo PWM {pwmPercent}%
+              {hasReading && typeof pwmPercent === 'number' ? `${mode}, ciclo PWM ${pwmPercent}%` : mode}
             </div>
           </div>
         </div>
@@ -106,14 +112,14 @@ export function FanSpeedCard({
         <div style={{ textAlign: 'right' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', justifyContent: 'flex-end' }}>
             <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }} className="tabular-nums">
-              <NumberTicker value={rpm} />
+              {hasReading ? <NumberTicker value={rpm} /> : '--'}
             </span>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               RPM
             </span>
           </div>
           <div style={{ fontSize: '0.64rem', color: fanColor, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>
-            {durationSeconds > 0 ? `${durationSeconds}s / ciclo` : 'Inativo'}
+            {!hasReading ? 'Sem sensor' : durationSeconds > 0 ? `${durationSeconds}s / ciclo` : 'Inativo'}
           </div>
         </div>
       </div>

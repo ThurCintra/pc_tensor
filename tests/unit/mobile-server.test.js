@@ -314,6 +314,37 @@ describe('MobileLiveServer', () => {
     expect(second.listenerCount('SESSION_REPORT_READY')).toBe(1);
   });
 
+  it('deve desconectar os clientes e invalidar o token antigo ao revogar o pareamento', async () => {
+    serverInstance = createServer({ port: 3888 });
+    const info = await serverInstance.start();
+    const oldToken = info.sessionToken;
+
+    const client = await openClient(`ws://127.0.0.1:3888/?token=${oldToken}`);
+    const closed = new Promise((resolve) => client.on('close', (code) => resolve(code)));
+
+    const newInfo = await serverInstance.rotateToken('a'.repeat(36));
+    expect(await closed).toBe(4001);
+    expect(newInfo.sessionToken).toBe('a'.repeat(36));
+    expect(newInfo.url).toContain(`token=${'a'.repeat(36)}`);
+
+    const withOld = await fetch('http://127.0.0.1:3888/api/metrics', { headers: { Authorization: `Bearer ${oldToken}` } });
+    expect(withOld.status).toBe(401);
+  });
+
+  it('deve reiniciar em outra porta mantendo o token', async () => {
+    serverInstance = createServer({ port: 3887 });
+    const info = await serverInstance.start();
+
+    const moved = await serverInstance.changePort(3886);
+    expect(moved.isRunning).toBe(true);
+    expect(moved.port).toBe(3886);
+    expect(moved.sessionToken).toBe(info.sessionToken);
+
+    const res = await fetch('http://127.0.0.1:3886/api/info');
+    expect(res.status).toBe(200);
+    await expect(fetch('http://127.0.0.1:3887/api/info')).rejects.toThrow();
+  });
+
   it('deve criar a regra de firewall só quando ela ainda não existir', async () => {
     const existing = createFakeExec();
     const s1 = new MobileLiveServer({ execFile: existing, manageFirewall: true });

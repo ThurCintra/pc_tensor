@@ -4,12 +4,13 @@ import { HardDrive, ArrowDown, ArrowUp } from 'lucide-react';
 
 export function StorageCard({
   disks = [],
-  diskIo = { readMBps: 18.2, writeMBps: 6.4 },
+  diskIo = null,
   className = '',
 }) {
-  const displayDisks = disks && disks.length > 0
-    ? disks
-    : [{ mount: 'C:', sizeGB: 950, usedGB: 460, percentUsed: 48 }];
+  const displayDisks = Array.isArray(disks) ? disks : [];
+  // Taxa de I/O só existe com o bridge de sensores ativo
+  const hasDiskIo = Boolean(diskIo) && diskIo.isReal !== false;
+  const formatRate = (value) => (hasDiskIo ? `${Number(value || 0).toFixed(1)} MB/s` : '-- MB/s');
 
   return (
     <BentoCard className={className} style={{ padding: '14px 16px', gap: '10px' }}>
@@ -48,7 +49,7 @@ export function StorageCard({
               }}
             />
             <ArrowDown size={11} color="var(--text-muted)" />
-            <span style={{ color: 'var(--text-secondary)' }}>{diskIo.readMBps} MB/s</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{formatRate(diskIo?.readMBps)}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -61,13 +62,16 @@ export function StorageCard({
               }}
             />
             <ArrowUp size={11} color="var(--text-muted)" />
-            <span style={{ color: 'var(--text-secondary)' }}>{diskIo.writeMBps} MB/s</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{formatRate(diskIo?.writeMBps)}</span>
           </div>
         </div>
       </div>
 
       {/* Lista de Partições */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {displayDisks.length === 0 && (
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Nenhuma unidade detectada ainda.</span>
+        )}
         {displayDisks.slice(0, 2).map((disk, idx) => {
           const usedPct = Math.round(disk.percentUsed || (disk.usedGB / (disk.sizeGB || 1)) * 100);
           const barColor = usedPct >= 85 

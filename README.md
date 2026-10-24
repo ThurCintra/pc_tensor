@@ -102,7 +102,8 @@ graph TD
 
 O projeto conta com o script unificado **`iniciar.bat`**, que realiza todo o ciclo de vida automaticamente:
 - **Primeira execução:** Instala todas as dependências (`npm install`), compila a interface (`npm run build`), libera a porta 3890 no Firewall e sincroniza o driver de hardware.
-- **Próximas execuções:** Verifica automaticamente se há atualizações no GitHub (`git pull`), valida dependências e inicia o sistema com privilégios de Administrador para leitura direta dos diodos térmicos AMD/Intel.
+- **Todas as execuções:** Recompila a interface e inicia o build de produção com privilégios de Administrador para leitura direta dos diodos térmicos AMD/Intel.
+- **Atualizações não são automáticas:** como o script roda elevado, ele não baixa código novo sozinho. Para atualizar, rode `git pull`, revise as mudanças e execute o `iniciar.bat` de novo.
 
 Basta dar **duplo clique** no arquivo:
 ```cmd
@@ -139,7 +140,7 @@ npm run dev
 ```bash
 npm test
 ```
-> Executa a suíte completa de 45 testes unitários via Vitest cobrindo collector, monitor de processos, bridge de sensores, roteador de ações do Stream Deck e servidor mobile.
+> Executa a suíte de testes unitários via Vitest cobrindo collector, monitor de processos, bridge de sensores, roteador de ações do Stream Deck, servidor mobile, configurações e alertas térmicos. Nenhum teste executa `taskkill`, `powercfg` ou teclas de mídia de verdade: os comandos do sistema são simulados. A mesma suíte roda no GitHub Actions a cada push e pull request.
 
 #### 5. Gerar o Instalador de Produção (.exe)
 ```bash
@@ -159,12 +160,14 @@ pc_tensor/
 │   ├── main/                     # Processo principal do Electron
 │   │   ├── collector.js          # Coletor híbrido de telemetria térmica e hardware
 │   │   ├── main.js               # Ciclo de vida da janela e IPC
-│   │   └── action-router.js      # Execução de comandos do Stream Deck
+│   │   ├── settings-store.js     # Preferências e token de pareamento (userData)
+│   │   └── thermal-alerts.js     # Alertas de temperatura com histerese e cooldown
 │   ├── preload/
 │   │   └── preload.js            # Ponte de IPC segura (contextBridge)
 │   ├── renderer/                 # Frontend Desktop em React + Vite
 │   │   ├── components/
 │   │   │   ├── hardware/         # Visão de raio-x e especificações de hardware
+│   │   │   ├── settings/         # Tela de configurações
 │   │   │   ├── telemetry/        # Bento cards (gauges, spline chart, cooling, etc.)
 │   │   │   ├── widget/           # Componente do modo Mini-Widget
 │   │   │   └── ui/               # BentoCard base com spotlight effect
@@ -172,10 +175,12 @@ pc_tensor/
 │   │   └── index.css             # Design tokens e breakpoints responsivos
 │   └── server/                   # Servidor móvel integrado
 │       ├── mobile-server.js      # Servidor HTTP / WebSocket local (porta 3890)
+│       ├── action-router.js      # Execução validada de comandos do Stream Deck
 │       └── public/
 │           └── index.html        # Interface web responsiva para smartphones
 ├── tests/
-│   └── unit/                     # Testes unitários com Vitest (45 testes)
+│   ├── helpers/                  # Simulador de child_process para os testes
+│   └── unit/                     # Testes unitários com Vitest
 ├── tools/
 │   └── LibreHardwareMonitor/     # Binários e código-fonte da bridge de sensores C#
 ├── package.json
@@ -197,10 +202,28 @@ pc_tensor/
 
 ---
 
-## 🔒 Permissões e Firewall
-Para permitir que o smartphone na rede Wi-Fi acesse a porta `3890`:
-- Execute o script auxiliar [`liberar-firewall.bat`](file:///c:/Users/Arthur/Desktop/pc_tensor/liberar-firewall.bat) como Administrador, ou crie uma regra de entrada no Firewall do Windows para a porta TCP `3890`.
-- Para leitura aprofundada de sensores térmicos de placa-mãe e fans de terceiros, execute o aplicativo através do atalho [`iniciar-admin.bat`](file:///c:/Users/Arthur/Desktop/pc_tensor/iniciar-admin.bat).
+## 🔒 Segurança, Permissões e Firewall
+
+**Pareamento:** o celular se conecta pelo link do QR Code, que carrega um token de sessão. Toda a API (`/api/metrics`, `/api/hardware`, `/api/action`, `/api/server/toggle`) e o WebSocket exigem esse token. O token fica salvo entre reinicializações; para desconectar todos os aparelhos, use **Transmissão Remota → Revogar dispositivos pareados**.
+
+**Quem tem o link controla o PC:** o token permite encerrar processos, trocar o plano de energia e controlar mídia. Compartilhe o QR Code apenas com aparelhos seus.
+
+**Proteções do servidor:** sites abertos no navegador não conseguem chamar a API (CORS e WebSocket só aceitam a mesma origem e o dev server Vite); `/api/info` nunca expõe o token; o encerramento de processos confere o nome real do PID e bloqueia processos críticos do Windows; o Modo Boost só encerra apps da lista configurada. Detalhes em [docs/arquitetura.md](docs/arquitetura.md).
+
+**Firewall:** o app cria a regra de entrada `PC Sentinel LAN (<porta>)` quando roda como Administrador. Sem privilégio, execute [`liberar-firewall.bat`](liberar-firewall.bat) como Administrador ou crie a regra manualmente para a porta TCP configurada (padrão `3890`).
+
+**Sensores:** temperaturas de CPU/GPU, ventoinhas e I/O de disco dependem de privilégio de Administrador. Sem ele o painel mostra "SEM SENSOR" em vez de valores estimados. Use [`iniciar.bat`](iniciar.bat) ou [`iniciar-admin.bat`](iniciar-admin.bat).
+
+## ⚙️ Configurações
+
+A aba **Configurações** do app desktop guarda as preferências em `%APPDATA%\pc-sentinel\settings.json`:
+
+- **Alertas térmicos:** limites de CPU e GPU (50–105 °C) e intervalo mínimo entre avisos. Ao ultrapassar o limite, o Windows mostra uma notificação, o dashboard exibe um banner e o celular vibra.
+- **Iniciar com o Windows:** ativado na primeira execução do app instalado; pode ser desligado aqui ou no menu da bandeja.
+- **Porta do servidor mobile.**
+- **Lista do Modo Boost:** executáveis encerrados ao liberar RAM.
+
+O histórico térmico fica em `%APPDATA%\pc-sentinel\thermal_history.json`.
 
 ---
 

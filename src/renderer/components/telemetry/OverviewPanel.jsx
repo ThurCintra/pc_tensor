@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { BentoCard } from '../ui/BentoCard';
 import { ThermalHeroGauge } from './ThermalHeroGauge';
 import { EqualizerCard } from './EqualizerBar';
@@ -34,8 +34,16 @@ export function OverviewPanel({
 
   const cpuTemp = typeof temperatures?.cpuMain === 'number' ? temperatures.cpuMain : null;
   const gpuTemp = typeof temperatures?.gpu === 'number' ? temperatures.gpu : null;
-  const cpuMax = temperatures?.cpuMax ?? cpuTemp;
-  const gpuMax = gpuTemp;
+  // Pico da sessão acompanhado aqui: o cpuMax do WMI fica congelado quando o bridge fornece a leitura
+  const peaksRef = useRef({ cpu: null, gpu: null });
+  const trackPeak = (key, value) => {
+    if (typeof value === 'number' && (peaksRef.current[key] === null || value > peaksRef.current[key])) {
+      peaksRef.current[key] = value;
+    }
+    return peaksRef.current[key];
+  };
+  const cpuMax = trackPeak('cpu', cpuTemp);
+  const gpuMax = trackPeak('gpu', gpuTemp);
 
   const cpuModelName = cpuMetrics?.model || cpuMetrics?.brand || temperatures?.cpuName || 'Processador Central';
   const gpuModelName = temperatures?.gpuName || 'GPU Primária';
@@ -182,15 +190,15 @@ export function OverviewPanel({
       <div className="bento-grid">
         <ThermalHeroGauge
           className="bento-col-4"
-          cpuTemp={cpuTemp ?? 45}
-          gpuTemp={gpuTemp ?? 48}
-          cpuMax={cpuMax ?? 48}
-          gpuMax={gpuMax ?? 50}
+          cpuTemp={cpuTemp}
+          gpuTemp={gpuTemp}
+          cpuMax={cpuMax}
+          gpuMax={gpuMax}
+          cpuLimit={metrics?.alerts?.thresholds?.cpuTempC ?? 85}
+          gpuLimit={metrics?.alerts?.thresholds?.gpuTempC ?? 85}
+          requiresElevation={Boolean(temperatures?.requiresElevation)}
           cpuModel={cpuModelName}
           gpuModel={gpuModelName}
-          isEstimated={temperatures?.isEstimated ?? false}
-          isCpuEstimated={temperatures?.isCpuEstimated ?? false}
-          isGpuEstimated={temperatures?.isGpuEstimated ?? false}
         />
 
         <EqualizerCard
@@ -218,7 +226,7 @@ export function OverviewPanel({
         <StorageCard
           className="bento-col-4"
           disks={disks}
-          diskIo={diskIo || { readMBps: 0, writeMBps: 0 }}
+          diskIo={diskIo}
         />
 
         <NetworkCard

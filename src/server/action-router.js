@@ -97,6 +97,12 @@ class ActionRouter {
     this.collector = collector;
   }
 
+  setBoostTargets(targets) {
+    if (Array.isArray(targets)) {
+      this.boostTargets = [...targets];
+    }
+  }
+
   /**
    * Ponto de entrada para processamento seguro de mensagens de comando
    */

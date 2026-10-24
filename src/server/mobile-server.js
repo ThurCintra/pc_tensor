@@ -171,6 +171,9 @@ class MobileLiveServer {
     // Telemetria em tempo real (Snapshot)
     this.app.get('/api/metrics', requireToken, async (req, res) => {
       try {
+        if (this.hasFreshMetrics()) {
+          return res.json(this.lastMetrics);
+        }
         if (this.collector) {
           const snapshot = await this.collector.getMetricsSnapshot();
           this.lastMetrics = snapshot;
@@ -482,7 +485,9 @@ class MobileLiveServer {
             }
             ws.send(JSON.stringify({ type: 'hardware_update', data: hwData }));
           } else if (msg.type === 'get_metrics') {
-            if (this.collector) {
+            if (this.hasFreshMetrics()) {
+              ws.send(JSON.stringify({ type: 'metrics_update', data: this.lastMetrics }));
+            } else if (this.collector) {
               const snapshot = await this.collector.getMetricsSnapshot();
               this.lastMetrics = snapshot;
               ws.send(JSON.stringify({ type: 'metrics_update', data: snapshot }));
@@ -518,7 +523,12 @@ class MobileLiveServer {
     }
 
     if (this.server) {
-      await new Promise((resolve) => this.server.close(resolve));
+      const closing = new Promise((resolve) => this.server.close(resolve));
+      // Conexões HTTP keep-alive impediriam o close de terminar (troca de porta)
+      if (typeof this.server.closeAllConnections === 'function') {
+        this.server.closeAllConnections();
+      }
+      await closing;
     }
 
     this.isRunning = false;
@@ -555,6 +565,39 @@ class MobileLiveServer {
         } catch {}
       }
     }
+  }
+
+  /**
+   * Revoga o pareamento atual: troca o token e desconecta todos os dispositivos.
+   */
+  rotateToken(newToken = crypto.randomUUID()) {
+    this.sessionToken = newToken;
+    for (const client of this.clients) {
+      try {
+        client.close(4001, 'Token revoked');
+      } catch {}
+    }
+    this.clients.clear();
+    return this.getServerInfo();
+  }
+
+  /**
+   * Reinicia o servidor em outra porta (mantém o token).
+   */
+  async changePort(port) {
+    const wasRunning = this.isRunning;
+    if (wasRunning) await this.stop();
+    this.port = port;
+    return wasRunning ? this.start() : this.getServerInfo();
+  }
+
+  /**
+   * O loop principal transmite um snapshot a cada ~1,2 s já enriquecido (alertas térmicos);
+   * reaproveitá-lo evita coletas extras e mantém REST e WebSocket consistentes.
+   */
+  hasFreshMetrics(maxAgeMs = 3000) {
+    const ts = this.lastMetrics?.timestamp;
+    return typeof ts === 'number' && Date.now() - ts < maxAgeMs;
   }
 
   getPublicInfo() {

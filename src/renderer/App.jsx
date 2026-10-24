@@ -16,7 +16,9 @@ import {
   EyeOff,
   AlertTriangle,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Settings,
+  KeyRound
 } from 'lucide-react';
 
 import { BentoCard } from './components/ui/BentoCard';
@@ -25,6 +27,7 @@ import { HistoryTimelinePanel } from './components/telemetry/HistoryTimelinePane
 import { DiagnosticsPanel } from './components/telemetry/DiagnosticsPanel';
 import { SessionReportModal } from './components/telemetry/SessionReportModal';
 import { MiniWidget } from './components/widget/MiniWidget';
+import { SettingsPanel } from './components/settings/SettingsPanel';
 import { backendUrl, backendWsUrl, authHeaders } from './lib/backend';
 
 export default function App() {
@@ -37,6 +40,8 @@ export default function App() {
   const [isMobileServerRunning, setIsMobileServerRunning] = useState(true);
   const [isMiniMode, setIsMiniMode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [revokeState, setRevokeState] = useState('idle'); // 'idle' | 'confirm' | 'done'
+  const [dismissedElevation, setDismissedElevation] = useState(false);
   const [history, setHistory] = useState([]);
 
   const handleCopyLink = () => {
@@ -160,6 +165,20 @@ export default function App() {
     }
   };
 
+  // Revoga o pareamento: gera novo token e desconecta todos os celulares
+  const handleRevokeToken = async () => {
+    if (revokeState !== 'confirm') {
+      setRevokeState('confirm');
+      return;
+    }
+    if (window.sentinelAPI?.revokeMobileToken) {
+      const info = await window.sentinelAPI.revokeMobileToken();
+      setMobileInfo(info);
+      setRevokeState('done');
+      setTimeout(() => setRevokeState('idle'), 3000);
+    }
+  };
+
   const handleToggleMiniWidget = async (toMini) => {
     const nextMode = typeof toMini === 'boolean' ? toMini : !isMiniMode;
     if (window.sentinelAPI && window.sentinelAPI.toggleMiniWidget) {
@@ -181,8 +200,10 @@ export default function App() {
   if (isMiniMode) {
     return (
       <MiniWidget
-        cpuTemp={cpuTemp ?? 45}
-        gpuTemp={gpuTemp ?? 48}
+        cpuTemp={cpuTemp}
+        gpuTemp={gpuTemp}
+        cpuLimit={metrics?.alerts?.thresholds?.cpuTempC ?? 85}
+        gpuLimit={metrics?.alerts?.thresholds?.gpuTempC ?? 85}
         ramPercent={ramPercent}
         onExpand={() => handleToggleMiniWidget(false)}
       />
@@ -254,6 +275,15 @@ export default function App() {
             <span>Transmissão Remota</span>
           </button>
 
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`sidebar-btn ${activeTab === 'settings' ? 'active' : ''}`}
+            title="Alertas térmicos, inicialização, porta e Modo Boost"
+          >
+            <Settings size={18} style={{ flexShrink: 0 }} />
+            <span>Configurações</span>
+          </button>
+
           {/* Botão de Alternância para o Modo Compacto */}
           <button
             onClick={() => handleToggleMiniWidget(true)}
@@ -303,12 +333,14 @@ export default function App() {
               {activeTab === 'history' && 'Histórico e Tendências Térmicas'}
               {activeTab === 'diagnostics' && 'Diagnóstico Técnico de Hardware'}
               {activeTab === 'mobile' && 'Pareamento de Transmissão Remota'}
+              {activeTab === 'settings' && 'Configurações'}
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '2px' }}>
               {activeTab === 'overview' && 'Leituras diretas dos sensores físicos da máquina sem simulações'}
               {activeTab === 'history' && 'Curvas contínuas de temperatura de junção e carga de trabalho'}
               {activeTab === 'diagnostics' && 'Detalhamento do processador, placa de vídeo, placa-mãe e processos'}
               {activeTab === 'mobile' && 'Acesso via navegador local para smartphones e telas auxiliares'}
+              {activeTab === 'settings' && 'Preferências salvas neste computador'}
             </p>
           </div>
 
@@ -406,6 +438,80 @@ export default function App() {
             </span>
           </div>
         </div>
+
+        {/* Banner de Alerta Térmico Ativo (limites configuráveis) */}
+        {metrics?.alerts?.active?.length > 0 && (
+          <div
+            role="alert"
+            style={{
+              background: 'var(--bg-inset)',
+              border: '1px solid var(--color-critical)',
+              borderRadius: 'var(--border-radius-inner)',
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <Flame color="var(--color-critical)" size={16} />
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-critical)' }}>
+              {metrics.alerts.active
+                .map((a) => `${a.label} em ${a.temp.toFixed(1)} °C (limite ${a.limit} °C)`)
+                .join(' · ')}
+            </div>
+            <button
+              onClick={() => setActiveTab('settings')}
+              style={{
+                marginLeft: 'auto',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '0.72rem',
+                textDecoration: 'underline',
+              }}
+            >
+              Ajustar limites
+            </button>
+          </div>
+        )}
+
+        {/* Aviso de sensores indisponíveis sem privilégio de Administrador */}
+        {metrics && requiresElevation && cpuTemp === null && gpuTemp === null && !dismissedElevation && activeTab === 'overview' && (
+          <div
+            style={{
+              background: 'var(--bg-inset)',
+              border: '1px solid var(--color-elevated)',
+              borderRadius: 'var(--border-radius-inner)',
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
+            <ShieldAlert color="var(--color-elevated)" size={16} style={{ flexShrink: 0 }} />
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              <strong style={{ color: 'var(--color-elevated)' }}>Temperaturas indisponíveis.</strong>{' '}
+              Os sensores de CPU e GPU exigem privilégio de Administrador. Feche o PC Sentinel e abra-o
+              pelo <code>iniciar.bat</code> ou com "Executar como administrador".
+            </div>
+            <button
+              onClick={() => setDismissedElevation(true)}
+              style={{
+                marginLeft: 'auto',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '0.72rem',
+                textDecoration: 'underline',
+                flexShrink: 0,
+              }}
+            >
+              Dispensar
+            </button>
+          </div>
+        )}
 
         {/* Banner Preventivo de Degradação Térmica */}
         {metrics?.degradationAlert?.hasDegradation && !dismissedDegradation && (
@@ -582,6 +688,21 @@ export default function App() {
                   {isMobileServerRunning ? 'Pausar transmissão' : 'Iniciar transmissão'}
                 </button>
 
+                {window.sentinelAPI?.revokeMobileToken && (
+                  <button
+                    onClick={handleRevokeToken}
+                    onBlur={() => revokeState === 'confirm' && setRevokeState('idle')}
+                    className="btn-instrument"
+                    title="Gera um novo código e desconecta todos os aparelhos já pareados"
+                    style={revokeState === 'confirm' ? { borderColor: 'var(--color-critical)', color: 'var(--color-critical)' } : undefined}
+                  >
+                    <KeyRound size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />
+                    {revokeState === 'confirm' && 'Confirmar: desconectar todos?'}
+                    {revokeState === 'done' && 'Novo código gerado'}
+                    {revokeState === 'idle' && 'Revogar dispositivos pareados'}
+                  </button>
+                )}
+
                 <button
                   onClick={() => setActiveTab('overview')}
                   className="btn-instrument active"
@@ -589,8 +710,17 @@ export default function App() {
                   Voltar à Visão Geral
                 </button>
               </div>
+
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', maxWidth: '460px', lineHeight: 1.45 }}>
+                O código de pareamento é mantido entre reinicializações. Quem tiver o link controla
+                ações como encerrar processos: compartilhe apenas com aparelhos seus.
+              </p>
             </BentoCard>
           </div>
+        )}
+        {/* 5. Configurações */}
+        {activeTab === 'settings' && (
+          <SettingsPanel onServerInfoChange={(info) => setMobileInfo(info)} />
         )}
       </main>
 
