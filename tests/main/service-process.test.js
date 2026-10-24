@@ -41,6 +41,19 @@ describe('ServiceProcess', () => {
     expect(service.available).toBe(true);
   });
 
+  it('entre dois executáveis, usa o compilado mais recentemente', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pcs-'));
+    const published = path.join(dir, 'publicado.exe');
+    const debug = path.join(dir, 'debug.exe');
+    fs.writeFileSync(published, '');
+    fs.writeFileSync(debug, '');
+    fs.utimesSync(published, new Date('2026-10-24T13:00:00'), new Date('2026-10-24T13:00:00'));
+    fs.utimesSync(debug, new Date('2026-10-24T18:00:00'), new Date('2026-10-24T18:00:00'));
+
+    const service = new ServiceProcess({ dataDir: 'x', candidates: [published, debug] });
+    expect(service.executable).toBe(debug);
+  });
+
   it('reinicia com espera crescente se o serviço cair', () => {
     vi.useFakeTimers();
     const { service, spawnFn, children } = setup();
