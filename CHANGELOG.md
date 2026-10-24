@@ -12,7 +12,14 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
   throttling (dT/dt por mínimos quadrados em 10 s), detector de degradação térmica com linhas de base no SQLite,
   curva de eficiência do silício, Juiz de Lag (rede × CPU × VRAM), perfis pelo app em foco (Game-Sense),
   taxímetro de energia em kWh e R$ e o comando Stutter Buster (limpa a lista standby e baixa a prioridade de apps
-  de segundo plano). Ainda não é iniciado pelo app; os clientes migram nas próximas etapas.
+  de segundo plano).
+- O app inicia o serviço nativo junto (e ele se encerra com o app); o instalador o inclui com o runtime .NET
+  embutido e libera a porta 3891 no firewall.
+- Camada de tempo real da interface em TypeScript (`src/renderer/realtime`): cliente do WebSocket v2 com comandos,
+  reconexão e detecção de PC travado (2 s sem quadros), caixa preta com os últimos 60 s em buffer circular
+  espelhado no IndexedDB do celular e relatórios de travamento, vibração por tipo de alerta durante jogos e o hook
+  `useSentinel`. As telas que usam essa camada chegam na próxima etapa.
+- TypeScript no projeto: `npm run typecheck`, incluído no `npm run check`.
 
 - Verificação de atualizações sempre que o app abre: a versão nova é baixada em segundo plano e instalada ao
   reiniciar (botão "Reiniciar e atualizar" no aviso ou em Configurações → Atualizações).

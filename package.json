@@ -32,14 +32,16 @@
     "start": "npm run build && electron .",
     "build": "vite build",
     "build:bridge": "node scripts/build-bridge.js",
-    "dist": "npm run build && electron-builder --win nsis --x64",
+    "dist": "npm run build && npm run build:service && electron-builder --win nsis --x64",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run format:check && npm test"
+    "check": "npm run lint && npm run typecheck && npm run format:check && npm test",
+    "typecheck": "tsc",
+    "build:service": "node scripts/build-service.js"
   },
   "dependencies": {
     "electron-updater": "^6.8.11",
@@ -50,6 +52,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "concurrently": "^10.0.6",
     "electron": "^44.9.3",
@@ -57,11 +61,14 @@
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "fake-indexeddb": "^6.2.6",
     "globals": "^17.13.0",
     "lucide-react": "^0.475.0",
     "prettier": "^3.9.10",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0",
     "vite": "^8.3.5",
     "vitest": "^4.1.12",
     "wait-on": "^9.5.1"
@@ -90,6 +97,13 @@
         "to": "sensor-bridge",
         "filter": [
           "**/*"
+        ]
+      },
+      {
+        "from": "build/service",
+        "to": "service",
+        "filter": [
+          "*.exe"
         ]
       }
     ],

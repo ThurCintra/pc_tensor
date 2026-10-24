@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('sentinelAPI', {
   getAppInfo: () => ipcRenderer.invoke('app:info'),
   relaunchAsAdmin: () => ipcRenderer.invoke('app:relaunch-as-admin'),
 
+  // Serviço nativo .NET (WebSocket v2)
+  getServiceEndpoint: () => ipcRenderer.invoke('service:endpoint'),
+
   // Atualizações (electron-updater)
   getUpdateState: () => ipcRenderer.invoke('updates:get-state'),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),

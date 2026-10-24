@@ -5,6 +5,7 @@ node_modules/
 dist/
 release/
 coverage/
+build/service/
 service/**/bin/
 service/**/obj/
 service/**/TestResults/

@@ -9,6 +9,7 @@ const { WindowManager } = require('./windows');
 const { TrayController } = require('./tray');
 const { registerIpcHandlers } = require('./ipc');
 const { UpdateService } = require('./updater');
+const { ServiceProcess } = require('./service-process');
 const system = require('./system');
 
 const METRICS_INTERVAL_MS = 1200;
@@ -32,6 +33,7 @@ const ctx = {
   windows: null,
   tray: null,
   updates: null,
+  service: null,
   metricsTimer: null,
 };
 
@@ -54,6 +56,7 @@ const actions = {
     ctx.isQuitting = true;
     clearInterval(ctx.metricsTimer);
     ctx.updates?.stop();
+    ctx.service?.stop();
     ctx.collector?.stop();
     ctx.collector = null;
   },
@@ -123,6 +126,10 @@ async function bootstrap() {
 
   ctx.settingsStore = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
   const settings = ctx.settingsStore.get();
+
+  // Serviço nativo .NET (contrato v2): roda ao lado do coletor Node enquanto a interface migra
+  ctx.service = new ServiceProcess({ dataDir: app.getPath('userData') });
+  ctx.service.start();
 
   ctx.collector = new SystemCollector({ thermalDbPath: system.resolveThermalDbPath() });
   ctx.mobileServer = new MobileLiveServer({

@@ -2,6 +2,7 @@ const js = require('@eslint/js');
 const globals = require('globals');
 const reactHooks = require('eslint-plugin-react-hooks');
 const prettier = require('eslint-config-prettier');
+const tseslint = require('typescript-eslint');
 
 module.exports = [
   { ignores: ['dist/', 'release/', 'coverage/', 'resources/', 'node_modules/'] },
@@ -37,6 +38,15 @@ module.exports = [
     rules: reactHooks.configs.recommended.rules,
   },
 
+  // Camada de tempo real em TypeScript (contrato v2 com o serviço .NET)
+  ...tseslint.configs.recommended.map((config) => ({ ...config, files: ['**/*.ts', '**/*.tsx'] })),
+  {
+    files: ['src/renderer/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    languageOptions: { globals: globals.browser },
+    rules: reactHooks.configs.recommended.rules,
+  },
+
   // Service worker do PWA
   {
     files: ['src/renderer/public/sw.js'],
@@ -45,7 +55,7 @@ module.exports = [
 
   // Testes (Vitest com require de módulos CommonJS)
   {
-    files: ['tests/**/*.js'],
+    files: ['tests/**/*.{js,ts}'],
     languageOptions: {
       sourceType: 'module',
       globals: { ...globals.node, ...globals.vitest },
@@ -53,10 +63,15 @@ module.exports = [
   },
 
   {
-    rules: {
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
-      'no-empty': ['error', { allowEmptyCatch: true }],
-    },
+    rules: { 'no-empty': ['error', { allowEmptyCatch: true }] },
+  },
+  {
+    files: ['**/*.{js,jsx,mjs}'],
+    rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrors: 'none' }] },
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
+    rules: { '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrors: 'none' }] },
   },
 
   prettier,

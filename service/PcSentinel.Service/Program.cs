@@ -87,6 +87,29 @@ app.Map("/ws", async (HttpContext http, PairingToken token, WebSocketHub hub, Th
 
 app.Lifetime.ApplicationStopping.Register(() => app.Services.GetRequiredService<StutterBuster>().Restore());
 
+// Iniciado pelo app (--ParentPid): encerra junto com ele, para não ficar órfão segurando a porta
+if (builder.Configuration.GetValue<int?>("ParentPid") is int parentPid)
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            using var parent = System.Diagnostics.Process.GetProcessById(parentPid);
+            await parent.WaitForExitAsync(app.Lifetime.ApplicationStopping);
+        }
+        catch (ArgumentException)
+        {
+            // o app já tinha saído
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        app.Logger.LogInformation("App {Pid} encerrou; encerrando o serviço.", parentPid);
+        app.Lifetime.StopApplication();
+    });
+}
+
 app.Logger.LogInformation("PC Sentinel Service ouvindo em ws://0.0.0.0:{Port}/ws (dados em {DataDir})", port, dataDir);
 await app.RunAsync();
 

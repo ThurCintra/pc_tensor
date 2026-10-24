@@ -39,9 +39,22 @@ SystemCollector ──► ThermalAlertMonitor ──► Notificação do Windows
 `service/PcSentinel.Service` é o backend .NET 10 da nova arquitetura: lê os sensores pelo LibreHardwareMonitorLib,
 calcula derivada térmica, degradação, eficiência do silício, Juiz de Lag e energia, guarda o histórico em SQLite
 (`%APPDATA%pc-sentinel	elemetry.db`) e transmite pelo WebSocket v2 descrito em
-[contrato-websocket.md](contrato-websocket.md). Usa o mesmo token de pareamento do app. Por enquanto roda separado
-(`dotnet run --project service/PcSentinel.Service`); as próximas etapas fazem o Electron iniciá-lo e migram a
-interface e o celular para o contrato v2, aposentando a ponte `pc-sensor-bridge.exe` e o servidor Node.
+[contrato-websocket.md](contrato-websocket.md). Usa o mesmo token de pareamento do app. O processo principal o inicia (`src/main/service-process.js`, com
+`--ParentPid` para ele sair junto com o app) e informa endereço e token à interface pelo IPC `service:endpoint`.
+`npm run build:service` publica o executável com o runtime embutido em `build/service`, que o instalador copia.
+
+### Camada de tempo real (`src/renderer/realtime`, TypeScript)
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `protocol.ts` | Tipos do contrato v2 (espelham `service/.../Contracts`) |
+| `sentinel-socket.ts` | WebSocket: comandos com id e prazo, reconexão, estado `stalled` com 2 s sem quadros |
+| `flight-recorder.ts` | Caixa preta: 60 s em buffer circular, gravação em lote no IndexedDB, relatórios de travamento e picos |
+| `haptics.ts` | Padrões de vibração por alerta, só com jogo em foco (exceto crítico), com intervalo mínimo |
+| `sentinel-store.ts` / `useSentinel.ts` | Estado único fora do React, lido por `useSyncExternalStore` |
+
+Uma queda é "brusca" quando o PC para de mandar quadros com a conexão aberta (congelamento, tela azul) ou fecha
+com código diferente de 1000. Fechar a aba ou desligar o serviço normalmente descarta a gravação.
 
 Diagnóstico de sensores: `pc-sentinel-service --dump-sensors` lista todos os sensores lidos neste PC.
 

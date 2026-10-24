@@ -46,6 +46,11 @@ function registerIpcHandlers(ctx, actions) {
   }));
   ipcMain.handle('app:relaunch-as-admin', () => actions.relaunchAsAdmin());
 
+  // Endereço do serviço nativo para a camada de tempo real (src/renderer/realtime)
+  ipcMain.handle('service:endpoint', () =>
+    ctx.service?.available ? { url: `ws://127.0.0.1:${ctx.service.port}/ws`, token: settingsStore.sessionToken } : null,
+  );
+
   ipcMain.handle('updates:get-state', () => ctx.updates.getState());
   ipcMain.handle('updates:check', () => ctx.updates.check());
   ipcMain.handle('updates:install', () => actions.installUpdate());
