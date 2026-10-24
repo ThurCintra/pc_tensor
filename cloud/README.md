@@ -21,7 +21,9 @@ PC (agente)  ──wss /agent──►  Servidor de tempo real (Socket.IO)  ◄�
 
 ## Rodar localmente
 
-1. Crie um banco PostgreSQL gratuito no [Neon](https://neon.tech) ou no [Supabase](https://supabase.com).
+1. Crie um banco PostgreSQL gratuito no [Neon](https://neon.tech) ou no [Supabase](https://supabase.com). Para
+   só desenvolver, dá para pular esse passo: `npm run db:dev` sobe um PostgreSQL local (PGlite, sem instalar nada)
+   em `postgresql://postgres@127.0.0.1:5433/postgres`, já com as migrações aplicadas e os dados em `cloud/.pglite`.
 2. Copie `apps/web/.env.example` para `apps/web/.env` e preencha (gere `AUTH_SECRET` com `npx auth secret` e um
    `REALTIME_JWT_SECRET` com pelo menos 32 caracteres).
 3. Instale, gere o cliente e aplique as migrações:
@@ -49,6 +51,23 @@ DATABASE_URL="..." REALTIME_JWT_SECRET="..." CORS_ORIGINS="http://localhost:3000
 ```
 
 Testes (não precisam de banco: usam PostgreSQL em memória com PGlite): `npm run check`.
+
+## Site (Etapa 4)
+
+Tema escuro por padrão (segue o tema do sistema), Tailwind 4 e ícones Lucide; funciona no celular.
+
+- **Entrar / Cadastrar** (`/entrar`, `/cadastrar`): e-mail e senha, e os botões de Google e GitHub só aparecem
+  quando as credenciais estão configuradas. Depois do cadastro o usuário já entra logado. *Esqueci a senha* e
+  *Redefinir senha* usam o link de uso único da Etapa 1.
+- **Meus Computadores** (`/computadores`): um card por PC com status ao vivo (Online, Em jogo, Alerta térmico,
+  Offline), temperaturas de CPU e GPU coloridas pelos limites, hardware e "visto há…". O navegador entra na sala
+  `user:{id}` do servidor de tempo real e recebe a mudança de status de todos os seus PCs sem recarregar a página
+  e sem ligar o modo ao vivo deles.
+- **Adicionar computador:** modal com o código de 6 dígitos, contagem regressiva de 5 minutos, o endereço do site
+  para copiar e a confirmação automática quando o PC aparece na conta.
+- **Ajustes do PC:** nome, limites de alerta (50 a 110 °C) e remoção com confirmação. Os novos limites chegam ao
+  agente em até 1 minuto, sem reiniciar nada.
+- **Conta** (`/conta`): nome e tarifa de energia (R$/kWh) usada no taxímetro.
 
 ## API (Etapa 1)
 
@@ -102,7 +121,7 @@ da nuvem fica em `service/PcSentinel.Service/Cloud`:
 
 - **Pareamento:** em *Configurações → pc_tensor Cloud* no app, o usuário informa o endereço do site e o código de
   6 dígitos (uma vez). Sem o app: `pc-sentinel-service --pair 123456 --cloud-url https://site`. O hardware (CPU,
-  GPU, RAM) vai junto para o cadastro. O `DeviceToken` fica em `%APPDATA%pc-sentinelcloud.json`, cifrado com o
+  GPU, RAM) vai junto para o cadastro. O `DeviceToken` fica em `%APPDATA%\pc-sentinel\cloud.json`, cifrado com o
   DPAPI do Windows (inútil se copiado para outro PC ou outra conta).
 - **Conexão reversa:** o PC conecta de dentro para fora em `<REALTIME_URL>/agent` (informado por
   `/api/agent/me`). Reconecta sozinho com espera exponencial de 1 s a 60 s e variação aleatória de ±20%.

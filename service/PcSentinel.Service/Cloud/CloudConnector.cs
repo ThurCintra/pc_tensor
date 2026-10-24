@@ -71,6 +71,8 @@ public sealed class CloudConnector : BackgroundService
     private double _lastLiveSentS = double.NegativeInfinity;
     private double _lastHeartbeatS;
     private volatile bool _connected;
+    /// <summary>Logo depois de conectar, manda um resumo curto para o site já mostrar temperaturas.</summary>
+    private volatile bool _heartbeatSoon;
     private volatile string _mode = "HEARTBEAT";
     private CloudStatus _status = new(CloudStates.Unpaired, null, null, null, null, null);
 
@@ -141,8 +143,10 @@ public sealed class CloudConnector : BackgroundService
     private void OnFrame(TelemetryFrame frame, IReadOnlyList<AlertData> localAlerts, double t)
     {
         _aggregator.Add(frame, t);
-        if (t - _lastHeartbeatS >= _options.HeartbeatInterval.TotalSeconds)
+        bool firstAfterConnect = _heartbeatSoon && _connected && _aggregator.Samples >= 20; // ~5 s de leituras
+        if (firstAfterConnect || t - _lastHeartbeatS >= _options.HeartbeatInterval.TotalSeconds)
         {
+            _heartbeatSoon = false;
             _lastHeartbeatS = t;
             if (_aggregator.Take(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) is { } hb) Enqueue(_heartbeats, hb, _options.MaxQueuedHeartbeats);
         }
@@ -313,6 +317,7 @@ public sealed class CloudConnector : BackgroundService
         }
 
         _connected = true;
+        _heartbeatSoon = true;
         onConnected();
         SetStatus(CloudStates.Connected, credentials, _mode, null);
         _logger.LogInformation("Conectado à nuvem ({Url})", realtimeUrl);

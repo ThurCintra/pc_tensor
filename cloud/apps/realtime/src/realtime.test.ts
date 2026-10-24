@@ -229,6 +229,34 @@ describe('histórico e alertas', () => {
   });
 });
 
+describe('lista "Meus Computadores"', () => {
+  it('o navegador recebe o status dos próprios PCs sem ligar o modo ao vivo', async () => {
+    const mine = await createDevice('lista@example.com');
+    const other = await createDevice('vizinho@example.com');
+    const browser = await open('/client', await signRealtimeToken(mine.userId, SECRET));
+    const statuses: { deviceId: string; isOnline: boolean; cpuTempC: number | null }[] = [];
+    browser.on('device:status', (s) => statuses.push(s));
+
+    const agent = await open('/agent', mine.token);
+    await open('/agent', other.token);
+    await wait(100);
+    expect(statuses.map((s) => [s.deviceId, s.isOnline])).toEqual([[mine.deviceId, true]]);
+    expect(server.presence.count(mine.deviceId)).toBe(0); // continua em HEARTBEAT
+
+    const hb = { ts: Date.now(), profile: 'IDLE', avgCpuTemp: 51.5, avgGpuTemp: 44, maxTemp: 60, energyConsumedWh: 1 };
+    await agent.emitWithAck('telemetry:heartbeat', hb);
+    await wait(50);
+    expect(statuses.at(-1)).toMatchObject({ deviceId: mine.deviceId, cpuTempC: 51.5, profile: 'IDLE' });
+
+    agent.disconnect();
+    await wait(100);
+    expect(statuses.at(-1)).toMatchObject({ deviceId: mine.deviceId, isOnline: false });
+    expect(
+      Date.now() - new Date((statuses.at(-1) as unknown as { lastSeenAt: string }).lastSeenAt).getTime(),
+    ).toBeLessThan(2000);
+  });
+});
+
 describe('PC removido no site', () => {
   it('a revalidação derruba a conexão do agente', async () => {
     const { deviceId, token } = await createDevice('removido@example.com');
@@ -239,6 +267,17 @@ describe('PC removido no site', () => {
     await server.revalidateAgents();
 
     expect(await dropped).toBe('io server disconnect');
+  });
+
+  it('limites alterados no site chegam ao agente na revalidação', async () => {
+    const { deviceId, token } = await createDevice('limites@example.com');
+    const agent = await open('/agent', token);
+    const received = nextEvent<{ action: string; maxCpuTempAlert: number }>(agent, 'command');
+
+    await db.device.update({ where: { id: deviceId }, data: { maxCpuTempAlert: 82 } });
+    await server.revalidateAgents();
+
+    expect(await received).toEqual({ action: 'ACTION_UPDATE_CONFIG', maxCpuTempAlert: 82, maxGpuTempAlert: 85 });
   });
 });
 

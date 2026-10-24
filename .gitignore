@@ -47,3 +47,4 @@ cloud/**/.env
 cloud/**/.env.local
 cloud/**/next-env.d.ts
 cloud/**/tsconfig.tsbuildinfo
+cloud/.pglite/

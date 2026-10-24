@@ -18,11 +18,13 @@
     "typecheck": "tsc -p packages/protocol && tsc -p packages/db && tsc -p apps/web && tsc -p apps/realtime",
     "test": "vitest run",
     "check": "npm run db:generate && npm run typecheck && npm test",
-    "e2e:agent": "tsx apps/realtime/scripts/agent-e2e.ts"
+    "e2e:agent": "tsx apps/realtime/scripts/agent-e2e.ts",
+    "db:dev": "tsx packages/db/scripts/dev-db.ts"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
     "typescript": "5.9.3",
-    "vitest": "4.1.12"
+    "vitest": "4.1.12",
+    "tsx": "^4.23.15"
   }
 }

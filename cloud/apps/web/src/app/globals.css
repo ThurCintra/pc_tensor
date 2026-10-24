@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+
+/*
+ * pc_tensor Cloud: tema escuro por padrão (painel de "pit wall"), claro quando o sistema pede.
+ * Cores como tokens CSS, expostas ao Tailwind pelo @theme inline.
+ */
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14;
+  --surface: #121821;
+  --surface-2: #18202b;
+  --border: #243040;
+  --text: #e8eef5;
+  --text-2: #a3b1c2;
+  --text-3: #6b7a8c;
+  --accent: #38bdf8;
+  --accent-strong: #0ea5e9;
+  --accent-fg: #04121c;
+  --ok: #34d399;
+  --ok-bg: rgb(52 211 153 / 0.12);
+  --warn: #fbbf24;
+  --warn-bg: rgb(251 191 36 / 0.12);
+  --crit: #f87171;
+  --crit-bg: rgb(248 113 113 / 0.12);
+  --game: #a78bfa;
+  --game-bg: rgb(167 139 250 / 0.14);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f5f7fa;
+    --surface: #ffffff;
+    --surface-2: #eef2f7;
+    --border: #dbe2ea;
+    --text: #0f1720;
+    --text-2: #4b5a6b;
+    --text-3: #7b8796;
+    --accent: #0284c7;
+    --accent-strong: #0369a1;
+    --accent-fg: #ffffff;
+    --ok: #059669;
+    --ok-bg: rgb(5 150 105 / 0.1);
+    --warn: #b45309;
+    --warn-bg: rgb(180 83 9 / 0.1);
+    --crit: #dc2626;
+    --crit-bg: rgb(220 38 38 / 0.08);
+    --game: #7c3aed;
+    --game-bg: rgb(124 58 237 / 0.1);
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-2);
+  --color-fg-3: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-fg: var(--accent-fg);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-crit: var(--crit);
+  --color-crit-bg: var(--crit-bg);
+  --color-game: var(--game);
+  --color-game-bg: var(--game-bg);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Fundo da página de login: grade técnica discreta */
+.grid-backdrop {
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 20%, transparent 70%);
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-dot {
+    animation: none;
+  }
+}

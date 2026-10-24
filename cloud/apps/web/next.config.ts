@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   // Binários nativos ficam fora do bundle
   serverExternalPackages: ['@node-rs/argon2', '@prisma/client', '@prisma/adapter-pg'],
   poweredByHeader: false,
+  // Sem o AGENTS.md que o Next gera para assistentes de IA (o repositório não guarda arquivos de agentes)
+  agentRules: false,
 };
 
 export default nextConfig;

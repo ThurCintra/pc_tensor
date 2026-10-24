@@ -23,6 +23,11 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
   offline, alertas de superaquecimento pelos limites do site e comandos só da lista permitida. Teste de ponta a
   ponta com o serviço real (`npm run e2e:agent` em `cloud/`).
 - O servidor de tempo real derruba em até 1 minuto a conexão de um PC removido no site.
+- **Site da nuvem** (Etapa 4): telas de entrar, cadastrar e recuperar senha; "Meus Computadores" com o status de
+  cada PC ao vivo (online, em jogo, alerta térmico, offline) e as temperaturas; modal de pareamento com o código
+  de 6 dígitos e confirmação automática; ajustes por PC (nome, limites de alerta, remoção) e página da conta com
+  a tarifa de energia. Os limites alterados no site chegam ao PC em até 1 minuto.
+- `npm run db:dev` em `cloud/`: PostgreSQL local para desenvolver sem criar banco na nuvem.
 
 ## [1.2.0] - 2026-10-24
 

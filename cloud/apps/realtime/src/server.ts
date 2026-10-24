@@ -11,6 +11,7 @@ import {
   STREAM_INTERVAL_MS,
   deriveStatus,
   deviceRoom,
+  userRoom,
   type AgentClientToServer,
   type AgentServerToClient,
   type ClientClientToServer,
@@ -115,6 +116,9 @@ export function createRealtimeServer(options: RealtimeOptions) {
       isOnline: Boolean(agent),
       lastSeenAt: (agent ? new Date(agent.lastFrameAt || now()) : device.lastSeenAt)?.toISOString() ?? null,
       mode: agent?.mode ?? null,
+      profile: agent?.lastFrameStatus.profile ?? null,
+      cpuTempC: agent?.lastFrameStatus.cpuTempC ?? null,
+      gpuTempC: agent?.lastFrameStatus.gpuTempC ?? null,
       status: deriveStatus({
         isOnline: Boolean(agent),
         profile: agent?.lastFrameStatus.profile ?? null,
@@ -127,7 +131,8 @@ export function createRealtimeServer(options: RealtimeOptions) {
   }
 
   function broadcastStatus(deviceId: string, device: DeviceRecord) {
-    clientNs.to(deviceRoom(deviceId)).emit('device:status', statusEvent(deviceId, device));
+    // Quem está no painel do PC e quem está na lista "Meus Computadores" (sala da conta)
+    clientNs.to([deviceRoom(deviceId), userRoom(device.userId)]).emit('device:status', statusEvent(deviceId, device));
   }
 
   async function recordAlert(
@@ -242,6 +247,7 @@ export function createRealtimeServer(options: RealtimeOptions) {
       try {
         await store.saveHeartbeat(device.id, hb);
         ack?.(true);
+        broadcastStatus(device.id, state.device); // temperaturas do minuto para a lista de PCs
       } catch (err) {
         log.error('[agent] heartbeat', err);
         ack?.(false);
@@ -261,6 +267,8 @@ export function createRealtimeServer(options: RealtimeOptions) {
       if (!state || state.socket !== socket) return; // substituída por uma conexão nova
       agents.delete(device.id);
       const at = now();
+      // Visto por último agora (não no momento em que conectou)
+      state.device = { ...state.device, lastSeenAt: new Date(state.lastFrameAt || at) };
       await store
         .setOnline(device.id, false, new Date(state.lastFrameAt || at))
         .catch((err) => log.error('[agent] setOffline', err));
@@ -309,6 +317,7 @@ export function createRealtimeServer(options: RealtimeOptions) {
   clientNs.on('connection', (rawSocket) => {
     const socket = rawSocket as unknown as ClientSocket;
     const { userId } = socket.data;
+    void socket.join(userRoom(userId));
 
     socket.on('device:subscribe', async (payload, ack) => {
       if (typeof ack !== 'function') return;
@@ -383,7 +392,23 @@ export function createRealtimeServer(options: RealtimeOptions) {
           log.info(`[agent] ${deviceId} removido no site; desconectando`);
           state.socket.disconnect(true);
         } else {
+          const limitsChanged =
+            device.maxCpuTempAlert !== state.device.maxCpuTempAlert ||
+            device.maxGpuTempAlert !== state.device.maxGpuTempAlert;
           state.device = device; // limites e nome atualizados no site
+          // Limites alterados no site: o agente passa a usar na hora, pelo próprio comando da allowlist
+          if (limitsChanged) {
+            state.socket.emit(
+              'command',
+              {
+                action: 'ACTION_UPDATE_CONFIG',
+                maxCpuTempAlert: device.maxCpuTempAlert,
+                maxGpuTempAlert: device.maxGpuTempAlert,
+              },
+              () => {},
+            );
+            broadcastStatus(deviceId, device);
+          }
         }
       } catch (err) {
         log.error('[agent] revalidação', err);

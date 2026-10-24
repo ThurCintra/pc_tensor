@@ -121,12 +121,22 @@ export const NAMESPACES = { agent: '/agent', client: '/client' } as const;
 
 export const deviceRoom = (deviceId: string) => `device:${deviceId}`;
 
+/**
+ * Sala de cada conta: todo navegador entra nela ao conectar e recebe o status de todos os seus PCs
+ * ("Meus Computadores") sem ligar o modo ao vivo de nenhum.
+ */
+export const userRoom = (userId: string) => `user:${userId}`;
+
 export interface DeviceStatusEvent {
   deviceId: string;
   status: DeviceStatus;
   isOnline: boolean;
   lastSeenAt: string | null;
   mode: StreamMode | null;
+  profile: Profile | null;
+  /** Última leitura: ao vivo no modo LIVE, média do último minuto no HEARTBEAT. */
+  cpuTempC: number | null;
+  gpuTempC: number | null;
 }
 
 export interface DeviceAlertEvent {
