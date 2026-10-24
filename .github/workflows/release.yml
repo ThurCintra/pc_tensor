@@ -1,0 +1,50 @@
+name: Release
+
+# Publica uma release no GitHub com o instalador ao enviar uma tag de versão:
+#   npm version patch   (ou minor/major: atualiza o package.json e cria a tag vX.Y.Z)
+#   git push --follow-tags
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Conferir versão da tag
+        shell: bash
+        run: |
+          versao=$(node -p "require('./package.json').version")
+          if [ "v$versao" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::A tag $GITHUB_REF_NAME não bate com a versão do package.json (v$versao)."
+            exit 1
+          fi
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Testes unitários
+        run: npm test
+
+      - name: Compilar ponte de sensores
+        run: npm run build:bridge
+
+      - name: Gerar instalador
+        run: npm run dist -- --publish never
+
+      - name: Publicar release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PC Sentinel ${{ github.ref_name }}
+          generate_release_notes: true
+          files: release/PC-Sentinel-Setup.exe

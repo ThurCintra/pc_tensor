@@ -30,7 +30,8 @@ Sem sensor disponível, o app mostra "Sem sensor" em vez de estimar valores.
 
 ## Instalação (uso normal)
 
-1. Gere o instalador (veja abaixo) ou baixe o `PC-Sentinel-Setup.exe`.
+1. Baixe o `PC-Sentinel-Setup.exe` da [última release](https://github.com/ThurCintra/pc_tensor/releases/latest)
+   ou gere o instalador (veja abaixo).
 2. Rode o instalador. Ele cria os atalhos e libera a porta do celular no firewall.
 3. Abra o **PC Sentinel** pelo menu Iniciar. O Windows pede permissão de administrador ao abrir: ela é
    necessária para ler as temperaturas.
@@ -60,6 +61,16 @@ rode o terminal como administrador.
 | `npm run build` | Compila a interface em `dist/` |
 | `npm run build:bridge` | Recompila a ponte de sensores C# (`tools/LibreHardwareMonitor/pc-sensor-bridge.exe`) |
 | `npm run dist` | Gera o instalador em `release/PC-Sentinel-Setup.exe` |
+
+### Publicar uma release
+
+```bash
+npm version patch
+git push --follow-tags
+```
+
+`npm version` (ou `minor`/`major`) atualiza a versão e cria a tag `vX.Y.Z`. Ao receber a tag, o GitHub Actions
+roda os testes, gera o instalador e publica a release com o `PC-Sentinel-Setup.exe` anexado.
 
 ## Celular
 
