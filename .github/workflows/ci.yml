@@ -17,7 +17,7 @@ jobs:
     # Windows: o app depende de taskkill, powercfg e netsh (simulados nos testes)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v5
         with:
