@@ -49,8 +49,27 @@ class ServiceProcess {
     this.stopped = true;
   }
 
+  /**
+   * O executável compilado mais recentemente entre os que existem. Em dev convivem o publicado
+   * (npm run build:service) e o do dotnet build/test; pegar sempre o primeiro da lista deixava o app rodando um
+   * serviço antigo depois de mudanças no C#. No app instalado só existe o do instalador.
+   */
   get executable() {
-    return this.candidates.find((p) => fs.existsSync(p)) || null;
+    let newest = null;
+    let newestTime = -Infinity;
+    for (const candidate of this.candidates) {
+      let time;
+      try {
+        time = fs.statSync(candidate).mtimeMs;
+      } catch {
+        continue; // não existe
+      }
+      if (time > newestTime) {
+        newest = candidate;
+        newestTime = time;
+      }
+    }
+    return newest;
   }
 
   get available() {

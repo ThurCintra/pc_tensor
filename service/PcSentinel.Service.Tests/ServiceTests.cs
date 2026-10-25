@@ -187,7 +187,38 @@ public class NetworkAndProfileTests
     [InlineData("explorer", 5.0, Profiles.Idle)]
     [InlineData("jogo-desconhecido", 95.0, Profiles.AaaGraphics)]
     [InlineData("notepad", 3.0, Profiles.Idle)]
+    [InlineData("PC Sentinel", 85.0, Profiles.Idle)]
+    [InlineData("electron", 73.0, Profiles.Idle)]
     [InlineData(null, null, Profiles.Idle)]
     public void ClassificaOExecutavelEmFoco(string? exe, double? gpuLoad, string expected) =>
         Assert.Equal(expected, ForegroundProfiler.Classify(exe, gpuLoad));
+
+    [Fact]
+    public void GpuOscilandoEmVoltaDe70NaoTrocaOPerfil()
+    {
+        // Entra em AAA a partir de 70% e só sai abaixo de 40%
+        Assert.Equal(Profiles.Idle, ForegroundProfiler.Classify("jogo-desconhecido", 65, wasHeavy: false));
+        Assert.Equal(Profiles.AaaGraphics, ForegroundProfiler.Classify("jogo-desconhecido", 72, wasHeavy: false));
+        Assert.Equal(Profiles.AaaGraphics, ForegroundProfiler.Classify("jogo-desconhecido", 55, wasHeavy: true));
+        Assert.Equal(Profiles.Idle, ForegroundProfiler.Classify("jogo-desconhecido", 35, wasHeavy: true));
+    }
+
+    [Fact]
+    public void PerfilSoMudaDepoisDe3SegundosSeguidos()
+    {
+        var stabilizer = new ProfileStabilizer(holdS: 3);
+        Assert.Equal(Profiles.Idle, stabilizer.Update(Profiles.Idle, 0)); // primeira leitura vale na hora
+
+        // Piscando entre dois perfis a cada 250 ms: o layout não se mexe
+        for (double t = 0.25; t < 10; t += 0.5)
+        {
+            Assert.Equal(Profiles.Idle, stabilizer.Update(Profiles.AaaGraphics, t));
+            Assert.Equal(Profiles.Idle, stabilizer.Update(Profiles.Idle, t + 0.25));
+        }
+
+        // Mudança de verdade (abriu um jogo): troca depois de 3 s seguidos
+        Assert.Equal(Profiles.Idle, stabilizer.Update(Profiles.CompetitiveFps, 20));
+        Assert.Equal(Profiles.Idle, stabilizer.Update(Profiles.CompetitiveFps, 22.9));
+        Assert.Equal(Profiles.CompetitiveFps, stabilizer.Update(Profiles.CompetitiveFps, 23));
+    }
 }
