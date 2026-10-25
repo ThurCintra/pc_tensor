@@ -5,6 +5,13 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+### Corrigido
+
+- Os botões de mídia (*Controles*, no PC e no celular) não funcionavam: o app usava `SendKeys([char]179)`, que
+  digita um caractere em vez de apertar a tecla de mídia, e abria um PowerShell novo a cada clique. Agora eles
+  apertam as teclas de mídia e volume do Windows de verdade (como as do teclado), funcionando com Spotify, YouTube
+  e o volume do sistema, e respondem na hora.
+
 ## [1.3.0] - 2026-10-24
 
 ### Adicionado

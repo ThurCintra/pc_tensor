@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 const EventEmitter = require('events');
 const { MobileLiveServer, pickLocalIp } = require('../../src/server/mobile-server');
 const { ActionRouter } = require('../../src/server/action-router');
-const { createFakeExec } = require('../helpers/fake-exec');
+const { createFakeExec, createFakeMediaKeys } = require('../helpers/fake-exec');
 const WebSocket = require('ws');
 
 // Servidor de teste isolado: só loopback, sem regras de firewall e sem comandos reais
@@ -11,7 +11,7 @@ function createServer(options = {}) {
   return new MobileLiveServer({
     host: '127.0.0.1',
     manageFirewall: false,
-    actionRouter: new ActionRouter({ execFile }),
+    actionRouter: new ActionRouter({ execFile, mediaKeys: createFakeMediaKeys() }),
     ...options,
   });
 }

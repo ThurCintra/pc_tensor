@@ -1,5 +1,6 @@
 const { execFile } = require('child_process');
 const os = require('os');
+const { MediaKeySender, MEDIA_KEYS } = require('./media-keys');
 
 /**
  * Whitelist de processos críticos do Windows que NUNCA podem ser encerrados
@@ -77,6 +78,7 @@ class ActionRouter {
     this.collector = options.collector || null;
     // Injeção do executor permite testar sem disparar comandos reais no sistema
     this.execFile = options.execFile || execFile;
+    this.mediaKeys = options.mediaKeys || new MediaKeySender();
   }
 
   /**
@@ -380,94 +382,51 @@ class ActionRouter {
   }
 
   /**
-   * Controle de Áudio e Mídia via PowerShell SendKeys nativo não-bloqueante (MEDIA_AUDIO_CONTROL)
+   * Controle de áudio e mídia (MEDIA_AUDIO_CONTROL): aperta as teclas de mídia e volume do Windows, como as do
+   * teclado. Funciona com Spotify, YouTube no navegador, players e o volume do sistema.
    */
   async mediaAudioControl(command, requestId = null) {
     const cmd = String(command || '').toUpperCase();
+    // Nomes antigos que o app do celular ainda pode mandar
+    const key = { MEDIA_PLAY_PAUSE: 'PLAY_PAUSE', MUTE_VOLUME: 'VOLUME_MUTE' }[cmd] || cmd;
 
-    // Mapeamento para teclas virtuais do Windows (Virtual Key Codes via WScript.Shell SendKeys)
-    let charCode;
-    let label = '';
-
-    switch (cmd) {
-      case 'PLAY_PAUSE':
-      case 'MEDIA_PLAY_PAUSE':
-        charCode = 179; // VK_MEDIA_PLAY_PAUSE
-        label = 'Play / Pause';
-        break;
-
-      case 'MUTE_VOLUME':
-      case 'VOLUME_MUTE':
-        charCode = 173; // VK_VOLUME_MUTE
-        label = 'Mudo de Volume';
-        break;
-
-      case 'VOLUME_UP':
-        charCode = 175; // VK_VOLUME_UP
-        label = 'Aumentar Volume';
-        break;
-
-      case 'VOLUME_DOWN':
-        charCode = 174; // VK_VOLUME_DOWN
-        label = 'Diminuir Volume';
-        break;
-
-      case 'NEXT_TRACK':
-        charCode = 176; // VK_MEDIA_NEXT_TRACK
-        label = 'Próxima Faixa';
-        break;
-
-      case 'PREV_TRACK':
-        charCode = 177; // VK_MEDIA_PREV_TRACK
-        label = 'Faixa Anterior';
-        break;
-
-      case 'MUTE_MIC':
-        // Windows não expõe tecla virtual global para mutar o microfone
-        return {
-          success: false,
-          requestId,
-          command: cmd,
-          error: 'NOT_SUPPORTED',
-          message: 'Mutar o microfone ainda não é suportado.',
-        };
-
-      default:
-        return {
-          success: false,
-          requestId,
-          error: 'UNKNOWN_MEDIA_COMMAND',
-          message: `Comando de mídia não suportado: ${command}`,
-        };
+    if (cmd === 'MUTE_MIC') {
+      // Windows não tem tecla virtual global para o microfone
+      return {
+        success: false,
+        requestId,
+        command: cmd,
+        error: 'NOT_SUPPORTED',
+        message: 'Mutar o microfone ainda não é suportado.',
+      };
+    }
+    if (!MEDIA_KEYS[key]) {
+      return {
+        success: false,
+        requestId,
+        error: 'UNKNOWN_MEDIA_COMMAND',
+        message: `Comando de mídia não suportado: ${command}`,
+      };
     }
 
-    const psScript = `(New-Object -ComObject WScript.Shell).SendKeys([char]${charCode})`;
+    const { label } = MEDIA_KEYS[key];
+    try {
+      await this.mediaKeys.press(key);
+      return { success: true, requestId, command: cmd, label, message: `${label}: feito.` };
+    } catch (err) {
+      return {
+        success: false,
+        requestId,
+        command: cmd,
+        error: 'MEDIA_COMMAND_FAILED',
+        message: `Não foi possível ${label.toLowerCase()}: ${err.message}`,
+      };
+    }
+  }
 
-    return new Promise((resolve) => {
-      this.execFile(
-        'powershell',
-        ['-NoProfile', '-NonInteractive', '-Command', psScript],
-        { windowsHide: true },
-        (error) => {
-          if (error) {
-            return resolve({
-              success: false,
-              requestId,
-              error: 'MEDIA_COMMAND_FAILED',
-              message: `Falha ao acionar comando de mídia: ${error.message}`,
-            });
-          }
-
-          resolve({
-            success: true,
-            requestId,
-            command: cmd,
-            label,
-            message: `${label} acionado com sucesso.`,
-          });
-        },
-      );
-    });
+  /** Fecha o ajudante das teclas de mídia (ao sair do app). */
+  dispose() {
+    this.mediaKeys.stop();
   }
 }
 

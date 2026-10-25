@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 const { ActionRouter, POWER_PLANS } = require('../../src/server/action-router');
-const { createFakeExec, tasklistOutput } = require('../helpers/fake-exec');
+const { createFakeExec, createFakeMediaKeys, tasklistOutput } = require('../helpers/fake-exec');
 
 // Nenhum teste executa comandos reais: taskkill, powercfg e powershell são simulados
 function createRouter(handlers = {}, options = {}) {
   const execFile = createFakeExec(handlers);
-  const router = new ActionRouter({ execFile, ...options });
-  return { router, execFile };
+  const mediaKeys = options.mediaKeys || createFakeMediaKeys();
+  const router = new ActionRouter({ execFile, ...options, mediaKeys });
+  return { router, execFile, mediaKeys };
 }
 
 describe('ActionRouter', () => {
@@ -134,9 +135,9 @@ describe('ActionRouter', () => {
   });
 
   it('deve suportar comandos de áudio e mídia', async () => {
-    const { router, execFile } = createRouter();
+    const { router, execFile, mediaKeys } = createRouter();
 
-    const commands = ['PLAY_PAUSE', 'MUTE_VOLUME', 'VOLUME_UP', 'VOLUME_DOWN'];
+    const commands = ['PREV_TRACK', 'PLAY_PAUSE', 'NEXT_TRACK', 'MUTE_VOLUME', 'VOLUME_UP', 'VOLUME_DOWN'];
     for (const cmd of commands) {
       const res = await router.handleAction({
         action: 'MEDIA_AUDIO_CONTROL',
@@ -147,7 +148,16 @@ describe('ActionRouter', () => {
       expect(res.requestId).toBe(`req_${cmd}`);
       expect(res.command).toBe(cmd);
     }
-    expect(execFile.calls.filter((c) => c.cmd === 'powershell')).toHaveLength(commands.length);
+    // Apertou as teclas de verdade (nome antigo MUTE_VOLUME vira VOLUME_MUTE) e não abriu um PowerShell por clique
+    expect(mediaKeys.presses).toEqual([
+      'PREV_TRACK',
+      'PLAY_PAUSE',
+      'NEXT_TRACK',
+      'VOLUME_MUTE',
+      'VOLUME_UP',
+      'VOLUME_DOWN',
+    ]);
+    expect(execFile.calls.filter((c) => c.cmd === 'powershell')).toHaveLength(0);
 
     // MUTE_MIC não é implementado e não pode fingir sucesso
     const resMic = await router.handleAction({ action: 'MEDIA_AUDIO_CONTROL', command: 'MUTE_MIC' });
@@ -161,6 +171,17 @@ describe('ActionRouter', () => {
     });
     expect(resInvalid.success).toBe(false);
     expect(resInvalid.error).toBe('UNKNOWN_MEDIA_COMMAND');
+  });
+
+  it('deve avisar quando a tecla de mídia falhar', async () => {
+    const { router } = createRouter(
+      {},
+      { mediaKeys: createFakeMediaKeys({ fail: 'O Windows não respondeu a tempo.' }) },
+    );
+    const res = await router.handleAction({ action: 'MEDIA_AUDIO_CONTROL', command: 'VOLUME_UP' });
+    expect(res.success).toBe(false);
+    expect(res.error).toBe('MEDIA_COMMAND_FAILED');
+    expect(res.message).toContain('O Windows não respondeu a tempo.');
   });
 
   it('deve retornar erro para ações não especificadas ou desconhecidas', async () => {

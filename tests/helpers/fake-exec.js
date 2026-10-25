@@ -19,4 +19,17 @@ function tasklistOutput(name, pid) {
   return `"${name}","${pid}","Console","1","12.345 K"\r\n`;
 }
 
-module.exports = { createFakeExec, tasklistOutput };
+/** Substituto do MediaKeySender: registra as teclas sem apertar nada de verdade no PC. */
+function createFakeMediaKeys({ fail = null } = {}) {
+  const presses = [];
+  return {
+    presses,
+    press: async (command) => {
+      if (fail) throw new Error(fail);
+      presses.push(command);
+    },
+    stop: () => {},
+  };
+}
+
+module.exports = { createFakeExec, createFakeMediaKeys, tasklistOutput };

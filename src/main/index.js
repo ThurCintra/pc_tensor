@@ -58,6 +58,7 @@ const actions = {
     ctx.isQuitting = true;
     clearInterval(ctx.metricsTimer);
     ctx.updates?.stop();
+    ctx.mobileServer?.actionRouter?.dispose();
     ctx.service?.stop();
     ctx.collector?.stop();
     ctx.collector = null;
