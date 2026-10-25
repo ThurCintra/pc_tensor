@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { PageHeader, Switch, InfoBar, Badge } from '../components/ui';
 import { getTransport } from '../lib/transport';
-import { describeUpdateState } from '../hooks/useUpdates';
 import { CloudSection } from '../cloud/CloudSection';
+import { UpdatesSection } from './UpdatesSection';
 
 function Setting({ title, description, children }) {
   return (
@@ -78,6 +78,14 @@ export function Settings({ appInfo, updates, onRelaunchAsAdmin }) {
         </InfoBar>
       )}
 
+      <h2 className="section-title">Atualizações</h2>
+      <UpdatesSection
+        appInfo={appInfo}
+        updates={updates}
+        checkOnStartup={saved.updates?.checkOnStartup ?? true}
+        onCheckOnStartupChange={(checkOnStartup) => save({ updates: { checkOnStartup } })}
+      />
+
       <h2 className="section-title">Alertas de temperatura</h2>
       <div>
         <Setting
@@ -128,25 +136,6 @@ export function Settings({ appInfo, updates, onRelaunchAsAdmin }) {
             </button>
           ) : (
             <Badge tone="caution">Rode o terminal como administrador</Badge>
-          )}
-        </Setting>
-      </div>
-
-      <h2 className="section-title">Atualizações</h2>
-      <div>
-        <Setting title={`PC Sentinel ${appInfo?.version || ''}`} description={describeUpdateState(updates?.state)}>
-          {updates?.state?.status === 'downloaded' ? (
-            <button className="btn accent" onClick={updates.install}>
-              Reiniciar e atualizar
-            </button>
-          ) : (
-            <button
-              className="btn"
-              onClick={updates?.check}
-              disabled={!updates?.state || ['unsupported', 'checking', 'downloading'].includes(updates.state.status)}
-            >
-              Verificar agora
-            </button>
           )}
         </Setting>
       </div>

@@ -45,6 +45,7 @@ function createDesktopTransport(api) {
     getUpdateState: () => api.getUpdateState(),
     checkForUpdates: () => api.checkForUpdates(),
     installUpdate: () => api.installUpdate(),
+    openReleaseNotes: (version) => api.openReleaseNotes(version),
     subscribeUpdates: (cb) => api.onUpdateState(cb),
   };
 }

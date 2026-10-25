@@ -37,5 +37,6 @@ contextBridge.exposeInMainWorld('sentinelAPI', {
   getUpdateState: () => ipcRenderer.invoke('updates:get-state'),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
+  openReleaseNotes: (version) => ipcRenderer.invoke('updates:open-notes', version),
   onUpdateState: (callback) => subscribe('updates:state', callback),
 });

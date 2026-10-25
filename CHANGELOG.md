@@ -32,6 +32,9 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 - **Painel ao vivo de cada PC no site** (Etapa 5): Bento Grid camaleão com os cards do Pit Wall, Raio-X térmico em
   SVG, taxímetro em reais com o mês somado na nuvem e projeção, caixa preta dos últimos 60 s com Post-Mortem
   automático quando o servidor confirma um travamento, vibração no celular e Stutter Buster remoto.
+- **Atualizações nas Configurações**: seção no topo com a versão instalada, o estado da busca (com o progresso do
+  download), quando foi a última verificação, os botões *Verificar agora* e *Reiniciar e atualizar*, o link para
+  as novidades da versão no GitHub e a opção de procurar atualizações ao abrir o app.
 
 ## [1.2.1] - 2026-10-24
 

@@ -2,10 +2,20 @@ const EventEmitter = require('events');
 
 const STARTUP_DELAY_MS = 8000;
 const BUSY = new Set(['checking', 'downloading', 'downloaded']);
+const RELEASES_URL = 'https://github.com/ThurCintra/pc_tensor/releases';
+
+/**
+ * Página de novidades de uma versão. Só aceita número de versão (x.y.z), então nada vindo da tela vira
+ * um endereço arbitrário aberto no navegador.
+ */
+function releaseNotesUrl(version) {
+  return /^\d+\.\d+\.\d+$/.test(String(version || '')) ? `${RELEASES_URL}/tag/v${version}` : RELEASES_URL;
+}
 
 /**
  * UpdateService
- * Procura atualizações nas releases do GitHub sempre que o app abre (electron-updater).
+ * Procura atualizações nas releases do GitHub quando o app abre (se ligado nas Configurações) e pelo botão
+ * "Verificar agora" (electron-updater).
  * A nova versão é baixada em segundo plano e instalada ao reiniciar o app, pelo botão
  * "Reiniciar e atualizar" ou na próxima vez que ele for fechado.
  *
@@ -13,12 +23,21 @@ const BUSY = new Set(['checking', 'downloading', 'downloaded']);
  * downloaded, up-to-date e error. Cada mudança emite 'state' com uma cópia do estado.
  */
 class UpdateService extends EventEmitter {
-  constructor({ updater, supported, currentVersion, notify = () => {}, startupDelayMs = STARTUP_DELAY_MS }) {
+  constructor({
+    updater,
+    supported,
+    currentVersion,
+    notify = () => {},
+    startupDelayMs = STARTUP_DELAY_MS,
+    checkOnStartup = () => true,
+  }) {
     super();
     this.updater = updater;
     this.supported = Boolean(supported);
     this.notify = notify;
     this.startupDelayMs = startupDelayMs;
+    /** Lido na hora de abrir: desligado nas Configurações, só procura pelo botão "Verificar agora". */
+    this.checkOnStartup = checkOnStartup;
     this.startupTimer = null;
     this.state = {
       status: this.supported ? 'idle' : 'unsupported',
@@ -69,7 +88,7 @@ class UpdateService extends EventEmitter {
       this.setState({ status: 'error', error: describeError(err), percent: null, checkedAt: Date.now() }),
     );
 
-    this.startupTimer = setTimeout(() => this.check(), this.startupDelayMs);
+    if (this.checkOnStartup()) this.startupTimer = setTimeout(() => this.check(), this.startupDelayMs);
   }
 
   async check() {
@@ -107,4 +126,4 @@ function describeError(err) {
   return 'Não foi possível verificar atualizações.';
 }
 
-module.exports = { UpdateService, describeError };
+module.exports = { UpdateService, describeError, releaseNotesUrl };

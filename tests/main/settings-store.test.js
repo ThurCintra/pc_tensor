@@ -46,6 +46,17 @@ describe('SettingsStore', () => {
     expect(reloaded.alerts.enabled).toBe(true);
   });
 
+  it('deve salvar a opção de procurar atualizações ao abrir', () => {
+    const store = new SettingsStore(file);
+    expect(store.get().updates.checkOnStartup).toBe(true);
+
+    store.update({ updates: { checkOnStartup: false } });
+    expect(new SettingsStore(file).get().updates.checkOnStartup).toBe(false);
+    // Atualizar outro campo não volta a opção para o padrão
+    store.update({ mobilePort: 4000 });
+    expect(new SettingsStore(file).get().updates.checkOnStartup).toBe(false);
+  });
+
   it('deve recuperar de um arquivo corrompido usando os padrões', () => {
     fs.writeFileSync(file, '{ isto não é json', 'utf-8');
     const store = new SettingsStore(file);
@@ -77,6 +88,10 @@ describe('sanitizeSettings', () => {
       boostTargets: ['Discord', 'discord.exe', '*', 'C:\\Windows\\evil.exe', 'malware*.exe', ' Steam.exe ', ''],
     });
     expect(result.boostTargets).toEqual(['Discord.exe', 'Steam.exe']);
+  });
+
+  it('deve ignorar valor não booleano na opção de atualizações', () => {
+    expect(sanitizeSettings({ updates: { checkOnStartup: 'sim' } }).updates.checkOnStartup).toBe(true);
   });
 
   it('deve descartar campos desconhecidos', () => {

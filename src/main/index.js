@@ -164,6 +164,7 @@ async function bootstrap() {
     supported: app.isPackaged,
     currentVersion: app.getVersion(),
     notify: system.notify,
+    checkOnStartup: () => ctx.settingsStore.get().updates.checkOnStartup,
   });
   ctx.updates.on('state', (state) => ctx.windows.send('updates:state', state));
 

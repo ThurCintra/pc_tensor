@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 const EventEmitter = require('events');
-const { UpdateService, describeError } = require('../../src/main/updater');
+const { UpdateService, describeError, releaseNotesUrl } = require('../../src/main/updater');
 
 function createUpdater() {
   const updater = new EventEmitter();
@@ -92,6 +92,18 @@ describe('UpdateService', () => {
     expect(updater.quitAndInstall).toHaveBeenCalledWith(true, true);
   });
 
+  it('com a opção desligada não procura ao abrir, só pelo botão', async () => {
+    vi.useFakeTimers();
+    const { service, updater } = createService({ startupDelayMs: 5000, checkOnStartup: () => false });
+
+    service.start();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(updater.checkForUpdates).not.toHaveBeenCalled();
+
+    await service.check();
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
+  });
+
   it('não faz nada fora do app instalado', async () => {
     const { service, updater } = createService({ supported: false });
 
@@ -109,5 +121,14 @@ describe('describeError', () => {
       'A última versão publicada ainda não tem suporte a atualização automática.',
     );
     expect(describeError(new Error('algo inesperado'))).toBe('Não foi possível verificar atualizações.');
+  });
+});
+
+describe('releaseNotesUrl', () => {
+  it('abre a release da versão e recusa qualquer outra coisa', () => {
+    expect(releaseNotesUrl('1.2.1')).toBe('https://github.com/ThurCintra/pc_tensor/releases/tag/v1.2.1');
+    expect(releaseNotesUrl('https://exemplo.com')).toBe('https://github.com/ThurCintra/pc_tensor/releases');
+    expect(releaseNotesUrl('1.2.1/../../x')).toBe('https://github.com/ThurCintra/pc_tensor/releases');
+    expect(releaseNotesUrl(null)).toBe('https://github.com/ThurCintra/pc_tensor/releases');
   });
 });

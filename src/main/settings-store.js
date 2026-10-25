@@ -13,6 +13,9 @@ const DEFAULT_SETTINGS = {
     cooldownMinutes: 5,
   },
   boostTargets: [...DEFAULT_BOOST_TARGETS],
+  updates: {
+    checkOnStartup: true,
+  },
 };
 
 const LIMITS = {
@@ -65,6 +68,12 @@ function sanitizeSettings(input = {}, base = DEFAULT_SETTINGS) {
       ),
     },
     boostTargets: sanitizeBoostTargets(input.boostTargets ?? base.boostTargets, base.boostTargets),
+    updates: {
+      checkOnStartup:
+        typeof input.updates?.checkOnStartup === 'boolean'
+          ? input.updates.checkOnStartup
+          : (base.updates?.checkOnStartup ?? DEFAULT_SETTINGS.updates.checkOnStartup),
+    },
   };
 }
 
@@ -119,6 +128,7 @@ class SettingsStore {
       ...this.settings,
       ...partial,
       alerts: { ...this.settings.alerts, ...(partial.alerts || {}) },
+      updates: { ...this.settings.updates, ...(partial.updates || {}) },
     };
     this.settings = sanitizeSettings(merged, this.settings);
     this.save();

@@ -1,4 +1,5 @@
-const { app, ipcMain } = require('electron');
+const { app, ipcMain, shell } = require('electron');
+const { releaseNotesUrl } = require('./updater');
 
 /**
  * Canais IPC expostos ao renderer pelo preload (src/preload/index.js).
@@ -54,6 +55,8 @@ function registerIpcHandlers(ctx, actions) {
   ipcMain.handle('updates:get-state', () => ctx.updates.getState());
   ipcMain.handle('updates:check', () => ctx.updates.check());
   ipcMain.handle('updates:install', () => actions.installUpdate());
+  // Novidades da versão no GitHub (o endereço é montado aqui; da tela só vem o número da versão)
+  ipcMain.handle('updates:open-notes', (_event, version) => shell.openExternal(releaseNotesUrl(version)));
 
   ipcMain.handle('action:execute', (_event, payload) => mobileServer.actionRouter.handleAction(payload));
 }
