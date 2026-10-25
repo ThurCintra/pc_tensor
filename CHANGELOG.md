@@ -33,6 +33,8 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
   SVG, taxímetro em reais com o mês somado na nuvem e projeção, caixa preta dos últimos 60 s com Post-Mortem
   automático quando o servidor confirma um travamento, vibração no celular e Stutter Buster remoto.
 
+## [1.2.1] - 2026-10-24
+
 ### Corrigido
 
 - O Pit Wall trocava de layout várias vezes por segundo (o Raio-X mudava de tamanho sozinho). Um app fora da

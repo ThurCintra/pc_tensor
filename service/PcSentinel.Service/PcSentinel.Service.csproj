@@ -10,7 +10,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <RootNamespace>PcSentinel.Service</RootNamespace>
     <AssemblyName>pc-sentinel-service</AssemblyName>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Publicação: um executável com o runtime embutido, sem exigir .NET instalado no PC do usuário -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
