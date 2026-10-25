@@ -16,6 +16,10 @@ namespace PCSentinelBridge
     {
         private static Computer _computer;
         private static bool _streaming = false;
+        // --no-hardware: só contadores do Windows (I/O de disco), sem abrir o LibreHardwareMonitor. O app usa este
+        // modo quando o serviço nativo (pc-sentinel-service) já lê os sensores, para os dois não disputarem o
+        // barramento SMBus/Super I/O.
+        private static bool _hardware = true;
         private static bool _isAdmin = false;
         private static PerformanceCounter _diskReadCounter = null;
         private static PerformanceCounter _diskWriteCounter = null;
@@ -30,6 +34,10 @@ namespace PCSentinelBridge
                 {
                     _streaming = true;
                 }
+                else if (arg.Equals("--no-hardware", StringComparison.OrdinalIgnoreCase))
+                {
+                    _hardware = false;
+                }
             }
 
             _isAdmin = CheckIsAdministrator();
@@ -38,7 +46,7 @@ namespace PCSentinelBridge
 
             try
             {
-                _computer = new Computer
+                _computer = !_hardware ? null : new Computer
                 {
                     IsCpuEnabled = true,
                     IsGpuEnabled = true,
@@ -48,7 +56,7 @@ namespace PCSentinelBridge
                     IsStorageEnabled = true
                 };
 
-                _computer.Open();
+                if (_computer != null) _computer.Open();
 
                 if (_streaming)
                 {
@@ -185,8 +193,11 @@ namespace PCSentinelBridge
 
             float? fanRpm = null;
 
+            // Sem o LibreHardwareMonitor (--no-hardware) as seções 1 a 4 ficam vazias e só o I/O de disco é lido
+            IEnumerable<IHardware> allHardware = _computer != null ? (IEnumerable<IHardware>)_computer.Hardware : new IHardware[0];
+
             // 1. CPU via LibreHardwareMonitor
-            foreach (var hardware in _computer.Hardware)
+            foreach (var hardware in allHardware)
             {
                 if (hardware.HardwareType == HardwareType.Cpu)
                 {
@@ -231,7 +242,7 @@ namespace PCSentinelBridge
             }
 
             // 2. GPU via LibreHardwareMonitor e AMD ADL PMLog
-            foreach (var hardware in _computer.Hardware)
+            foreach (var hardware in allHardware)
             {
                 if (hardware.HardwareType == HardwareType.GpuAmd ||
                     hardware.HardwareType == HardwareType.GpuNvidia ||
@@ -335,7 +346,7 @@ namespace PCSentinelBridge
             }
 
             // 3. Motherboard via LibreHardwareMonitor
-            foreach (var hardware in _computer.Hardware)
+            foreach (var hardware in allHardware)
             {
                 if (hardware.HardwareType == HardwareType.Motherboard)
                 {
@@ -374,7 +385,7 @@ namespace PCSentinelBridge
             }
 
             // 4. Storage via LibreHardwareMonitor
-            foreach (var hardware in _computer.Hardware)
+            foreach (var hardware in allHardware)
             {
                 if (hardware.HardwareType == HardwareType.Storage)
                 {
@@ -409,6 +420,7 @@ namespace PCSentinelBridge
             var sb = new StringBuilder();
             sb.Append("{\"success\":true,");
             sb.Append("\"isAdmin\":").Append(_isAdmin ? "true" : "false").Append(",");
+            sb.Append("\"hardware\":").Append(_computer != null ? "true" : "false").Append(",");
 
             sb.Append("\"cpu\":{");
             sb.Append("\"name\":\"").Append(EscapeJson(cpuName)).Append("\",");

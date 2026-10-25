@@ -2,6 +2,7 @@ const { app } = require('electron');
 const path = require('path');
 
 const { SystemCollector } = require('./telemetry/collector');
+const { HybridSensorSource, ServiceSensorSource } = require('./telemetry/hybrid-sensors');
 const { ThermalAlertMonitor } = require('./telemetry/thermal-alerts');
 const { MobileLiveServer } = require('../server/mobile-server');
 const { SettingsStore } = require('./settings-store');
@@ -134,7 +135,18 @@ async function bootstrap() {
   ctx.service = new ServiceProcess({ dataDir: app.getPath('userData') });
   ctx.service.start();
 
-  ctx.collector = new SystemCollector({ thermalDbPath: system.resolveThermalDbPath() });
+  // Sensores: do serviço nativo quando ele está no ar; a ponte legada só assume se ele faltar (sem os dois
+  // lendo o LibreHardwareMonitor ao mesmo tempo)
+  const serviceSensors = new ServiceSensorSource({
+    getEndpoint: () =>
+      ctx.service?.available
+        ? { url: `ws://127.0.0.1:${ctx.service.port}/ws`, token: ctx.settingsStore.sessionToken }
+        : null,
+  });
+  ctx.collector = new SystemCollector({
+    thermalDbPath: system.resolveThermalDbPath(),
+    sensorBridge: new HybridSensorSource({ service: serviceSensors }),
+  });
   ctx.mobileServer = new MobileLiveServer({
     port: settings.mobilePort,
     collector: ctx.collector,

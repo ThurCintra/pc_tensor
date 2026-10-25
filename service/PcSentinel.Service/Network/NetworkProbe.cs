@@ -75,20 +75,46 @@ public sealed class PingWindow(int capacity = 30)
 }
 
 /// <summary>
-/// Mede a rede da interface ativa uma vez por segundo: ICMP para o gateway (rede local) e para um servidor
-/// de referência (internet). Se o ICMP for bloqueado, usa o tempo do handshake TCP na porta 443.
+/// Mede a rede da interface ativa: ICMP para o gateway (rede local) e para um servidor de referência (internet).
+/// Se o ICMP for bloqueado, usa o tempo do handshake TCP na porta 443.
+/// <para>
+/// Roda no próprio laço, separado do tick de 250 ms do <c>TelemetryEngine</c>, que só lê a última leitura
+/// consolidada (<see cref="Snapshot"/>). Cada alvo recebe no máximo um ping por <see cref="MinIntervalMs"/>:
+/// roteadores e o 1.1.1.1 descartam ICMP em rajada, e esse descarte virava "perda de pacote" falsa no Juiz de Lag.
+/// </para>
 /// </summary>
 public sealed class NetworkProbe : IAsyncDisposable
 {
+    /// <summary>Intervalo mínimo entre dois pings reais ao mesmo alvo.</summary>
+    public const int MinIntervalMs = 1000;
     private const int TimeoutMs = 1000;
     private static readonly IPAddress InternetTarget = IPAddress.Parse("1.1.1.1");
 
     private readonly PingWindow _gateway = new();
     private readonly PingWindow _internet = new();
     private readonly CancellationTokenSource _cts = new();
+    private readonly int _intervalMs;
+    private readonly Func<IPAddress, CancellationToken, Task<double?>> _measure;
+    private readonly Func<(string? Adapter, IPAddress? Gateway)> _findInterface;
     private Task? _loop;
     private string? _adapter;
     private IPAddress? _gatewayAddress;
+
+    public NetworkProbe()
+        : this(MinIntervalMs, MeasureAsync, FindActiveInterface)
+    {
+    }
+
+    /// <summary>Para testes: intervalo, medição e descoberta da interface trocáveis (sem ICMP de verdade).</summary>
+    internal NetworkProbe(
+        int intervalMs,
+        Func<IPAddress, CancellationToken, Task<double?>> measure,
+        Func<(string? Adapter, IPAddress? Gateway)> findInterface)
+    {
+        _intervalMs = intervalMs;
+        _measure = measure;
+        _findInterface = findInterface;
+    }
 
     public PingWindow Internet => _internet;
 
@@ -102,25 +128,58 @@ public sealed class NetworkProbe : IAsyncDisposable
         _internet.JitterMs,
         _internet.LossPct);
 
+    /// <summary>
+    /// Quanto esperar para o próximo ciclo: o que falta para completar o intervalo desde o início deste.
+    /// Um ciclo lento (timeout de 1 s mais o fallback TCP) não encurta o seguinte.
+    /// </summary>
+    internal static int DelayUntilNextMs(long cycleStartedMs, long nowMs, int intervalMs) =>
+        (int)Math.Max(0, intervalMs - (nowMs - cycleStartedMs));
+
+    /// <summary>Relógio de alta resolução (o TickCount do Windows anda de 16 em 16 ms).</summary>
+    private static long NowMs() => System.Diagnostics.Stopwatch.GetElapsedTime(0).Ticks / TimeSpan.TicksPerMillisecond;
+
     private async Task RunAsync(CancellationToken ct)
     {
-        using var ping = new Ping();
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        int tick = 0;
-        do
+        int cycle = 0;
+        while (!ct.IsCancellationRequested)
         {
-            if (tick++ % 30 == 0) RefreshActiveInterface();
+            long started = NowMs();
+            if (cycle++ % 30 == 0) (_adapter, _gatewayAddress) = _findInterface();
 
-            if (_gatewayAddress is not null) _gateway.Add(await MeasureAsync(ping, _gatewayAddress, ct));
-            _internet.Add(await MeasureAsync(ping, InternetTarget, ct));
+            // Os dois alvos ao mesmo tempo, no início do ciclo: o espaçamento de cada um é o do ciclo, e um
+            // gateway lento não empurra o ping da internet para perto do ping seguinte
+            var gateway = _gatewayAddress;
+            var internet = _measure(InternetTarget, ct);
+            var local = gateway is null ? Task.FromResult<double?>(null) : _measure(gateway, ct);
+            try
+            {
+                await Task.WhenAll(internet, local).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
+            _internet.Add(internet.Result);
+            if (gateway is not null) _gateway.Add(local.Result);
+
+            int wait = DelayUntilNextMs(started, NowMs(), _intervalMs);
+            try
+            {
+                await Task.Delay(wait, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
         }
-        while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false));
     }
 
-    private static async Task<double?> MeasureAsync(Ping ping, IPAddress target, CancellationToken ct)
+    /// <summary>Um ping (com o próprio <see cref="Ping"/>, para os dois alvos poderem medir em paralelo).</summary>
+    private static async Task<double?> MeasureAsync(IPAddress target, CancellationToken ct)
     {
         try
         {
+            using var ping = new Ping();
             var reply = await ping.SendPingAsync(target, TimeSpan.FromMilliseconds(TimeoutMs), cancellationToken: ct);
             if (reply.Status == IPStatus.Success) return reply.RoundtripTime;
         }
@@ -134,9 +193,9 @@ public sealed class NetworkProbe : IAsyncDisposable
             using var socket = new Socket(target.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeoutMs);
-            long start = Environment.TickCount64;
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             await socket.ConnectAsync(new IPEndPoint(target, 443), timeout.Token);
-            return Environment.TickCount64 - start;
+            return Math.Round(stopwatch.Elapsed.TotalMilliseconds, 1);
         }
         catch (Exception ex) when (ex is SocketException or OperationCanceledException && !ct.IsCancellationRequested)
         {
@@ -153,7 +212,7 @@ public sealed class NetworkProbe : IAsyncDisposable
     /// Interface ativa = placa Ethernet ou Wi-Fi física que está "Up" e tem gateway IPv4.
     /// Adaptadores de VPN (Radmin, Tailscale…) também têm gateway, mas não são o caminho do jogo.
     /// </summary>
-    private void RefreshActiveInterface()
+    private static (string? Adapter, IPAddress? Gateway) FindActiveInterface()
     {
         foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
         {
@@ -165,12 +224,9 @@ public sealed class NetworkProbe : IAsyncDisposable
                 .FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork && !a.Equals(IPAddress.Any));
             if (gateway is null) continue;
 
-            _adapter = nic.Name;
-            _gatewayAddress = gateway;
-            return;
+            return (nic.Name, gateway);
         }
-        _adapter = null;
-        _gatewayAddress = null;
+        return (null, null);
     }
 
     public async ValueTask DisposeAsync()
