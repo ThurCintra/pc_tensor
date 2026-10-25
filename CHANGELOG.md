@@ -5,6 +5,17 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.2.1] - 2026-10-24
+
+### Corrigido
+
+- O Pit Wall trocava de layout várias vezes por segundo (o Raio-X mudava de tamanho sozinho). Um app fora da
+  lista de jogos virava "jogo pesado" com a GPU acima de 70% e voltava logo abaixo disso, e o próprio PC Sentinel
+  em foco entrava nessa regra. Agora o app em si nunca conta como jogo, a GPU tem folga (entra em 70%, sai abaixo
+  de 40%) e o perfil só muda depois de 3 segundos seguidos.
+- Em desenvolvimento, o app abria o serviço publicado em `build/service` mesmo quando o compilado depois era mais
+  novo; agora usa sempre o mais recente.
+
 ## [1.2.0] - 2026-10-24
 
 ### Adicionado

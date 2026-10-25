@@ -33,28 +33,53 @@ public sealed class ForegroundProfiler
         "docker desktop", "postman", "sublime_text", "notepad++", "cursor", "zed", "androidstudio64",
     };
 
-    /// <summary>Executáveis que representam "nenhum app em foco" (área de trabalho, menu Iniciar).</summary>
+    /// <summary>
+    /// Executáveis que representam "nenhum app em foco": área de trabalho, menu Iniciar e o próprio PC Sentinel
+    /// (instalado ou em desenvolvimento). Olhando o Pit Wall no PC, a GPU que desenha a página passava de 70% e
+    /// o app se classificava como jogo AAA.
+    /// </summary>
     private static readonly HashSet<string> Shell = new(StringComparer.OrdinalIgnoreCase)
     {
         "explorer", "searchhost", "startmenuexperiencehost", "shellexperiencehost", "lockapp",
+        "pc sentinel", "electron",
     };
 
-    /// <summary>Uso de GPU a partir do qual um jogo desconhecido é tratado como AAA.</summary>
-    private const double HeavyGpuLoadPct = 70;
+    /// <summary>Uso de GPU a partir do qual um jogo desconhecido passa a ser tratado como AAA.</summary>
+    public const double HeavyGpuLoadPct = 70;
 
-    public ContextData Detect(double? gpuLoadPct)
+    /// <summary>
+    /// Já tratado como AAA, só volta a "uso leve" abaixo disso. Sem essa folga, uma GPU oscilando em volta de
+    /// 70% trocava o perfil (e o layout do Pit Wall) várias vezes por segundo.
+    /// </summary>
+    public const double LightGpuLoadPct = 40;
+
+    private readonly ProfileStabilizer _stabilizer = new();
+    private string? _lastExe;
+    private bool _heavy;
+
+    public ContextData Detect(double? gpuLoadPct, double timestampS)
     {
         var (exe, pid) = GetForegroundProcess();
-        return new ContextData(Classify(exe, gpuLoadPct), exe is null ? null : exe + ".exe", pid);
+        if (!string.Equals(exe, _lastExe, StringComparison.OrdinalIgnoreCase))
+        {
+            _lastExe = exe;
+            _heavy = false; // outro app em foco: a histerese recomeça
+        }
+
+        string observed = Classify(exe, gpuLoadPct, _heavy);
+        _heavy = observed == Profiles.AaaGraphics;
+        return new ContextData(_stabilizer.Update(observed, timestampS), exe is null ? null : exe + ".exe", pid);
     }
 
-    public static string Classify(string? exe, double? gpuLoadPct)
+    /// <param name="wasHeavy">O app desconhecido em foco já estava sendo tratado como AAA (histerese).</param>
+    public static string Classify(string? exe, double? gpuLoadPct, bool wasHeavy = false)
     {
         if (exe is null || Shell.Contains(exe)) return Profiles.Idle;
         if (CompetitiveFps.Contains(exe)) return Profiles.CompetitiveFps;
         if (AaaGraphics.Contains(exe)) return Profiles.AaaGraphics;
         if (DevWorkstation.Contains(exe)) return Profiles.DevWorkstation;
-        return gpuLoadPct >= HeavyGpuLoadPct ? Profiles.AaaGraphics : Profiles.Idle;
+        double threshold = wasHeavy ? LightGpuLoadPct : HeavyGpuLoadPct;
+        return gpuLoadPct >= threshold ? Profiles.AaaGraphics : Profiles.Idle;
     }
 
     /// <summary>Nome do executável (sem .exe) e PID da janela em foco, ou (null, null).</summary>

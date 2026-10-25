@@ -94,7 +94,7 @@ public sealed class TelemetryEngine(
             net.InternetLatencyMs, network.Internet.MedianMs, net.JitterMs, net.LossPct,
             hw.CpuLoadPct, hw.CpuMaxCoreLoadPct, hw.GpuLoadPct, hw.GpuVramUsedMb, hw.GpuVramTotalMb));
 
-        var context = foreground.Detect(hw.GpuLoadPct);
+        var context = foreground.Detect(hw.GpuLoadPct, t);
 
         double systemPower = _energy.Add(t, hw.CpuPowerW, hw.GpuPowerW, energySettings.BaseLoadW);
         double monthKwh = _monthKwhStored + _energy.PendingKwh;
