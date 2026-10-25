@@ -5,6 +5,8 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.3.1] - 2026-10-25
+
 ### Corrigido
 
 - Os botões de mídia (*Controles*, no PC e no celular) não funcionavam: o app usava `SendKeys([char]179)`, que
@@ -134,7 +136,8 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.3.0...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/ThurCintra/pc_tensor/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/ThurCintra/pc_tensor/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.1.0...v1.2.0
