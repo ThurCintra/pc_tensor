@@ -5,6 +5,8 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.3.0] - 2026-10-24
+
 ### Adicionado
 
 - **pc_tensor Cloud** (`cloud/`, Etapas 1 e 2): base do painel web multiusuário.
@@ -125,7 +127,9 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.2.0...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.2.1...v1.3.0
+[1.2.1]: https://github.com/ThurCintra/pc_tensor/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ThurCintra/pc_tensor/releases/tag/v1.0.0
