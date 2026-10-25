@@ -10,6 +10,21 @@ const QRCode = require('qrcode');
 const { ActionRouter } = require('./action-router');
 
 const DEFAULT_PORT = 3890;
+/** Porta do serviço nativo .NET (contrato v2). O servidor do celular nunca a ocupa, nem como alternativa. */
+const SERVICE_PORT = 3891;
+const MAX_PORT_ATTEMPTS = 5;
+
+/**
+ * Portas que o servidor tenta, em ordem, a partir da configurada: pula as reservadas (a do serviço nativo) e
+ * as fora da faixa válida. Com a 3890 ocupada, a próxima tentada é a 3892, não a 3891.
+ */
+function candidatePorts(start, attempts = MAX_PORT_ATTEMPTS, reserved = [SERVICE_PORT]) {
+  const ports = [];
+  for (let port = start; ports.length < attempts && port <= 65535; port++) {
+    if (!reserved.includes(port)) ports.push(port);
+  }
+  return ports;
+}
 
 // Origens de navegador autorizadas a chamar a API de outra origem (dev server Vite)
 const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
@@ -55,6 +70,7 @@ function extractToken(req) {
 class MobileLiveServer {
   constructor(options = {}) {
     this.port = options.port || DEFAULT_PORT;
+    this.reservedPorts = options.reservedPorts || [SERVICE_PORT];
     this.host = options.host || '0.0.0.0';
     this.collector = null;
     this.lastMetrics = null;
@@ -339,13 +355,10 @@ class MobileLiveServer {
       this.sessionToken = crypto.randomUUID();
     }
 
-    const maxPortAttempts = 5;
-    let currentAttempt = 0;
     let boundSuccessfully = false;
 
-    while (!boundSuccessfully && currentAttempt < maxPortAttempts) {
-      const targetPort = this.port + currentAttempt;
-      currentAttempt++;
+    for (const targetPort of candidatePorts(this.port, MAX_PORT_ATTEMPTS, this.reservedPorts)) {
+      if (boundSuccessfully) break;
 
       const serverCandidate = http.createServer(this.app);
       const wssCandidate = new WebSocketServer({
@@ -359,10 +372,9 @@ class MobileLiveServer {
 
       const bound = await new Promise((resolve) => {
         serverCandidate.once('error', (err) => {
-          if (err.code === 'EADDRINUSE') {
-            console.warn(
-              `[MobileLiveServer] Porta ${targetPort} já em uso. Tentando porta alternativa ${targetPort + 1}...`,
-            );
+          // EACCES no Windows: porta reservada ou presa por um processo elevado; para nós, também "ocupada"
+          if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+            console.warn(`[MobileLiveServer] Porta ${targetPort} indisponível (${err.code}). Tentando a próxima...`);
             try {
               wssCandidate.close();
             } catch {}
@@ -705,4 +717,4 @@ class MobileLiveServer {
   }
 }
 
-module.exports = { MobileLiveServer, ActionRouter, pickLocalIp, DEFAULT_PORT };
+module.exports = { MobileLiveServer, ActionRouter, pickLocalIp, candidatePorts, DEFAULT_PORT, SERVICE_PORT };

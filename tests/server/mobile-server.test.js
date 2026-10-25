@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 const EventEmitter = require('events');
-const { MobileLiveServer, pickLocalIp } = require('../../src/server/mobile-server');
+const { MobileLiveServer, pickLocalIp, candidatePorts, SERVICE_PORT } = require('../../src/server/mobile-server');
 const { ActionRouter } = require('../../src/server/action-router');
 const { createFakeExec, createFakeMediaKeys } = require('../helpers/fake-exec');
 const WebSocket = require('ws');
@@ -113,8 +113,31 @@ describe('MobileLiveServer', () => {
     ).rejects.toThrow();
   });
 
+  it('nunca usa a porta do serviço nativo como alternativa', () => {
+    expect(SERVICE_PORT).toBe(3891);
+    // 3890 ocupada: a próxima é a 3892, pulando a 3891 do serviço .NET
+    expect(candidatePorts(3890)).toEqual([3890, 3892, 3893, 3894, 3895]);
+    // Configurada direto na 3891: também pula
+    expect(candidatePorts(3891, 3)).toEqual([3892, 3893, 3894]);
+    expect(candidatePorts(65534, 5)).toEqual([65534, 65535]);
+  });
+
+  it('com a porta ocupada, pula a reservada e abre na seguinte', async () => {
+    const net = require('net');
+    const blocker = net.createServer();
+    await new Promise((resolve) => blocker.listen(3901, '127.0.0.1', resolve));
+    try {
+      serverInstance = createServer({ port: 3901, reservedPorts: [3902] });
+      const info = await serverInstance.start();
+      expect(info.port).toBe(3903);
+    } finally {
+      await new Promise((resolve) => blocker.close(resolve));
+    }
+  });
+
   it('deve exigir token nos endpoints de dados e de controle', async () => {
-    serverInstance = createServer({ port: 3891 });
+    // Fora da faixa 3890–3899 (celular e serviço nativo): o teste roda mesmo com o PC Sentinel aberto
+    serverInstance = createServer({ port: 3911 });
     await serverInstance.start();
 
     for (const [method, path] of [
@@ -123,7 +146,8 @@ describe('MobileLiveServer', () => {
       ['POST', '/api/server/toggle'],
       ['POST', '/api/action'],
     ]) {
-      const res = await fetch(`http://127.0.0.1:3891${path}`, {
+      // A porta que a instância abriu de fato (pode ter pulado para outra se a configurada estava ocupada)
+      const res = await fetch(`http://127.0.0.1:${serverInstance.port}${path}`, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: method === 'POST' ? JSON.stringify({ shouldStart: false }) : undefined,
