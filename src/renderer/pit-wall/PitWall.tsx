@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { History, Vibrate } from 'lucide-react';
+import { History, MoonStar, Sun, Vibrate } from 'lucide-react';
 import { useSentinel } from '../realtime/useSentinel';
 import type { CrashReport } from '../realtime/flight-recorder';
 import type { TelemetryFrame } from '../realtime/protocol';
@@ -10,6 +10,7 @@ import { StutterBusterCard } from './StutterBusterCard';
 import { XRayCard } from './XRayCard';
 import { PostMortem } from './PostMortem';
 import { PROFILE_LABELS, SIZE_CLASSES, layoutFor, type CardSlot } from './layout';
+import { useOledShift, usePersistentToggle, useWakeLock, type WakeLockStatus } from './useWakeLock';
 
 const STATUS_TEXT = {
   idle: 'Procurando o serviço do PC…',
@@ -38,15 +39,40 @@ export function PitWall() {
     store.dismissCrash();
   }, [crash, store]);
 
+  // HUD de mesa: tela sempre acesa enquanto o PC está ao vivo, e proteção contra burn-in no OLED
+  const [keepAwake, setKeepAwake] = usePersistentToggle('pc-sentinel-wake-lock', true);
+  const [oled, setOled] = usePersistentToggle('pc-sentinel-oled', false);
+  const wakeLock = useWakeLock(keepAwake && status === 'online');
+  const [shiftX, shiftY] = useOledShift(oled);
+
+  useEffect(() => {
+    if (!oled) return undefined;
+    document.documentElement.classList.add('oled-guard');
+    return () => document.documentElement.classList.remove('oled-guard');
+  }, [oled]);
+
   return (
-    <div className="page">
+    <div
+      className={`page${oled ? ' oled-shift' : ''}`}
+      style={oled ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}
+      data-testid="pit-wall"
+    >
       <div className="page-header">
-        <h1>Pit Wall</h1>
-        <p>
-          {frame
-            ? `${PROFILE_LABELS[profile]}${frame.context.foregroundExe ? ` · ${frame.context.foregroundExe}` : ''}`
-            : 'Telemetria ao vivo do PC, alertas e caixa preta'}
-        </p>
+        <div>
+          <h1>Pit Wall</h1>
+          <p>
+            {frame
+              ? `${PROFILE_LABELS[profile]}${frame.context.foregroundExe ? ` · ${frame.context.foregroundExe}` : ''}`
+              : 'Telemetria ao vivo do PC, alertas e caixa preta'}
+          </p>
+        </div>
+        <HudControls
+          keepAwake={keepAwake}
+          onKeepAwake={setKeepAwake}
+          wakeLock={wakeLock}
+          oled={oled}
+          onOled={setOled}
+        />
       </div>
 
       <StatusBar status={status} alert={recentAlert} />
@@ -114,6 +140,56 @@ function Card({
         />
       );
   }
+}
+
+const WAKE_LOCK_HINT: Record<WakeLockStatus, string> = {
+  active: 'Tela sempre ativa: o celular não apaga a tela enquanto o PC está ao vivo.',
+  idle: 'Tela sempre ativa: liga quando o PC estiver ao vivo.',
+  denied: 'O navegador recusou manter a tela acesa (economia de bateria?). Tenta de novo ao voltar para a aba.',
+  unsupported: 'Este navegador não permite manter a tela acesa.',
+};
+
+/** Controles do HUD de mesa: tela sempre ativa (Wake Lock) e proteção OLED. */
+function HudControls({
+  keepAwake,
+  onKeepAwake,
+  wakeLock,
+  oled,
+  onOled,
+}: {
+  keepAwake: boolean;
+  onKeepAwake: (value: boolean) => void;
+  wakeLock: WakeLockStatus;
+  oled: boolean;
+  onOled: (value: boolean) => void;
+}) {
+  const wakeLockOn = keepAwake && wakeLock !== 'unsupported';
+  return (
+    <div className="btn-group">
+      <button
+        type="button"
+        className="btn subtle hud-toggle"
+        aria-pressed={wakeLockOn}
+        disabled={wakeLock === 'unsupported'}
+        title={keepAwake ? WAKE_LOCK_HINT[wakeLock] : 'Tela sempre ativa: desligada.'}
+        onClick={() => onKeepAwake(!keepAwake)}
+      >
+        <Sun size={14} aria-hidden />
+        Tela sempre ativa
+        {keepAwake && wakeLock === 'active' && <span className="sr-only"> (ativa agora)</span>}
+      </button>
+      <button
+        type="button"
+        className="btn subtle hud-toggle"
+        aria-pressed={oled}
+        title="Fundo preto absoluto e um deslocamento de 1 px por minuto para não marcar telas OLED."
+        onClick={() => onOled(!oled)}
+      >
+        <MoonStar size={14} aria-hidden />
+        Proteção OLED
+      </button>
+    </div>
+  );
 }
 
 function StatusBar({ status, alert }: { status: keyof typeof STATUS_TEXT; alert: string | null }) {

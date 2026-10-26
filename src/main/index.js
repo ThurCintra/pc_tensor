@@ -110,7 +110,7 @@ function startMetricsLoop() {
     try {
       const metrics = await ctx.collector.getMetricsSnapshot();
       metrics.alerts = ctx.alertMonitor.evaluate(metrics);
-      ctx.windows.send('metrics:update', metrics);
+      ctx.windows.sendMetrics(metrics); // pula a janela minimizada (modo eco)
       ctx.mobileServer.broadcastMetrics(metrics);
     } catch (err) {
       console.error('[PC Sentinel] Erro no loop de métricas:', err);

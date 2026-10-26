@@ -869,3 +869,28 @@ textarea.input {
     display: none;
   }
 }
+
+/* ---------- Pit Wall: proteção OLED ---------- */
+/* Preto absoluto atrás de tudo (pixel apagado num OLED) enquanto o Pit Wall está aberto com a proteção ligada */
+html.oled-guard,
+html.oled-guard body,
+html.oled-guard .content,
+html.oled-guard .sidebar {
+  background: #000000;
+}
+
+/* O deslocamento de 1 px muda a cada minuto; a transição curta evita um "pulo" perceptível */
+.oled-shift {
+  transition: transform 1.5s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oled-shift {
+    transition: none;
+  }
+}
+
+.hud-toggle[aria-pressed='true'] {
+  color: var(--accent);
+  border-color: var(--accent);
+}

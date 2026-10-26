@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { thermalColor, thermalHsl } from '../../../src/renderer/pit-wall/thermal-color';
 import { LAYOUTS, layoutFor } from '../../../src/renderer/pit-wall/layout';
 import { ThermalCard, LagJudgeCard, MaintenanceCard } from '../../../src/renderer/pit-wall/cards';
@@ -12,6 +12,27 @@ import { summarizeCrash, type CrashReport } from '../../../src/renderer/realtime
 import type { SentinelStore } from '../../../src/renderer/realtime/sentinel-store';
 import type { HelloData } from '../../../src/renderer/realtime/protocol';
 import { makeFrame } from '../realtime/fixtures';
+import { OLED_SHIFTS, useOledShift, useWakeLock } from '../../../src/renderer/pit-wall/useWakeLock';
+import { PitWall } from '../../../src/renderer/pit-wall/PitWall';
+
+// Estado do Pit Wall controlado pelos testes do HUD (o resto do arquivo não usa o useSentinel)
+const sentinelState = vi.hoisted(() => ({ status: 'online' as string }));
+vi.mock('../../../src/renderer/realtime/useSentinel', () => ({
+  useSentinel: () => ({
+    status: sentinelState.status,
+    hello: null,
+    frame: null,
+    frameAt: null,
+    alerts: [],
+    crash: null,
+    store: {
+      dismissCrash: () => {},
+      openReport: async () => {},
+      recorder: { listReports: async () => [], deleteReport: async () => {} },
+      haptics: { supported: false, enabled: false, setEnabled: () => {} },
+    },
+  }),
+}));
 
 afterEach(cleanup);
 
@@ -172,5 +193,153 @@ describe('Post-Mortem', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+/** navigator.wakeLock simulado: cada pedido devolve um "sentinel" que pode ser solto pelo teste ou pelo hook. */
+function mockWakeLock({ reject = false } = {}) {
+  const sentinels: { released: boolean; release: ReturnType<typeof vi.fn>; fire: () => void }[] = [];
+  const request = vi.fn(async () => {
+    if (reject) throw new DOMException('Bateria fraca', 'NotAllowedError');
+    const listeners: (() => void)[] = [];
+    const sentinel = {
+      released: false,
+      release: vi.fn(async () => {
+        sentinel.fire();
+      }),
+      addEventListener: (_type: string, listener: () => void) => listeners.push(listener),
+      fire: () => {
+        if (sentinel.released) return;
+        sentinel.released = true;
+        listeners.forEach((l) => l());
+      },
+    };
+    sentinels.push(sentinel);
+    return sentinel;
+  });
+  Object.defineProperty(navigator, 'wakeLock', { value: { request }, configurable: true });
+  return { request, sentinels };
+}
+
+function setVisibility(state: 'visible' | 'hidden') {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+}
+
+describe('useWakeLock', () => {
+  afterEach(() => {
+    delete (navigator as { wakeLock?: unknown }).wakeLock;
+    setVisibility('visible');
+  });
+
+  it('segura a tela enquanto ligado e solta ao desmontar', async () => {
+    const { request, sentinels } = mockWakeLock();
+    const { result, unmount } = renderHook(() => useWakeLock(true));
+
+    await waitFor(() => expect(result.current).toBe('active'));
+    expect(request).toHaveBeenCalledWith('screen');
+
+    unmount();
+    expect(sentinels[0]!.release).toHaveBeenCalled();
+  });
+
+  it('readquire quando a aba volta a ficar visível', async () => {
+    const { request, sentinels } = mockWakeLock();
+    const { result } = renderHook(() => useWakeLock(true));
+    await waitFor(() => expect(result.current).toBe('active'));
+
+    // O navegador solta sozinho quando a aba some
+    act(() => {
+      setVisibility('hidden');
+      sentinels[0]!.fire();
+    });
+    expect(result.current).toBe('idle');
+
+    act(() => setVisibility('visible'));
+    await waitFor(() => expect(result.current).toBe('active'));
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it('desligado não pede nada; sem suporte ou recusado não quebra', async () => {
+    const { request } = mockWakeLock();
+    renderHook(() => useWakeLock(false));
+    expect(request).not.toHaveBeenCalled();
+
+    delete (navigator as { wakeLock?: unknown }).wakeLock;
+    const unsupported = renderHook(() => useWakeLock(true));
+    expect(unsupported.result.current).toBe('unsupported');
+
+    mockWakeLock({ reject: true });
+    const denied = renderHook(() => useWakeLock(true));
+    await waitFor(() => expect(denied.result.current).toBe('denied'));
+  });
+});
+
+describe('proteção OLED', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    localStorage.clear();
+    document.documentElement.classList.remove('oled-guard');
+  });
+
+  it('desloca 1 px por minuto num ciclo de 4 posições e volta ao lugar ao desligar', () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(({ on }) => useOledShift(on), { initialProps: { on: true } });
+    expect(result.current).toEqual([0, 0]);
+
+    const seen = [];
+    for (let i = 0; i < 4; i++) {
+      act(() => vi.advanceTimersByTime(60_000));
+      seen.push(result.current);
+    }
+    expect(seen).toEqual([OLED_SHIFTS[1], OLED_SHIFTS[2], OLED_SHIFTS[3], OLED_SHIFTS[0]]);
+    expect(seen.every(([x, y]) => Math.abs(x) <= 1 && Math.abs(y) <= 1)).toBe(true);
+
+    act(() => vi.advanceTimersByTime(60_000));
+    rerender({ on: false });
+    expect(result.current).toEqual([0, 0]);
+  });
+
+  it('no Pit Wall: fundo preto absoluto, deslocamento e preferência guardada', async () => {
+    mockWakeLock();
+    render(<PitWall />);
+
+    const oled = screen.getByRole('button', { name: /Proteção OLED/ });
+    expect(oled.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(oled);
+
+    expect(oled.getAttribute('aria-pressed')).toBe('true');
+    expect(document.documentElement.classList.contains('oled-guard')).toBe(true);
+    expect(screen.getByTestId('pit-wall').style.transform).toBe('translate(0px, 0px)');
+    expect(localStorage.getItem('pc-sentinel-oled')).toBe('on');
+
+    cleanup();
+    expect(document.documentElement.classList.contains('oled-guard')).toBe(false);
+    delete (navigator as { wakeLock?: unknown }).wakeLock;
+  });
+
+  it('no Pit Wall: tela sempre ativa liga com o PC ao vivo e pode ser desligada', async () => {
+    const { request, sentinels } = mockWakeLock();
+    sentinelState.status = 'online';
+    render(<PitWall />);
+
+    const wake = screen.getByRole('button', { name: /Tela sempre ativa/ });
+    await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
+    expect(wake.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(wake);
+    expect(wake.getAttribute('aria-pressed')).toBe('false');
+    expect(sentinels[0]!.release).toHaveBeenCalled();
+    expect(localStorage.getItem('pc-sentinel-wake-lock')).toBe('off');
+    delete (navigator as { wakeLock?: unknown }).wakeLock;
+  });
+
+  it('sem PC ao vivo não segura a tela', () => {
+    const { request } = mockWakeLock();
+    sentinelState.status = 'offline';
+    render(<PitWall />);
+    expect(request).not.toHaveBeenCalled();
+    sentinelState.status = 'online';
+    delete (navigator as { wakeLock?: unknown }).wakeLock;
   });
 });

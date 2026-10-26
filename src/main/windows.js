@@ -20,6 +20,8 @@ class WindowManager {
     this.isMiniWidget = false;
     this.normalBounds = { ...NORMAL_SIZE };
     this.loadedFromViteDev = false;
+    /** Última leitura recebida, entregue na hora quando a janela volta a aparecer. */
+    this.lastMetrics = null;
   }
 
   /** Cor de fundo igual à do tema do Windows (evita flash branco/preto ao abrir). */
@@ -31,6 +33,34 @@ class WindowManager {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(channel, payload);
     }
+  }
+
+  /**
+   * A janela está na tela para alguém ver? Minimizada ou escondida, não; o mini-widget fica sempre à vista.
+   * Janela fechada não conta: ela é destruída (hibernateMain) e não recebe nada.
+   */
+  isMainOnScreen() {
+    const win = this.mainWindow;
+    if (!win || win.isDestroyed()) return false;
+    if (this.isMiniWidget) return !win.isMinimized();
+    return win.isVisible() && !win.isMinimized();
+  }
+
+  /**
+   * Modo eco: métricas (a cada 1,2 s) só vão para a janela quando ela está na tela. Minimizada durante um jogo,
+   * o React não recalcula a interface à toa. A coleta, os alertas, o celular e o serviço nativo continuam iguais;
+   * só a entrega para a janela invisível é pulada. Devolve se entregou.
+   */
+  sendMetrics(metrics) {
+    this.lastMetrics = metrics;
+    if (!this.isMainOnScreen()) return false;
+    this.send('metrics:update', metrics);
+    return true;
+  }
+
+  /** Janela voltou (restaurada ou mostrada): entrega a leitura mais recente na hora, sem esperar o próximo ciclo. */
+  flushMetrics() {
+    if (this.lastMetrics && this.isMainOnScreen()) this.send('metrics:update', this.lastMetrics);
   }
 
   async showMain() {
@@ -84,6 +114,9 @@ class WindowManager {
     this.mainWindow.on('closed', () => {
       this.mainWindow = null;
     });
+    // Saiu do modo eco: a tela não fica parada na última leitura de antes de minimizar
+    this.mainWindow.on('restore', () => this.flushMetrics());
+    this.mainWindow.on('show', () => this.flushMetrics());
   }
 
   /** Destrói o renderer guardando posição e tamanho para reabrir no mesmo lugar. */
