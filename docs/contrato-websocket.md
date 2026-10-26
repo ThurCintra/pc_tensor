@@ -171,9 +171,17 @@ Campos de cada bloco:
 | `SET_ENERGY_CONFIG` | `{ "tariffBrlPerKwh": 0.95, "baseLoadW": 60 }` | A configuração salva |
 | `GET_SILICON_CURVE` | `{ "component": "cpu" }` | `{ "points": [{ "clockMhz": 5300, "vcoreV": 1.27, "powerW": 86.2, "samples": 412 }] }` |
 | `PING` | `{}` | `{ "pong": true }` |
+| `SET_PROFILE_RULE` | `{ "exe": "meu_jogo.exe", "profile": "COMPETITIVE_FPS" }` | `{ "rule": { "exe": "meu_jogo", "profile": "COMPETITIVE_FPS" }, "rules": [...] }` |
+| `REMOVE_PROFILE_RULE` | `{ "exe": "meu_jogo.exe" }` | `{ "rules": [...] }` (erro se não havia regra) |
+| `GET_PROFILE_RULES` | `{}` | `{ "rules": [{ "exe": "meu_jogo", "profile": "COMPETITIVE_FPS" }] }` |
 | `CLOUD_PAIR` | `{ "code": "123456", "apiUrl": "https://site" }` | Estado da nuvem (abaixo). Só aceito do próprio PC (loopback) |
 | `CLOUD_UNPAIR` | `{}` | Estado da nuvem. Só do próprio PC |
 | `CLOUD_STATUS` | `{}` | `{ "state": "CONNECTED", "apiUrl", "deviceId", "mode": "LIVE", "lastError", "connectedSince" }` |
+
+Regras de perfil: o usuário classifica qualquer executável (`exe` aceita só o nome, o nome com `.exe` ou o caminho
+completo; é guardado sem `.exe`, em minúsculas). `profile` é um dos perfis do `context.profile`. A regra vence as
+listas fixas e a regra da GPU, fica salva no SQLite e vale a partir do próximo quadro (com os 3 s de estabilidade do
+perfil). Até 200 regras.
 
 `state` da nuvem: `UNPAIRED`, `CONNECTING`, `CONNECTED`, `OFFLINE` (tentando de novo) ou `UNAUTHORIZED` (PC removido no
 site; precisa parear de novo).

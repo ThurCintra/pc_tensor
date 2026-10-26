@@ -5,6 +5,29 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+### Adicionado
+
+- **Pit Wall como HUD de mesa:** *Tela sempre ativa* (Screen Wake Lock: o celular não apaga a tela enquanto o PC está
+  ao vivo e volta a segurar quando a aba reaparece) e *Proteção OLED* (fundo preto absoluto e deslocamento de 1 px por
+  minuto contra burn-in). As duas preferências ficam salvas em cada aparelho.
+- **Regras de perfil do usuário:** comandos `SET_PROFILE_RULE`, `REMOVE_PROFILE_RULE` e `GET_PROFILE_RULES` no
+  contrato v2 para classificar qualquer jogo ou programa (ex.: `meu_jogo.exe` como FPS competitivo). A regra vence as
+  listas fixas e fica salva no SQLite do serviço.
+- **Modo eco:** com a janela minimizada ou escondida, as métricas não são enviadas ao renderer; coleta, alertas,
+  celular e serviço nativo seguem iguais, e a leitura mais recente aparece na hora ao restaurar.
+
+### Corrigido
+
+- Sensores sem disputa entre o serviço nativo e a ponte legada: com o serviço no ar, o app usa as leituras dele e a
+  ponte roda só com os contadores de I/O de disco (`--no-hardware`), sem abrir o LibreHardwareMonitor; sem o
+  serviço, a ponte volta sozinha ao modo completo.
+- Juiz de Lag sem perda de pacote falsa: cada alvo de ping recebe no máximo um pacote por segundo (antes um gateway
+  lento podia colar dois pings seguidos ao 1.1.1.1, que os descartava), e a latência do fallback TCP é medida com
+  relógio de alta resolução.
+- O servidor do celular nunca usa a porta 3891 (do serviço nativo) como alternativa quando a 3890 está ocupada.
+- A publicação do serviço falha se alguma biblioteca nativa ficar fora do executável único, e a release não procura
+  mais certificado de assinatura no runner.
+
 ## [1.3.1] - 2026-10-25
 
 ### Corrigido

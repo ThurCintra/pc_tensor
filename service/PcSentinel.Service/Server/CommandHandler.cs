@@ -1,5 +1,6 @@
 using System.Text.Json;
 using PcSentinel.Service.Cloud;
+using PcSentinel.Service.Context;
 using PcSentinel.Service.Contracts;
 using PcSentinel.Service.Control;
 using PcSentinel.Service.Persistence;
@@ -25,8 +26,11 @@ public sealed class CommandHandler(
     EnergySettings energy,
     ILogger<CommandHandler> logger,
     // Resolvido só quando usado: o conector depende do laço de telemetria, que depende do hub, que depende daqui
-    Func<CloudConnector?>? cloudAccessor = null)
+    Func<CloudConnector?>? cloudAccessor = null,
+    ProfileRuleStore? profileRules = null)
 {
+    private readonly ProfileRuleStore _profileRules = profileRules ?? new ProfileRuleStore();
+
     private readonly SemaphoreSlim _stutterBusterGate = new(1, 1);
 
     private CloudConnector? Cloud => cloudAccessor?.Invoke();
@@ -57,6 +61,9 @@ public sealed class CommandHandler(
                 CommandActions.StutterBuster => await RunStutterBusterAsync(command.Id, ct),
                 CommandActions.SetEnergyConfig => SetEnergyConfig(command),
                 CommandActions.GetSiliconCurve => GetSiliconCurve(command),
+                CommandActions.SetProfileRule => SetProfileRule(command),
+                CommandActions.RemoveProfileRule => RemoveProfileRule(command),
+                CommandActions.GetProfileRules => CommandResult.Success(command.Id, new { rules = _profileRules.All() }),
                 CommandActions.CloudPair or CommandActions.CloudUnpair or CommandActions.CloudStatus when !isLocal =>
                     CommandResult.Failure(command.Id, "Disponível só no app do próprio PC."),
                 CommandActions.CloudPair or CommandActions.CloudUnpair or CommandActions.CloudStatus when Cloud is null =>
@@ -125,6 +132,23 @@ public sealed class CommandHandler(
         if (component is not ("cpu" or "gpu"))
             return CommandResult.Failure(command.Id, "Componente deve ser \"cpu\" ou \"gpu\".");
         return CommandResult.Success(command.Id, new { component, points = db.GetSiliconCurve(component) });
+    }
+
+    /// <summary>{ "exe": "meu_jogo.exe", "profile": "COMPETITIVE_FPS" } — vale a partir do próximo quadro.</summary>
+    private CommandResult SetProfileRule(ClientCommand command)
+    {
+        var (rule, error) = _profileRules.Set(ReadString(command.Params, "exe"), ReadString(command.Params, "profile"));
+        if (rule is null) return CommandResult.Failure(command.Id, error!);
+        logger.LogInformation("Regra de perfil: {Exe} → {Profile}", rule.Exe, rule.Profile);
+        return CommandResult.Success(command.Id, new { rule, rules = _profileRules.All() });
+    }
+
+    private CommandResult RemoveProfileRule(ClientCommand command)
+    {
+        string? exe = ReadString(command.Params, "exe");
+        if (!_profileRules.Remove(exe))
+            return CommandResult.Failure(command.Id, $"Não há regra para \"{exe}\".");
+        return CommandResult.Success(command.Id, new { rules = _profileRules.All() });
     }
 
     private async Task<CommandResult> CloudPairAsync(ClientCommand command, CancellationToken ct)

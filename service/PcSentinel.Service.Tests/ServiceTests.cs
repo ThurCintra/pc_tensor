@@ -222,3 +222,113 @@ public class NetworkAndProfileTests
         Assert.Equal(Profiles.CompetitiveFps, stabilizer.Update(Profiles.CompetitiveFps, 23));
     }
 }
+
+public class ProfileRuleTests
+{
+    private static Task<CommandResult> Send(CommandHandler handler, string action, string paramsJson) =>
+        handler.HandleAsync(
+            Encoding.UTF8.GetBytes($$"""{"v":2,"type":"command","id":"r","action":"{{action}}","params":{{paramsJson}}}"""),
+            CancellationToken.None);
+
+    [Theory]
+    [InlineData("meu_jogo.exe", "meu_jogo")]
+    [InlineData(@"C:\Jogos\Meu Jogo\MeuJogo.EXE", "meujogo")]
+    [InlineData("D:/games/Tarkov.exe", "tarkov")]
+    [InlineData("  Valorant  ", "valorant")]
+    [InlineData("", null)]
+    [InlineData("rm -rf /;", null)]
+    [InlineData("jogo<script>.exe", null)]
+    public void NormalizaONomeDoExecutavel(string input, string? expected) =>
+        Assert.Equal(expected, ProfileRuleStore.Normalize(input));
+
+    [Fact]
+    public void RegraDoUsuarioVenceAsListasFixasEARegraDaGpu()
+    {
+        var rules = new ProfileRuleStore();
+        Assert.NotNull(rules.Set("meu_jogo.exe", Profiles.CompetitiveFps).Rule);
+        Assert.NotNull(rules.Set("cs2.exe", Profiles.Idle).Rule);           // reclassifica um da lista fixa
+        Assert.NotNull(rules.Set("blender.exe", Profiles.AaaGraphics).Rule); // e um de trabalho
+
+        // O profiler recebe o nome do processo (sem .exe, com a caixa original)
+        Assert.Equal(Profiles.CompetitiveFps, ForegroundProfiler.Classify("Meu_Jogo", 5, rules: rules));
+        Assert.Equal(Profiles.Idle, ForegroundProfiler.Classify("cs2", 99, rules: rules));
+        Assert.Equal(Profiles.AaaGraphics, ForegroundProfiler.Classify("blender", 3, rules: rules));
+
+        // Sem regra, tudo como antes
+        Assert.Equal(Profiles.CompetitiveFps, ForegroundProfiler.Classify("valorant", 10, rules: rules));
+        Assert.Equal(Profiles.Idle, ForegroundProfiler.Classify("outro", 10, rules: rules));
+        Assert.Equal(Profiles.Idle, ForegroundProfiler.Classify(null, 99, rules: rules));
+    }
+
+    [Fact]
+    public void RecusaPerfilInvalidoEExecutavelInvalido()
+    {
+        var rules = new ProfileRuleStore();
+        Assert.Contains("Perfil inválido", rules.Set("jogo.exe", "TURBO").Error);
+        Assert.Contains("executável", rules.Set("jogo*.exe", Profiles.Idle).Error);
+        Assert.Contains("executável", rules.Set(@"C:\Jogos\", Profiles.Idle).Error); // só a pasta, sem arquivo
+        Assert.Equal(0, rules.Count);
+    }
+
+    [Fact]
+    public void RegrasSobrevivemAoReinicioPeloSqlite()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"pcs-regras-{Guid.NewGuid():N}.db");
+        try
+        {
+            using (var db = new TelemetryDb(path))
+            {
+                var rules = new ProfileRuleStore(db);
+                rules.Set("meu_jogo.exe", Profiles.CompetitiveFps);
+                rules.Set("editor.exe", Profiles.DevWorkstation);
+                Assert.True(rules.Remove("EDITOR.exe"));
+            }
+
+            using var reopened = new TelemetryDb(path);
+            var loaded = new ProfileRuleStore(reopened);
+            Assert.Equal([new ProfileRule("meu_jogo", Profiles.CompetitiveFps)], loaded.All());
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            foreach (var file in new[] { path, path + "-wal", path + "-shm" }) File.Delete(file);
+        }
+    }
+
+    [Fact]
+    public async Task ComandosCriamListamERemovemRegras()
+    {
+        var db = new TelemetryDb(":memory:");
+        var rules = new ProfileRuleStore(db);
+        var handler = new CommandHandler(
+            new StutterBuster(), db, new EnergySettings(), NullLogger<CommandHandler>.Instance, profileRules: rules);
+
+        var set = await Send(handler, "SET_PROFILE_RULE", """{"exe":"meu_jogo.exe","profile":"COMPETITIVE_FPS"}""");
+        Assert.True(set.Ok, set.Error);
+        Assert.Equal(Profiles.CompetitiveFps, ForegroundProfiler.Classify("meu_jogo", 0, rules: rules));
+        Assert.Equal("COMPETITIVE_FPS", db.GetProfileRules()["meu_jogo"]);
+
+        var list = await Send(handler, "GET_PROFILE_RULES", "{}");
+        Assert.Contains("meu_jogo", JsonSerializer.Serialize(list.Data, Protocol.Json));
+
+        var invalid = await Send(handler, "SET_PROFILE_RULE", """{"exe":"meu_jogo.exe","profile":"TURBO"}""");
+        Assert.False(invalid.Ok);
+        Assert.Contains("Perfil inválido", invalid.Error);
+
+        Assert.True((await Send(handler, "REMOVE_PROFILE_RULE", """{"exe":"MEU_JOGO.EXE"}""")).Ok);
+        Assert.Equal(Profiles.Idle, ForegroundProfiler.Classify("meu_jogo", 0, rules: rules));
+        Assert.False((await Send(handler, "REMOVE_PROFILE_RULE", """{"exe":"meu_jogo.exe"}""")).Ok);
+    }
+
+    [Fact]
+    public void ProfilerUsaARegraNoQuadroReal()
+    {
+        // O processo em foco durante o teste é o próprio test host: uma regra para ele muda o perfil detectado
+        var (exe, _) = ForegroundProfiler.GetForegroundProcess();
+        if (exe is null) return; // sem janela em foco (CI sem desktop): nada a medir
+        var rules = new ProfileRuleStore();
+        rules.Set(exe, Profiles.DevWorkstation);
+        var profiler = new ForegroundProfiler(rules);
+        Assert.Equal(Profiles.DevWorkstation, profiler.Detect(0, 0).Profile);
+    }
+}

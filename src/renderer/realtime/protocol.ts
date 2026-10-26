@@ -145,11 +145,21 @@ export interface SiliconCurvePoint {
 }
 
 /** Ação → [parâmetros, resposta]. */
+/** Regra salva: executável sem ".exe", em minúsculas. */
+export interface ProfileRule {
+  exe: string;
+  profile: Profile;
+}
+
 export interface CommandMap {
   PING: [Record<string, never>, { pong: boolean }];
   STUTTER_BUSTER: [Record<string, never>, StutterBusterResult];
   SET_ENERGY_CONFIG: [{ tariffBrlPerKwh?: number; baseLoadW?: number }, { tariffBrlPerKwh: number; baseLoadW: number }];
   GET_SILICON_CURVE: [{ component: 'cpu' | 'gpu' }, { component: 'cpu' | 'gpu'; points: SiliconCurvePoint[] }];
+  /** Regras do usuário para o perfil do app em foco (valem antes das listas fixas do serviço). */
+  SET_PROFILE_RULE: [{ exe: string; profile: Profile }, { rule: ProfileRule; rules: ProfileRule[] }];
+  REMOVE_PROFILE_RULE: [{ exe: string }, { rules: ProfileRule[] }];
+  GET_PROFILE_RULES: [Record<string, never>, { rules: ProfileRule[] }];
   /** pc_tensor Cloud (só do app no próprio PC). */
   CLOUD_PAIR: [{ code: string; apiUrl: string }, CloudStatus];
   CLOUD_UNPAIR: [Record<string, never>, CloudStatus];

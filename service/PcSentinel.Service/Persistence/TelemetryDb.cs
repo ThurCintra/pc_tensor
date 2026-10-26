@@ -64,6 +64,10 @@ public sealed class TelemetryDb : IDisposable
                 Key   TEXT PRIMARY KEY,
                 Value TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS ProfileRules (
+                Exe     TEXT PRIMARY KEY,
+                Profile TEXT NOT NULL
+            );
             """);
     }
 
@@ -210,6 +214,35 @@ public sealed class TelemetryDb : IDisposable
         Execute(
             "INSERT INTO Settings (Key, Value) VALUES ($k, $v) ON CONFLICT(Key) DO UPDATE SET Value = $v",
             ("$k", key), ("$v", value.ToString(CultureInfo.InvariantCulture)));
+
+    // Regras de perfil do usuário --------------------------------------------------------------------
+
+    /// <summary>Regras "executável → perfil" definidas pelo usuário (nome do executável já normalizado).</summary>
+    public IReadOnlyDictionary<string, string> GetProfileRules()
+    {
+        var rules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        lock (_lock)
+        {
+            using var cmd = Command("SELECT Exe, Profile FROM ProfileRules", null);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read()) rules[reader.GetString(0)] = reader.GetString(1);
+        }
+        return rules;
+    }
+
+    public void SetProfileRule(string exe, string profile) =>
+        Execute(
+            "INSERT INTO ProfileRules (Exe, Profile) VALUES ($e, $p) ON CONFLICT(Exe) DO UPDATE SET Profile = $p",
+            ("$e", exe), ("$p", profile));
+
+    public bool RemoveProfileRule(string exe)
+    {
+        lock (_lock)
+        {
+            using var cmd = Command("DELETE FROM ProfileRules WHERE Exe = $e", null, ("$e", exe));
+            return cmd.ExecuteNonQuery() > 0;
+        }
+    }
 
     // Infraestrutura --------------------------------------------------------------------------------
 

@@ -47,6 +47,11 @@ public static class CommandActions
     public const string GetSiliconCurve = "GET_SILICON_CURVE";
     public const string Ping = "PING";
 
+    // Regras do usuário para o perfil do app em foco (ex.: um jogo que não está nas listas fixas)
+    public const string SetProfileRule = "SET_PROFILE_RULE";
+    public const string RemoveProfileRule = "REMOVE_PROFILE_RULE";
+    public const string GetProfileRules = "GET_PROFILE_RULES";
+
     // pc_tensor Cloud: só aceitos de clientes no próprio PC (o app), nunca do celular pela rede
     public const string CloudPair = "CLOUD_PAIR";
     public const string CloudUnpair = "CLOUD_UNPAIR";

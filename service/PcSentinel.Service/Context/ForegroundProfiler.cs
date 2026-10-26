@@ -54,8 +54,15 @@ public sealed class ForegroundProfiler
     public const double LightGpuLoadPct = 40;
 
     private readonly ProfileStabilizer _stabilizer = new();
+    private readonly ProfileRuleStore _rules;
     private string? _lastExe;
     private bool _heavy;
+
+    /// <param name="rules">Regras do usuário (comando SET_PROFILE_RULE); valem antes das listas fixas.</param>
+    public ForegroundProfiler(ProfileRuleStore? rules = null)
+    {
+        _rules = rules ?? new ProfileRuleStore();
+    }
 
     public ContextData Detect(double? gpuLoadPct, double timestampS)
     {
@@ -66,15 +73,20 @@ public sealed class ForegroundProfiler
             _heavy = false; // outro app em foco: a histerese recomeça
         }
 
-        string observed = Classify(exe, gpuLoadPct, _heavy);
+        string observed = Classify(exe, gpuLoadPct, _heavy, _rules);
         _heavy = observed == Profiles.AaaGraphics;
         return new ContextData(_stabilizer.Update(observed, timestampS), exe is null ? null : exe + ".exe", pid);
     }
 
     /// <param name="wasHeavy">O app desconhecido em foco já estava sendo tratado como AAA (histerese).</param>
-    public static string Classify(string? exe, double? gpuLoadPct, bool wasHeavy = false)
+    /// <param name="rules">
+    /// Regras do usuário: vencem tudo, inclusive as listas fixas e a regra da GPU (quem conhece o próprio jogo é ele).
+    /// </param>
+    public static string Classify(string? exe, double? gpuLoadPct, bool wasHeavy = false, ProfileRuleStore? rules = null)
     {
-        if (exe is null || Shell.Contains(exe)) return Profiles.Idle;
+        if (exe is null) return Profiles.Idle;
+        if (rules is not null && rules.TryGet(ProfileRuleStore.Normalize(exe), out string custom)) return custom;
+        if (Shell.Contains(exe)) return Profiles.Idle;
         if (CompetitiveFps.Contains(exe)) return Profiles.CompetitiveFps;
         if (AaaGraphics.Contains(exe)) return Profiles.AaaGraphics;
         if (DevWorkstation.Contains(exe)) return Profiles.DevWorkstation;

@@ -47,6 +47,7 @@ builder.Services.AddSingleton(new PairingToken(Path.Combine(dataDir, "settings.j
 builder.Services.AddSingleton<EnergySettings>();
 builder.Services.AddSingleton<HardwareSampler>();
 builder.Services.AddSingleton<NetworkProbe>();
+builder.Services.AddSingleton(sp => new ProfileRuleStore(sp.GetRequiredService<TelemetryDb>()));
 builder.Services.AddSingleton<ForegroundProfiler>();
 builder.Services.AddSingleton<StutterBuster>();
 builder.Services.AddSingleton(sp => new CommandHandler(
@@ -54,7 +55,8 @@ builder.Services.AddSingleton(sp => new CommandHandler(
     sp.GetRequiredService<TelemetryDb>(),
     sp.GetRequiredService<EnergySettings>(),
     sp.GetRequiredService<ILogger<CommandHandler>>(),
-    () => sp.GetService<CloudConnector>()));
+    () => sp.GetService<CloudConnector>(),
+    sp.GetRequiredService<ProfileRuleStore>()));
 builder.Services.AddSingleton<WebSocketHub>();
 // Registrados como singleton e como serviço em segundo plano: o conector da nuvem e o handler de comandos
 // precisam da mesma instância que roda
