@@ -55,18 +55,26 @@ public sealed class ForegroundProfiler
 
     private readonly ProfileStabilizer _stabilizer = new();
     private readonly ProfileRuleStore _rules;
+    private readonly Func<(string? Exe, int? Pid)> _foreground;
     private string? _lastExe;
     private bool _heavy;
 
     /// <param name="rules">Regras do usuário (comando SET_PROFILE_RULE); valem antes das listas fixas.</param>
     public ForegroundProfiler(ProfileRuleStore? rules = null)
+        : this(rules, GetForegroundProcess)
+    {
+    }
+
+    /// <summary>Para testes: o app em foco vem de fora (a janela em foco da máquina de teste é imprevisível).</summary>
+    internal ForegroundProfiler(ProfileRuleStore? rules, Func<(string? Exe, int? Pid)> foreground)
     {
         _rules = rules ?? new ProfileRuleStore();
+        _foreground = foreground;
     }
 
     public ContextData Detect(double? gpuLoadPct, double timestampS)
     {
-        var (exe, pid) = GetForegroundProcess();
+        var (exe, pid) = _foreground();
         if (!string.Equals(exe, _lastExe, StringComparison.OrdinalIgnoreCase))
         {
             _lastExe = exe;

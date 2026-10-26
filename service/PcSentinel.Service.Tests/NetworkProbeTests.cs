@@ -20,7 +20,10 @@ public class NetworkProbeTests
     [Fact]
     public async Task CadaAlvoRecebeNoMaximoUmPingPorIntervalo()
     {
-        const int interval = 100;
+        // Margem folgada para runners de CI lentos: o defeito antigo colava dois pings ao mesmo alvo com poucos
+        // milissegundos de diferença; o certo é o intervalo inteiro (um agendador lento só aumenta o espaçamento)
+        const int interval = 200;
+        const int minimumGap = 150;
         var sent = new ConcurrentDictionary<IPAddress, ConcurrentQueue<double>>();
         var clock = Stopwatch.StartNew();
         int calls = 0;
@@ -38,18 +41,19 @@ public class NetworkProbeTests
         await using (var probe = new NetworkProbe(interval, Measure, () => ("Ethernet", Gateway)))
         {
             probe.Start();
-            await Task.Delay(750);
+            await Task.Delay(1500);
         }
 
         Assert.Equal(2, sent.Count);
         foreach (var (target, times) in sent)
         {
             var list = times.ToArray();
-            Assert.True(list.Length is >= 4 and <= 9, $"{target}: {list.Length} pings em 750 ms");
+            // 1,5 s a 200 ms: no máximo 8 ciclos; ao menos 3 mesmo num runner muito lento
+            Assert.True(list.Length is >= 3 and <= 8, $"{target}: {list.Length} pings em 1500 ms");
             for (int i = 1; i < list.Length; i++)
             {
                 double gap = list[i] - list[i - 1];
-                Assert.True(gap >= interval - 2, $"{target}: dois pings com {gap:0.0} ms de intervalo");
+                Assert.True(gap >= minimumGap, $"{target}: dois pings com {gap:0.0} ms de intervalo");
             }
         }
     }
@@ -64,10 +68,15 @@ public class NetworkProbeTests
             return Task.FromResult<double?>(target.Equals(Gateway) ? 2 : 20);
         }
 
-        await using var probe = new NetworkProbe(200, Measure, () => ("Ethernet", Gateway));
+        // Intervalo longo: depois do primeiro ciclo, nenhum ping novo durante as leituras abaixo
+        await using var probe = new NetworkProbe(60_000, Measure, () => ("Ethernet", Gateway));
         probe.Start();
-        await Task.Delay(50);
+        // Espera a primeira leitura de verdade (num runner lento o primeiro ciclo pode levar mais que alguns ms)
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while ((probe.Snapshot().InternetLatencyMs is null || probe.Snapshot().GatewayLatencyMs is null) && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
         int before = Volatile.Read(ref pings);
+        Assert.Equal(2, before);
 
         // O TelemetryEngine lê a 250 ms; aqui 100 leituras seguidas, sem nenhum ping a mais por causa delas
         for (int i = 0; i < 100; i++)

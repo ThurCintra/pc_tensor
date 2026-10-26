@@ -321,14 +321,21 @@ public class ProfileRuleTests
     }
 
     [Fact]
-    public void ProfilerUsaARegraNoQuadroReal()
+    public void ProfilerUsaARegraNoQuadroDoAppEmFoco()
     {
-        // O processo em foco durante o teste é o próprio test host: uma regra para ele muda o perfil detectado
-        var (exe, _) = ForegroundProfiler.GetForegroundProcess();
-        if (exe is null) return; // sem janela em foco (CI sem desktop): nada a medir
         var rules = new ProfileRuleStore();
-        rules.Set(exe, Profiles.DevWorkstation);
-        var profiler = new ForegroundProfiler(rules);
-        Assert.Equal(Profiles.DevWorkstation, profiler.Detect(0, 0).Profile);
+        rules.Set("meu_jogo.exe", Profiles.CompetitiveFps);
+        var foreground = ("Meu_Jogo", (int?)1234);
+        var profiler = new ForegroundProfiler(rules, () => foreground);
+
+        var context = profiler.Detect(gpuLoadPct: 5, timestampS: 0);
+        Assert.Equal(Profiles.CompetitiveFps, context.Profile);
+        Assert.Equal("Meu_Jogo.exe", context.ForegroundExe);
+        Assert.Equal(1234, context.ForegroundPid);
+
+        // Regra removida: o mesmo app volta à classificação automática (depois dos 3 s de estabilidade)
+        rules.Remove("meu_jogo");
+        Assert.Equal(Profiles.CompetitiveFps, profiler.Detect(5, 1).Profile);
+        Assert.Equal(Profiles.Idle, profiler.Detect(5, 4.1).Profile);
     }
 }
