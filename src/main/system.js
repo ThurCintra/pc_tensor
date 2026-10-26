@@ -12,10 +12,23 @@ function detectElevation() {
   });
 }
 
+/** Marca a cópia aberta pelo pedido automático de UAC, para nunca pedir de novo em loop. */
+const ELEVATED_RELAUNCH_FLAG = '--elevated-relaunch';
+
+/**
+ * O app instalado precisa de administrador para os sensores, mas o manifesto do .exe não pode exigir isso
+ * (requireAdministrator): o Chromium cria os processos de GPU e de página com o mesmo executável e um token
+ * restrito, e o Windows recusa criá-los (SBOX_ERROR_CREATE_PROCESS, "GPU process isn't usable"), então o app
+ * fechava 1 s depois de abrir. Por isso o .exe roda como asInvoker e se reabre pedindo o UAC ao abrir.
+ */
+function shouldAutoElevate({ isPackaged, platform, isElevated, argv = [] }) {
+  return Boolean(isPackaged) && platform === 'win32' && !isElevated && !argv.includes(ELEVATED_RELAUNCH_FLAG);
+}
+
 /** Abre o PC Sentinel de novo pedindo administrador (UAC). Resolve false se o usuário recusar. */
-function launchElevatedCopy() {
+function launchElevatedCopy(extraArgs = []) {
   const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
-  const args = process.argv.slice(1).filter(Boolean);
+  const args = [...new Set([...process.argv.slice(1).filter(Boolean), ...extraArgs])];
   const argList = args.length > 0 ? ` -ArgumentList ${args.map(quote).join(',')}` : '';
   const command = `Start-Process -FilePath ${quote(process.execPath)}${argList} -WorkingDirectory ${quote(process.cwd())} -Verb RunAs`;
 
@@ -86,4 +99,12 @@ function notify({ title, body, urgency }) {
   }).show();
 }
 
-module.exports = { detectElevation, launchElevatedCopy, autoLaunch, resolveThermalDbPath, notify };
+module.exports = {
+  ELEVATED_RELAUNCH_FLAG,
+  shouldAutoElevate,
+  detectElevation,
+  launchElevatedCopy,
+  autoLaunch,
+  resolveThermalDbPath,
+  notify,
+};

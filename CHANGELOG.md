@@ -5,6 +5,15 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+### Corrigido
+
+- **App abria e fechava em 1 segundo:** o instalador marcava o executável como "exige administrador", e com isso o
+  Windows recusava criar os processos de vídeo e de página do Chromium, que fechava o app ("GPU process isn't
+  usable"). Reinstalar não resolvia. Agora o executável abre normalmente e pede o administrador (UAC) logo ao abrir;
+  recusando, o app abre sem as temperaturas e oferece tentar de novo.
+- Se algo falhar ao iniciar, aparece uma mensagem com o erro e um registro em
+  `%APPDATA%\pc-sentinel\startup-error.log`, em vez de um processo invisível que impedia abrir o app de novo.
+
 ## [1.4.0] - 2026-10-25
 
 ### Adicionado
