@@ -7,8 +7,8 @@ namespace PcSentinel.Service.Persistence;
 
 /// <summary>
 /// Banco SQLite local (%APPDATA%\pc-sentinel\telemetry.db) com:
-/// ThermalBaselines (degradação), EnergyLedger (kWh por dia), SiliconCurve (clock × tensão × potência)
-/// e Settings (tarifa e carga base). Estatísticas são guardadas como (n, média, M2) e somadas com a
+/// ThermalBaselines (degradação), EnergyLedger (kWh por dia), SiliconCurve (clock × tensão × potência),
+/// SiliconSummary (eficiência acumulada do Pit Wall) e Settings (tarifa e carga base). Estatísticas são guardadas como (n, média, M2) e somadas com a
 /// fórmula de Chan, então o banco nunca guarda amostras individuais.
 /// </summary>
 public sealed class TelemetryDb : IDisposable
@@ -64,6 +64,18 @@ public sealed class TelemetryDb : IDisposable
                 Key   TEXT PRIMARY KEY,
                 Value TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS SiliconSummary (
+                Component TEXT    PRIMARY KEY,
+                ClockN    INTEGER NOT NULL,
+                ClockMean REAL    NOT NULL,
+                ClockM2   REAL    NOT NULL,
+                PowerN    INTEGER NOT NULL,
+                PowerMean REAL    NOT NULL,
+                PowerM2   REAL    NOT NULL,
+                VcoreN    INTEGER NOT NULL,
+                VcoreMean REAL    NOT NULL,
+                VcoreM2   REAL    NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS ProfileRules (
                 Exe     TEXT PRIMARY KEY,
                 Profile TEXT NOT NULL
@@ -87,6 +99,12 @@ public sealed class TelemetryDb : IDisposable
         object? value = Scalar(
             "SELECT COALESCE(SUM(Kwh), 0) FROM EnergyLedger WHERE Day >= $from AND Day < $to",
             ("$from", Iso(first)), ("$to", Iso(first.AddMonths(1))));
+        return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+    }
+
+    public double GetDayKwh(DateOnly day)
+    {
+        object? value = Scalar("SELECT COALESCE(SUM(Kwh), 0) FROM EnergyLedger WHERE Day = $day", ("$day", Iso(day)));
         return Convert.ToDouble(value, CultureInfo.InvariantCulture);
     }
 
@@ -199,6 +217,36 @@ public sealed class TelemetryDb : IDisposable
                     reader.GetInt64(3)));
             }
             return points;
+        }
+    }
+
+    /// <summary>Acumulado (clock, potência, tensão) do card de eficiência, para sobreviver a reinícios.</summary>
+    public void SaveSiliconSummary(string component, SiliconTotals totals) =>
+        Execute("""
+            INSERT INTO SiliconSummary VALUES ($c, $cn, $cm, $c2, $pn, $pm, $p2, $vn, $vm, $v2)
+            ON CONFLICT(Component) DO UPDATE SET
+                ClockN = $cn, ClockMean = $cm, ClockM2 = $c2,
+                PowerN = $pn, PowerMean = $pm, PowerM2 = $p2,
+                VcoreN = $vn, VcoreMean = $vm, VcoreM2 = $v2
+            """,
+            ("$c", component),
+            ("$cn", totals.Clock.Count), ("$cm", totals.Clock.Mean), ("$c2", totals.Clock.M2),
+            ("$pn", totals.Power.Count), ("$pm", totals.Power.Mean), ("$p2", totals.Power.M2),
+            ("$vn", totals.Vcore.Count), ("$vm", totals.Vcore.Mean), ("$v2", totals.Vcore.M2));
+
+    public SiliconTotals? LoadSiliconSummary(string component)
+    {
+        lock (_lock)
+        {
+            using var cmd = Command(
+                "SELECT ClockN, ClockMean, ClockM2, PowerN, PowerMean, PowerM2, VcoreN, VcoreMean, VcoreM2 FROM SiliconSummary WHERE Component = $c",
+                null, ("$c", component));
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read()) return null;
+            return new SiliconTotals(
+                new RunningStats(reader.GetInt64(0), reader.GetDouble(1), reader.GetDouble(2)),
+                new RunningStats(reader.GetInt64(3), reader.GetDouble(4), reader.GetDouble(5)),
+                new RunningStats(reader.GetInt64(6), reader.GetDouble(7), reader.GetDouble(8)));
         }
     }
 

@@ -13,11 +13,15 @@ interface EnergyCardProps {
 }
 
 /**
- * Taxímetro: custo da sessão em reais atualizado 4 vezes por segundo, com consumo do mês e a tarifa
+ * Taxímetro: custo do dia em reais (sobrevive a reinícios do app) atualizado 4 vezes por segundo, com consumo do mês e a tarifa
  * editável (salva no serviço pelo comando SET_ENERGY_CONFIG).
  */
 export function EnergyCard({ frame, store, highlight, className }: EnergyCardProps) {
   const e = frame.energy;
+  // Serviço antigo sem o total do dia: cai para a sessão, que zera a cada reinício
+  const hasToday = typeof e.todayKwh === 'number' && typeof e.todayCostBrl === 'number';
+  const headlineKwh = hasToday ? (e.todayKwh as number) : e.sessionKwh;
+  const headlineCost = hasToday ? (e.todayCostBrl as number) : e.sessionCostBrl;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -46,13 +50,13 @@ export function EnergyCard({ frame, store, highlight, className }: EnergyCardPro
   return (
     <BentoCard title="Taxímetro de energia" icon={Zap} highlight={highlight} className={className}>
       <div>
-        <div className="text-xs text-fg-3">Esta sessão</div>
+        <div className="text-xs text-fg-3">{hasToday ? 'Hoje' : 'Esta sessão'}</div>
         <div
           className="font-mono text-4xl font-semibold tabular-nums text-accent"
           aria-live="off"
-          title={`${num(e.sessionKwh, 4)} kWh`}
+          title={`${num(headlineKwh, 4)} kWh`}
         >
-          {brl(e.sessionCostBrl)}
+          {brl(headlineCost)}
         </div>
       </div>
       <dl className="m-0 [display:grid] grid-cols-3 gap-2 text-sm">

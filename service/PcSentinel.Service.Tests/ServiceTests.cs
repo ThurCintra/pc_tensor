@@ -23,6 +23,36 @@ public class TelemetryDbTests
         db.AddEnergy(new DateOnly(2026, 9, 30), 10);
 
         Assert.Equal(5, db.GetMonthKwh(new DateOnly(2026, 10, 15)), precision: 9);
+        Assert.Equal(2, db.GetDayKwh(new DateOnly(2026, 10, 1)), precision: 9);
+        Assert.Equal(0, db.GetDayKwh(new DateOnly(2026, 10, 2)), precision: 9);
+    }
+
+    [Fact]
+    public void GuardaOResumoDeEficienciaEntreExecucoes()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"pcs-{Guid.NewGuid():N}.db");
+        try
+        {
+            var tracker = new SiliconEfficiencyTracker("gpu");
+            tracker.Add(90, 2500, 1.05, 150);
+            tracker.Add(92, 2600, 1.10, 160);
+            using (var db = new TelemetryDb(path))
+            {
+                Assert.Null(db.LoadSiliconSummary("gpu"));
+                db.SaveSiliconSummary("gpu", tracker.Totals());
+            }
+
+            using var reopened = new TelemetryDb(path);
+            var saved = reopened.LoadSiliconSummary("gpu");
+            Assert.NotNull(saved);
+            Assert.Equal(tracker.Totals(), saved.Value);
+            Assert.Null(reopened.LoadSiliconSummary("cpu"));
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            foreach (var file in new[] { path, path + "-wal", path + "-shm" }) File.Delete(file);
+        }
     }
 
     [Fact]
@@ -135,7 +165,7 @@ public class AlertTrackerTests
         new NetworkData("Ethernet", "192.168.0.1", 1, 20, 2, 0),
         new LagData(lag, lag == LagVerdicts.Network ? ["Perda de pacotes de 5%"] : []),
         new ContextData(Profiles.Idle, null, null),
-        new EnergyData(200, 60, 0.95, 0.1, 0.1, 1, 0.95),
+        new EnergyData(200, 60, 0.95, 0.1, 0.1, 1, 0.95, 0.3, 0.29),
         new MaintenanceData(false, null, null, null, null),
         new EfficiencyData(null, null));
 

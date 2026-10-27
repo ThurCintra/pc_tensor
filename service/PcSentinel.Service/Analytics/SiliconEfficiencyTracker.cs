@@ -9,6 +9,9 @@ public sealed class SiliconBucket
     public RunningStats Power;
 }
 
+/// <summary>Acumulado de clock, potência e tensão sob carga que forma o resumo de eficiência.</summary>
+public readonly record struct SiliconTotals(RunningStats Clock, RunningStats Power, RunningStats Vcore);
+
 /// <summary>
 /// "Silicon lottery": agrega pares [Clock, Vcore, Potência] sob carga (≥ 80 %) em faixas de 100 MHz.
 /// A curva clock × tensão × potência mostra quanto o chip precisa de tensão para cada frequência; o
@@ -46,7 +49,24 @@ public sealed class SiliconEfficiencyTracker(string component, double bucketMhz 
         }
     }
 
-    /// <summary>Resumo da sessão: MHz por watt e estabilidade da tensão.</summary>
+    /// <summary>Acumulado atual (gravado no banco para o resumo sobreviver a reinícios do app).</summary>
+    public SiliconTotals Totals()
+    {
+        lock (_lock) return new SiliconTotals(_clock, _power, _vcore);
+    }
+
+    /// <summary>Soma ao que já está em memória o acumulado gravado nas execuções anteriores.</summary>
+    public void Restore(SiliconTotals saved)
+    {
+        lock (_lock)
+        {
+            _clock = RunningStats.Merge(saved.Clock, _clock);
+            _power = RunningStats.Merge(saved.Power, _power);
+            _vcore = RunningStats.Merge(saved.Vcore, _vcore);
+        }
+    }
+
+    /// <summary>Resumo acumulado: MHz por watt e estabilidade da tensão.</summary>
     public SiliconEfficiency Summary()
     {
         lock (_lock)

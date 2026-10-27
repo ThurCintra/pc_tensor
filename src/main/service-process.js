@@ -5,6 +5,8 @@ const { ROOT } = require('./paths');
 
 const DEFAULT_SERVICE_PORT = 3891;
 const RESTART_DELAYS_MS = [1000, 3000, 10000, 30000];
+// Tempo para o serviço gravar a telemetria pendente e sair sozinho antes de ser encerrado à força
+const GRACEFUL_STOP_MS = 5000;
 
 /** Executável publicado pelo instalador ou compilado em dev (dotnet build / npm run build:service). */
 function serviceCandidates() {
@@ -91,10 +93,20 @@ class ServiceProcess {
 
     const child = this.spawnFn(
       exe,
-      ['--Port', String(this.port), '--DataDir', this.dataDir, '--ParentPid', String(process.pid)],
+      [
+        '--Port',
+        String(this.port),
+        '--DataDir',
+        this.dataDir,
+        '--ParentPid',
+        String(process.pid),
+        '--StopOnStdinEof',
+        'true',
+      ],
       {
         windowsHide: true,
-        stdio: ['ignore', 'ignore', 'pipe'],
+        // stdin em pipe: fechá-lo é o pedido de encerramento limpo (ver stop())
+        stdio: ['pipe', 'ignore', 'pipe'],
       },
     );
     this.child = child;
@@ -111,14 +123,27 @@ class ServiceProcess {
     });
   }
 
+  /**
+   * Pede ao serviço para encerrar fechando a entrada padrão: ele grava a energia, as linhas de base e a
+   * eficiência pendentes (até 1 min de dados) e sai. Matar direto (TerminateProcess) perdia esses dados a
+   * cada vez que o app fechava. Se ele não sair a tempo, é encerrado à força.
+   */
   stop() {
     this.stopped = true;
     clearTimeout(this.restartTimer);
-    if (this.child) {
-      this.child.kill();
-      this.child = null;
+    const child = this.child;
+    if (!child) return;
+    this.child = null;
+    try {
+      child.stdin?.end();
+    } catch {
+      // pipe já fechado: o serviço também encerra quando o app sai (--ParentPid)
     }
+    const forceKill = setTimeout(() => {
+      if (child.exitCode === null && child.signalCode === null) child.kill();
+    }, GRACEFUL_STOP_MS);
+    forceKill.unref?.();
   }
 }
 
-module.exports = { ServiceProcess, DEFAULT_SERVICE_PORT, serviceCandidates };
+module.exports = { ServiceProcess, DEFAULT_SERVICE_PORT, GRACEFUL_STOP_MS, serviceCandidates };

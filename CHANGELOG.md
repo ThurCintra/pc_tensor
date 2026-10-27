@@ -5,6 +5,17 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+### Corrigido
+
+- **Pit Wall perdia os dados ao reiniciar o app:**
+  - Fechar o app matava o serviço nativo antes da gravação (feita a cada minuto), perdendo até 1 minuto de energia,
+    linhas de base de temperatura e eficiência. Agora o app pede o encerramento e o serviço grava tudo antes de sair
+    (encerrado à força só se não sair em 5 s).
+  - *Eficiência do silício* guarda o acumulado no banco e não volta para "—" a cada reinício.
+  - *Saúde térmica* é avaliada logo ao abrir, sem esperar o primeiro minuto.
+  - O *Taxímetro de energia* mostra o custo de **hoje**, que não zera ao reiniciar (antes mostrava só a sessão).
+  - Tudo usa a gravação que já existia (1 vez por minuto e ao fechar): nenhuma escrita extra em disco durante o uso.
+
 ## [1.4.1] - 2026-10-26
 
 ### Corrigido

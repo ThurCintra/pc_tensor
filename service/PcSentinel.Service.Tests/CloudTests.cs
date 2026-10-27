@@ -25,7 +25,7 @@ internal static class Frames
             new NetworkData("Ethernet", "192.168.0.1", 1, 12, 1, 0),
             new LagData(LagVerdicts.Normal, []),
             new ContextData(profile, "jogo.exe", 10),
-            new EnergyData(powerW, 60, 0.95, 0, 0, 0, 0),
+            new EnergyData(powerW, 60, 0.95, 0, 0, 0, 0, 0, 0),
             new MaintenanceData(false, null, null, null, null),
             new EfficiencyData(null, null));
     }

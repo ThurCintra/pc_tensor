@@ -41,6 +41,8 @@ public sealed class TelemetryEngine(
     private readonly Stopwatch _clock = Stopwatch.StartNew();
 
     private double _monthKwhStored;
+    private double _todayKwhStored;
+    private DateOnly _storedDay;
     private MaintenanceData _maintenance = new(false, null, null, null, null);
     private TimeSpan _lastFlush;
 
@@ -58,6 +60,7 @@ public sealed class TelemetryEngine(
         energySettings.TariffBrlPerKwh = db.GetSetting(EnergySettings.TariffKey, EnergySettings.DefaultTariffBrlPerKwh);
         energySettings.BaseLoadW = db.GetSetting(EnergySettings.BaseLoadKey, EnergySettings.DefaultBaseLoadW);
         RefreshMonth(Today());
+        RestoreSession(Today());
 
         await Task.Run(sampler.Open, ct);
         network.Start();
@@ -104,6 +107,8 @@ public sealed class TelemetryEngine(
 
         double systemPower = _energy.Add(t, hw.CpuPowerW, hw.GpuPowerW, energySettings.BaseLoadW);
         double monthKwh = _monthKwhStored + _energy.PendingKwh;
+        // Virou o dia sem gravação ainda: o pendente é do dia novo
+        double todayKwh = (_storedDay == Today() ? _todayKwhStored : 0) + _energy.PendingKwh;
 
         _cpuSilicon.Add(hw.CpuLoadPct, hw.CpuClockMhz, hw.CpuVcoreV, hw.CpuPowerW);
         _gpuSilicon.Add(hw.GpuLoadPct, hw.GpuClockMhz, hw.GpuVcoreV, hw.GpuPowerW);
@@ -131,7 +136,9 @@ public sealed class TelemetryEngine(
                 Math.Round(_energy.SessionKwh, 4),
                 EnergyMeter.Cost(_energy.SessionKwh, tariff),
                 Math.Round(monthKwh, 3),
-                EnergyMeter.Cost(monthKwh, tariff)),
+                EnergyMeter.Cost(monthKwh, tariff),
+                Math.Round(todayKwh, 4),
+                EnergyMeter.Cost(todayKwh, tariff)),
             _maintenance,
             new EfficiencyData(_cpuSilicon.Summary(), _gpuSilicon.Summary()));
 
@@ -157,11 +164,13 @@ public sealed class TelemetryEngine(
                 db.MergeBaseline(component, bucket, week, stats);
 
             foreach (var tracker in new[] { _cpuSilicon, _gpuSilicon })
+            {
                 foreach (var (clockBucket, stats) in tracker.TakePending())
                     db.MergeSilicon(tracker.Component, clockBucket, stats);
+                db.SaveSiliconSummary(tracker.Component, tracker.Totals());
+            }
 
-            var cutoff = DegradationAnalyzer.BaselineCutoff(today);
-            _maintenance = _degradation.Evaluate((c, b) => db.GetBaseline(c, b, cutoff), today);
+            EvaluateMaintenance(today);
         }
         catch (Exception ex)
         {
@@ -172,6 +181,32 @@ public sealed class TelemetryEngine(
     private void RefreshMonth(DateOnly today)
     {
         _monthKwhStored = db.GetMonthKwh(today);
+        _todayKwhStored = db.GetDayKwh(today);
+        _storedDay = today;
+    }
+
+    /// <summary>
+    /// Na abertura, retoma o que foi gravado nas execuções anteriores: a eficiência do silício acumulada e o
+    /// veredito de saúde térmica (antes o Pit Wall ficava vazio até a primeira gravação, 1 min depois).
+    /// </summary>
+    private void RestoreSession(DateOnly today)
+    {
+        try
+        {
+            foreach (var tracker in new[] { _cpuSilicon, _gpuSilicon })
+                if (db.LoadSiliconSummary(tracker.Component) is SiliconTotals saved) tracker.Restore(saved);
+            EvaluateMaintenance(today);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Falha ao restaurar o histórico do banco");
+        }
+    }
+
+    private void EvaluateMaintenance(DateOnly today)
+    {
+        var cutoff = DegradationAnalyzer.BaselineCutoff(today);
+        _maintenance = _degradation.Evaluate((c, b) => db.GetBaseline(c, b, cutoff), today);
     }
 
     private static DateOnly Today() => DateOnly.FromDateTime(DateTime.Now);
