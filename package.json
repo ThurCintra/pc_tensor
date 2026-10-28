@@ -1,6 +1,6 @@
 {
   "name": "pc-sentinel",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Monitor de hardware para Windows: temperaturas reais, processos, histórico térmico e acesso pelo celular.",
   "keywords": [
     "electron",
@@ -32,7 +32,7 @@
     "start": "npm run build && electron .",
     "build": "vite build",
     "build:bridge": "node scripts/build-bridge.js",
-    "dist": "npm run build && npm run build:service && electron-builder --win nsis --x64",
+    "dist": "npm run build && npm run build:service && npm run build:pawnio && electron-builder --win nsis --x64",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
@@ -41,7 +41,8 @@
     "format:check": "prettier --check .",
     "check": "npm run lint && npm run typecheck && npm run format:check && npm test",
     "typecheck": "tsc",
-    "build:service": "node scripts/build-service.js"
+    "build:service": "node scripts/build-service.js",
+    "build:pawnio": "node scripts/fetch-pawnio.js"
   },
   "dependencies": {
     "electron-updater": "^6.8.11",
@@ -107,6 +108,13 @@
       {
         "from": "build/service",
         "to": "service",
+        "filter": [
+          "*.exe"
+        ]
+      },
+      {
+        "from": "build/pawnio",
+        "to": "pawnio",
         "filter": [
           "*.exe"
         ]

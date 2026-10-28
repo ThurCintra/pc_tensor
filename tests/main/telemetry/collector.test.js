@@ -29,6 +29,7 @@ function createCollector({ si = {}, bridgeData = null, lhmData = null, ...overri
       getSwapMetrics: vi.fn().mockResolvedValue({ totalMB: 8192, usedMB: 2048, percentUsed: 25 }),
     },
     thermalDbPath: ':memory:',
+    sensorDriver: { refresh: vi.fn(), installed: null },
     ...overrides,
   });
 }
@@ -37,10 +38,11 @@ describe('SystemCollector', () => {
   let collector;
   afterEach(() => collector?.stop());
 
-  it('usa o WMI como reserva quando a ponte de sensores não responde', async () => {
+  it('usa o WMI como reserva da GPU e dos discos, mas nunca para a temperatura da CPU', async () => {
+    const cpuTemperature = vi.fn().mockResolvedValue({ main: 27.8, cores: [], max: 27.8 });
     collector = createCollector({
       si: {
-        cpuTemperature: vi.fn().mockResolvedValue({ main: 55.4, cores: [54.0, 56.8], max: 56.8 }),
+        cpuTemperature,
         graphics: vi
           .fn()
           .mockResolvedValue({ controllers: [{ model: 'NVIDIA GeForce RTX 4070', temperatureGpu: 48 }] }),
@@ -53,12 +55,15 @@ describe('SystemCollector', () => {
     const metrics = await collector.getMetricsSnapshot();
 
     expect(metrics.timestamp).toBeTypeOf('number');
-    expect(metrics.temperatures.cpuMain).toBe(55.4);
-    expect(metrics.temperatures.cpuMax).toBe(56.8);
-    expect(metrics.temperatures.cores).toEqual([54.0, 56.8]);
+    // A zona térmica ACPI do WMI costuma ser um valor fixo da placa-mãe: a CPU fica sem sensor
+    expect(cpuTemperature).not.toHaveBeenCalled();
+    expect(metrics.temperatures.cpuMain).toBeNull();
+    expect(metrics.temperatures.cpuMax).toBeNull();
+    expect(metrics.temperatures.cores).toEqual([]);
+    expect(metrics.temperatures.isCpuEstimated).toBe(true);
     expect(metrics.temperatures.gpu).toBe(48);
     expect(metrics.temperatures.gpuName).toBe('NVIDIA GeForce RTX 4070');
-    expect(metrics.temperatures.isEstimated).toBe(false);
+    expect(metrics.temperatures.isGpuEstimated).toBe(false);
     expect(metrics.cpu.loadPercent).toBe(32.5);
     expect(metrics.cpu.model).toBe('CPU de teste');
     expect(metrics.memory).toEqual({ totalGB: 16, usedGB: 8, percentUsed: 50 });
@@ -78,6 +83,33 @@ describe('SystemCollector', () => {
     expect(metrics.temperatures.isEstimated).toBe(true);
     expect(metrics.fan).toMatchObject({ rpm: null, isReal: false });
     expect(metrics.diskIo).toEqual({ readMBps: 0, writeMBps: 0, isReal: false });
+  });
+
+  it('avisa que falta o driver PawnIO quando a CPU está sem temperatura e o driver não está instalado', async () => {
+    const sensorDriver = { refresh: vi.fn(), installed: false };
+    collector = createCollector({ sensorDriver });
+
+    const metrics = await collector.getMetricsSnapshot();
+
+    expect(sensorDriver.refresh).toHaveBeenCalled();
+    expect(metrics.temperatures.cpuMain).toBeNull();
+    expect(metrics.temperatures.sensorDriverMissing).toBe(true);
+  });
+
+  it('não acusa falta do driver quando ele está instalado, não foi verificado ou a CPU já tem temperatura', async () => {
+    collector = createCollector({ sensorDriver: { refresh: vi.fn(), installed: true } });
+    expect((await collector.getMetricsSnapshot()).temperatures.sensorDriverMissing).toBe(false);
+    collector.stop();
+
+    collector = createCollector({ sensorDriver: { refresh: vi.fn(), installed: null } });
+    expect((await collector.getMetricsSnapshot()).temperatures.sensorDriverMissing).toBe(false);
+    collector.stop();
+
+    collector = createCollector({
+      sensorDriver: { refresh: vi.fn(), installed: false },
+      bridgeData: { success: true, isAdmin: true, cpu: { name: 'Intel Core i3-10110U', temp: 52 } },
+    });
+    expect((await collector.getMetricsSnapshot()).temperatures.sensorDriverMissing).toBe(false);
   });
 
   it('prioriza a ponte de sensores e não consulta o WMI para o que ela já informou', async () => {

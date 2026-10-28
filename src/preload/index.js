@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('sentinelAPI', {
   toggleMiniWidget: (toMini) => ipcRenderer.invoke('window:toggle-mini-widget', toMini),
   getAppInfo: () => ipcRenderer.invoke('app:info'),
   relaunchAsAdmin: () => ipcRenderer.invoke('app:relaunch-as-admin'),
+  openSensorDriverPage: () => ipcRenderer.invoke('app:open-sensor-driver-page'),
 
   // Serviço nativo .NET (WebSocket v2)
   getServiceEndpoint: () => ipcRenderer.invoke('service:endpoint'),

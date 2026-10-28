@@ -8,11 +8,10 @@ const { SensorBridge } = require('./sensor-bridge');
 const { LhmClient } = require('./lhm-client');
 const { NativeMetrics, round1, GB } = require('./native-metrics');
 const { collectHardwareInfo } = require('./hardware-info');
+const { SensorDriverProbe } = require('./sensor-driver');
 
 const GFX_REFRESH_MS = 60_000;
 const DISKS_REFRESH_MS = 30_000;
-const TEMP_REFRESH_MS = 3_000;
-const TEMP_RETRY_MS = 60_000;
 const THERMAL_SAMPLE_MS = 15_000;
 const DEGRADATION_CHECK_MS = 600_000;
 const FAN_MAX_RPM = 2400;
@@ -28,13 +27,15 @@ const positiveNum = (value) => (num(value) !== null && value > 0 ? value : null)
  * Junta as fontes de telemetria em um snapshot por ciclo:
  *   1. ponte de sensores (pc-sensor-bridge.exe, LibreHardwareMonitorLib) – temperaturas reais;
  *   2. servidor web do LibreHardwareMonitor, se estiver aberto;
- *   3. systeminformation (WMI) como reserva, consultado com cache para não pesar;
+ *   3. systeminformation (WMI) como reserva da GPU e dos discos, consultado com cache para não pesar;
  *   4. Node (os.cpus/os.totalmem) para carga de CPU e memória.
- * Nunca inventa valores: o que nenhuma fonte informa sai como null.
+ * Nunca inventa valores: o que nenhuma fonte informa sai como null. A temperatura da CPU não tem reserva no WMI:
+ * no Windows ela vem da zona térmica ACPI (MSAcpi_ThermalZoneTemperature), que em muitas placas é um valor fixo da
+ * placa-mãe e não do processador.
  *
  * Opções: si (systeminformation injetável), autoStart (inicia ponte e ping; padrão true) e
  * dependências injetáveis (sensorBridge, lhmClient, nativeMetrics, networkMonitor, processMonitor,
- * sessionBenchmark, thermalHistory, thermalDbPath).
+ * sessionBenchmark, thermalHistory, thermalDbPath, sensorDriver).
  */
 class SystemCollector extends EventEmitter {
   constructor(options = {}) {
@@ -54,14 +55,13 @@ class SystemCollector extends EventEmitter {
     this.processMonitor = options.processMonitor || new ProcessMonitor(this.si);
     this.sessionBenchmark = options.sessionBenchmark || new SessionBenchmark(options.benchmark || {});
     this.thermalHistory = options.thermalHistory || new ThermalHistoryStore(options.thermalDbPath);
+    this.sensorDriver = options.sensorDriver || new SensorDriverProbe();
 
     // Caches das consultas lentas ao WMI
     this.cachedGfx = null;
     this.lastGfxCheck = 0;
     this.cachedDisks = [];
     this.lastDisksCheck = 0;
-    this.cachedTemp = { main: null, cores: [], max: null };
-    this.lastTempCheck = 0;
     this.hasWorkingTempSensor = null; // null: ainda não verificado
 
     this.cachedHardwareInfo = null;
@@ -133,24 +133,6 @@ class SystemCollector extends EventEmitter {
     this.lastDisksCheck = now;
   }
 
-  /** Temperatura da CPU pelo WMI; sem sensor, tenta de novo só a cada minuto. */
-  async refreshCpuTemperature(now) {
-    const due =
-      this.hasWorkingTempSensor === null ||
-      (this.hasWorkingTempSensor === true && now - this.lastTempCheck > TEMP_REFRESH_MS) ||
-      (this.hasWorkingTempSensor === false && now - this.lastTempCheck > TEMP_RETRY_MS);
-    if (!due) return;
-
-    try {
-      this.cachedTemp = await this.getSi().cpuTemperature();
-      if (num(this.cachedTemp.main) !== null) this.hasWorkingTempSensor = true;
-      else if (this.hasWorkingTempSensor === null) this.hasWorkingTempSensor = false;
-    } catch {
-      if (this.hasWorkingTempSensor === null) this.hasWorkingTempSensor = false;
-    }
-    this.lastTempCheck = now;
-  }
-
   async getMetricsSnapshot() {
     const now = Date.now();
     const cpuMetrics = this.nativeMetrics.getCpuLoad();
@@ -170,16 +152,16 @@ class SystemCollector extends EventEmitter {
 
     if (realGpuTemp === null) await this.refreshGraphics(now);
     await this.refreshDisks(now);
-    if (realCpuTemp === null) await this.refreshCpuTemperature(now);
+    this.sensorDriver.refresh(now);
 
-    const tempData = this.cachedTemp;
-    const cpuTemp = realCpuTemp ?? (num(tempData?.main) !== null ? round1(tempData.main) : null);
+    const cpuTemp = realCpuTemp;
     const gpuTemp = realGpuTemp ?? num(this.cachedGfx?.gpuTemp);
     const isCpuEstimated = cpuTemp === null;
     const isGpuEstimated = gpuTemp === null;
     this.hasWorkingTempSensor = !isCpuEstimated;
 
-    const cpuMaxTemp = !isCpuEstimated && num(tempData?.max) !== null ? round1(tempData.max) : cpuTemp;
+    // Sem o driver PawnIO a CPU fica sem temperatura mesmo como administrador: a tela explica a causa
+    const sensorDriverMissing = isCpuEstimated && this.sensorDriver.installed === false;
     const fanRpm = realFanRpm !== null ? Math.round(realFanRpm) : null;
 
     const isAdmin = Boolean(bridge?.isAdmin);
@@ -216,8 +198,8 @@ class SystemCollector extends EventEmitter {
       timestamp: now,
       temperatures: {
         cpuMain: cpuTemp,
-        cpuMax: cpuMaxTemp,
-        cores: !isCpuEstimated && tempData?.cores?.length > 0 ? tempData.cores : cpuTemp !== null ? [cpuTemp] : [],
+        cpuMax: cpuTemp,
+        cores: cpuTemp !== null ? [cpuTemp] : [],
         gpu: gpuTemp,
         gpuName: realGpuName || this.cachedGfx?.gpuName || 'GPU Primária',
         gpuMemoryTemp: num(bridge?.gpu?.memoryTemp),
@@ -243,6 +225,7 @@ class SystemCollector extends EventEmitter {
         isEstimated: isCpuEstimated || isGpuEstimated,
         isCpuEstimated,
         isGpuEstimated,
+        sensorDriverMissing,
       },
       cpu: { ...cpuMetrics, model: cpuName, brand: cpuName },
       memory: memMetrics,

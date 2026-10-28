@@ -5,6 +5,23 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.4.3] - 2026-10-28
+
+### Adicionado
+
+- **Driver PawnIO no instalador:** o LibreHardwareMonitor lê temperatura, clock e potência da CPU por esse driver, e
+  sem ele esses valores ficavam vazios (só carga e discos funcionavam). O instalador agora instala o PawnIO 2.2.0
+  oficial quando o PC ainda não tem, conferido pelo hash. Se o UAC for recusado, a *Visão geral* avisa que falta o
+  driver e tem o botão *Baixar o PawnIO*; o aviso some sozinho depois da instalação.
+- Nova logo: escudo com linha de pulso. O ícone do Windows tem de 16 a 256 px (nítido na barra de tarefas e na
+  bandeja) e os ícones do celular têm os tamanhos declarados no manifest.
+
+### Corrigido
+
+- **Temperatura da CPU parada num valor fixo:** sem leitura real, o app usava a zona térmica ACPI do Windows, que em
+  muitos notebooks é um valor fixo da placa-mãe e não do processador. Agora a CPU mostra "Sem sensor" com o motivo,
+  em vez de um número que não muda.
+
 ## [1.4.2] - 2026-10-26
 
 ### Corrigido

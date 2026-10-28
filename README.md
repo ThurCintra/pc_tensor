@@ -38,7 +38,9 @@ Sem sensor disponível, o app mostra "Sem sensor" em vez de estimar valores.
 
 1. Baixe o `PC-Sentinel-Setup.exe` da [última release](https://github.com/ThurCintra/pc_tensor/releases/latest)
    ou gere o instalador (veja abaixo).
-2. Rode o instalador. Ele cria os atalhos e libera a porta do celular no firewall.
+2. Rode o instalador. Ele cria os atalhos, libera a porta do celular no firewall e instala o driver
+   [PawnIO](https://pawnio.eu), que lê a temperatura da CPU (o Windows pede permissão para isso; se o PC já tiver o
+   driver, essa etapa é pulada).
 3. Abra o **PC Sentinel** pelo menu Iniciar. O Windows pede permissão de administrador ao abrir: ela é
    necessária para ler as temperaturas.
 

@@ -12,6 +12,9 @@ import {
 import { PageHeader, Card, Meter, Badge, InfoBar, Rows, Row, StatValue, EmptyState } from '../components/ui';
 import { isNum, fixed, tempLevel, loadLevel, DASH } from '../lib/format';
 import { peakOf } from '../hooks/useTelemetry';
+import { getTransport } from '../lib/transport';
+
+const SENSOR_DRIVER_URL = 'https://pawnio.eu';
 
 const NETWORK_STATUS = {
   EXCELLENT: ['Excelente', 'success'],
@@ -32,6 +35,30 @@ function TempCaption({ temp, limit, peak }) {
       {label && <Badge tone={level === 'normal' ? 'success' : level}>{label}</Badge>}
       {isNum(peak) && <span>Pico da sessão {peak.toFixed(0)} °C</span>}
     </div>
+  );
+}
+
+/** CPU sem temperatura porque falta o driver PawnIO (o instalador instala; recusado o UAC, fica este aviso). */
+function SensorDriverInfoBar() {
+  const transport = getTransport();
+  return (
+    <InfoBar
+      tone="caution"
+      title="Temperatura da CPU indisponível: falta o driver PawnIO."
+      actions={
+        transport.openSensorDriverPage ? (
+          <button className="btn accent" onClick={() => transport.openSensorDriverPage()}>
+            Baixar o PawnIO
+          </button>
+        ) : (
+          <a className="btn accent" href={SENSOR_DRIVER_URL} target="_blank" rel="noreferrer">
+            Baixar o PawnIO
+          </a>
+        )
+      }
+    >
+      O PC Sentinel lê a temperatura do processador por esse driver. Instale o PawnIO e reinicie o app.
+    </InfoBar>
   );
 }
 
@@ -84,6 +111,8 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
           {!appInfo?.canRelaunchElevated && ' Abra o terminal como administrador e rode o app de novo.'}
         </InfoBar>
       )}
+
+      {t.sensorDriverMissing && !t.requiresElevation && <SensorDriverInfoBar />}
 
       {metrics.degradationAlert?.hasDegradation && (
         <InfoBar tone="caution" title="Temperatura em repouso subiu.">
