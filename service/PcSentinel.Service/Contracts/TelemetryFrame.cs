@@ -101,7 +101,10 @@ public sealed record EnergyData(
     double SessionKwh,
     double SessionCostBrl,
     double MonthKwh,
-    double MonthCostBrl);
+    double MonthCostBrl,
+    // Hoje: gravado no EnergyLedger + pendente, então não zera quando o app reinicia (a sessão zera)
+    double TodayKwh,
+    double TodayCostBrl);
 
 public sealed record MaintenanceData(
     bool Warning,

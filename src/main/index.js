@@ -1,4 +1,5 @@
-const { app } = require('electron');
+const { app, dialog } = require('electron');
+const fs = require('fs');
 const path = require('path');
 
 const { SystemCollector } = require('./telemetry/collector');
@@ -126,7 +127,6 @@ function startMetricsLoop() {
 
 async function bootstrap() {
   system.autoLaunch.configureOnFirstRun();
-  ctx.isElevated = await system.detectElevation();
 
   ctx.settingsStore = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
   const settings = ctx.settingsStore.get();
@@ -206,5 +206,52 @@ if (!app.requestSingleInstanceLock()) {
     app.quit();
   });
 
-  app.whenReady().then(bootstrap);
+  app.whenReady().then(start);
+}
+
+/**
+ * No app instalado sem administrador, reabre pedindo o UAC (o manifesto não pode exigir: veja
+ * system.shouldAutoElevate). Recusado o UAC, segue sem elevação, com o botão para tentar de novo.
+ */
+async function start() {
+  ctx.isElevated = await system.detectElevation();
+
+  const wantsElevation = system.shouldAutoElevate({
+    isPackaged: app.isPackaged,
+    platform: process.platform,
+    isElevated: ctx.isElevated,
+    argv: process.argv,
+  });
+  if (wantsElevation) {
+    // Solta a trava antes: a cópia elevada precisa dela para não fechar como "segunda instância"
+    app.releaseSingleInstanceLock();
+    if (await system.launchElevatedCopy([system.ELEVATED_RELAUNCH_FLAG])) {
+      app.quit();
+      return;
+    }
+    if (!app.requestSingleInstanceLock()) {
+      app.quit();
+      return;
+    }
+  }
+
+  try {
+    await bootstrap();
+  } catch (err) {
+    reportStartupFailure(err);
+  }
+}
+
+/** Falha ao iniciar vira mensagem e log, nunca um processo invisível segurando a trava de instância única. */
+function reportStartupFailure(err) {
+  const logPath = path.join(app.getPath('userData'), 'startup-error.log');
+  const details = `${new Date().toISOString()}\n${err?.stack || err}\n`;
+  try {
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, details, 'utf-8');
+  } catch {}
+  console.error('[PC Sentinel] Falha ao iniciar:', err);
+  dialog.showErrorBox('PC Sentinel não conseguiu iniciar', `${err?.message || err}\n\nDetalhes salvos em:\n${logPath}`);
+  actions.shutdown();
+  app.exit(1);
 }

@@ -71,6 +71,9 @@ export interface TelemetryFrame {
     sessionCostBrl: number;
     monthKwh: number;
     monthCostBrl: number;
+    /** Consumo do dia (gravado no serviço): não zera quando o app reinicia. Ausente em serviços anteriores à 1.4.2. */
+    todayKwh?: number;
+    todayCostBrl?: number;
   };
   maintenance: {
     warning: boolean;

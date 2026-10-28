@@ -135,6 +135,33 @@ if (builder.Configuration.GetValue<int?>("ParentPid") is int parentPid)
     });
 }
 
+// Iniciado pelo app com --StopOnStdinEof: ao sair, o app fecha a entrada padrão e o serviço encerra com
+// calma (o TelemetryEngine grava energia, linhas de base e eficiência pendentes), em vez de ser morto.
+if (builder.Configuration.GetValue<bool>("StopOnStdinEof"))
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            using var stdin = Console.OpenStandardInput();
+            var buffer = new byte[256];
+            while (await stdin.ReadAsync(buffer, app.Lifetime.ApplicationStopping) > 0) { }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            // Sem como ler a entrada: segue rodando; o --ParentPid ainda encerra junto com o app
+            app.Logger.LogWarning(ex, "Não foi possível acompanhar a entrada padrão.");
+            return;
+        }
+        app.Logger.LogInformation("O app pediu o encerramento; gravando e encerrando o serviço.");
+        app.Lifetime.StopApplication();
+    });
+}
+
 app.Logger.LogInformation("PC Sentinel Service ouvindo em ws://0.0.0.0:{Port}/ws (dados em {DataDir})", port, dataDir);
 await app.RunAsync();
 return 0;

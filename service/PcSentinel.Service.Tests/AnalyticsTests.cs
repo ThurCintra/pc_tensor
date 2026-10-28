@@ -124,6 +124,23 @@ public class SiliconEfficiencyTrackerTests
         Assert.Equal(new[] { 5000, 5400 }, buckets.Keys.Order());
         Assert.Empty(tracker.TakePending());
     }
+
+    [Fact]
+    public void RestaurarSomaOAcumuladoDeExecucoesAnteriores()
+    {
+        var antes = new SiliconEfficiencyTracker("cpu");
+        antes.Add(90, 5000, 1.20, 100);
+
+        // App reiniciado: o novo rastreador retoma o acumulado gravado e continua somando
+        var depois = new SiliconEfficiencyTracker("cpu");
+        depois.Add(95, 5400, 1.30, 80);
+        depois.Restore(antes.Totals());
+
+        var summary = depois.Summary();
+        Assert.Equal(2, summary.Samples);
+        Assert.Equal(57.8, summary.MhzPerWatt);
+        Assert.Equal(70.7, summary.VcoreStdDevMv);
+    }
 }
 
 public class DegradationAnalyzerTests

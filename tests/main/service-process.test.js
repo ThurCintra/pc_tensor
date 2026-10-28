@@ -3,11 +3,14 @@ const EventEmitter = require('events');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
-const { ServiceProcess } = require('../../src/main/service-process');
+const { ServiceProcess, GRACEFUL_STOP_MS } = require('../../src/main/service-process');
 
 function fakeChild() {
   const child = new EventEmitter();
   child.stderr = new EventEmitter();
+  child.stdin = { end: vi.fn() };
+  child.exitCode = null;
+  child.signalCode = null;
   child.kill = vi.fn();
   return child;
 }
@@ -35,7 +38,7 @@ describe('ServiceProcess', () => {
 
     expect(spawnFn).toHaveBeenCalledWith(
       exe,
-      ['--Port', '3891', '--DataDir', 'C:/dados', '--ParentPid', String(process.pid)],
+      ['--Port', '3891', '--DataDir', 'C:/dados', '--ParentPid', String(process.pid), '--StopOnStdinEof', 'true'],
       expect.objectContaining({ windowsHide: true }),
     );
     expect(service.available).toBe(true);
@@ -72,16 +75,41 @@ describe('ServiceProcess', () => {
     expect(spawnFn).toHaveBeenCalledTimes(3);
   });
 
-  it('stop() encerra o processo e não reinicia', () => {
+  it('pede encerramento limpo pela entrada padrão (o serviço grava o pendente antes de sair)', () => {
+    const { service, spawnFn } = setup();
+    service.start();
+
+    const [, args, options] = spawnFn.mock.calls[0];
+    expect(args).toEqual(expect.arrayContaining(['--StopOnStdinEof', 'true']));
+    expect(options.stdio[0]).toBe('pipe');
+  });
+
+  it('stop() fecha a entrada padrão, não mata se o serviço sai a tempo e não reinicia', () => {
     vi.useFakeTimers();
     const { service, spawnFn, children } = setup();
     service.start();
     service.stop();
-    children[0].emit('exit', null);
+
+    expect(children[0].stdin.end).toHaveBeenCalled();
+    expect(children[0].kill).not.toHaveBeenCalled();
+    children[0].exitCode = 0;
+    children[0].emit('exit', 0);
     vi.advanceTimersByTime(60_000);
 
-    expect(children[0].kill).toHaveBeenCalled();
+    expect(children[0].kill).not.toHaveBeenCalled();
     expect(spawnFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('stop() encerra à força se o serviço não sair a tempo', () => {
+    vi.useFakeTimers();
+    const { service, children } = setup();
+    service.start();
+    service.stop();
+
+    vi.advanceTimersByTime(GRACEFUL_STOP_MS - 1);
+    expect(children[0].kill).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(children[0].kill).toHaveBeenCalled();
   });
 
   it('sem executável só avisa', () => {

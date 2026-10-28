@@ -106,9 +106,14 @@ a rede doméstica do usuário.
 
 ## Execução e privilégios
 
-- **App instalado:** o manifesto do executável pede administrador (`requestedExecutionLevel:
-  requireAdministrator`), então o Windows mostra o UAC ao abrir e os sensores ficam disponíveis. O
-  instalador cria a regra de firewall da porta 3890 (removendo a anterior para não duplicar).
+- **App instalado:** o executável roda como `asInvoker` e, ao abrir sem administrador, se reabre pedindo o
+  UAC (`--elevated-relaunch` marca a cópia elevada para não pedir em loop; recusado o UAC, segue sem
+  elevação). O manifesto **não pode** usar `requireAdministrator`: o Chromium cria os processos de GPU e
+  de página com o mesmo `.exe` e um token restrito, o Windows recusa (`SBOX_ERROR_CREATE_PROCESS`) e o
+  app fecha 1 s após abrir ("GPU process isn't usable"). O instalador cria a regra de firewall da porta
+  3890 (removendo a anterior para não duplicar).
+- **Falha ao iniciar:** vira uma caixa de erro e um registro em `%APPDATA%\pc-sentinel\startup-error.log`,
+  em vez de um processo invisível segurando a trava de instância única.
 - **`npm start`:** abre sem elevação; o app detecta isso (`net session`) e oferece **Reiniciar como
   administrador**, que solta a trava de instância única e a porta, chama `Start-Process -Verb RunAs` e
   encerra. Se o UAC for recusado, restaura a trava e o servidor e segue rodando.

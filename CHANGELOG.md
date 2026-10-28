@@ -5,6 +5,30 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.4.2] - 2026-10-26
+
+### Corrigido
+
+- **Pit Wall perdia os dados ao reiniciar o app:**
+  - Fechar o app matava o serviço nativo antes da gravação (feita a cada minuto), perdendo até 1 minuto de energia,
+    linhas de base de temperatura e eficiência. Agora o app pede o encerramento e o serviço grava tudo antes de sair
+    (encerrado à força só se não sair em 5 s).
+  - *Eficiência do silício* guarda o acumulado no banco e não volta para "—" a cada reinício.
+  - *Saúde térmica* é avaliada logo ao abrir, sem esperar o primeiro minuto.
+  - O *Taxímetro de energia* mostra o custo de **hoje**, que não zera ao reiniciar (antes mostrava só a sessão).
+  - Tudo usa a gravação que já existia (1 vez por minuto e ao fechar): nenhuma escrita extra em disco durante o uso.
+
+## [1.4.1] - 2026-10-26
+
+### Corrigido
+
+- **App abria e fechava em 1 segundo:** o instalador marcava o executável como "exige administrador", e com isso o
+  Windows recusava criar os processos de vídeo e de página do Chromium, que fechava o app ("GPU process isn't
+  usable"). Reinstalar não resolvia. Agora o executável abre normalmente e pede o administrador (UAC) logo ao abrir;
+  recusando, o app abre sem as temperaturas e oferece tentar de novo.
+- Se algo falhar ao iniciar, aparece uma mensagem com o erro e um registro em
+  `%APPDATA%\pc-sentinel\startup-error.log`, em vez de um processo invisível que impedia abrir o app de novo.
+
 ## [1.4.0] - 2026-10-25
 
 ### Adicionado
@@ -161,7 +185,9 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.0...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.1...v1.4.2
+[1.4.1]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/ThurCintra/pc_tensor/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.2.1...v1.3.0
