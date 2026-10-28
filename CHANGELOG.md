@@ -5,7 +5,7 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
-## [1.5.0] - 2026-10-28
+## [1.4.3] - 2026-10-28
 
 ### Adicionado
 
