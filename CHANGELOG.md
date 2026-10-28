@@ -202,7 +202,8 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.2...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.3.1...v1.4.0
