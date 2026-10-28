@@ -6,6 +6,7 @@ dist/
 release/
 coverage/
 build/service/
+build/pawnio/
 service/**/bin/
 service/**/obj/
 service/**/TestResults/

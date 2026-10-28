@@ -1,6 +1,8 @@
 const { app, ipcMain, shell } = require('electron');
 const { releaseNotesUrl } = require('./updater');
 
+const SENSOR_DRIVER_URL = 'https://pawnio.eu';
+
 /**
  * Canais IPC expostos ao renderer pelo preload (src/preload/index.js).
  * Cada handler só delega para os serviços do contexto; a regra de negócio fica neles.
@@ -46,6 +48,8 @@ function registerIpcHandlers(ctx, actions) {
     canRelaunchElevated: !ctx.isElevated && !windows.loadedFromViteDev && process.platform === 'win32',
   }));
   ipcMain.handle('app:relaunch-as-admin', () => actions.relaunchAsAdmin());
+  // Página oficial do driver PawnIO (endereço fixo aqui; a tela só pede para abrir)
+  ipcMain.handle('app:open-sensor-driver-page', () => shell.openExternal(SENSOR_DRIVER_URL));
 
   // Endereço do serviço nativo para a camada de tempo real (src/renderer/realtime)
   ipcMain.handle('service:endpoint', () =>

@@ -42,6 +42,7 @@ function createDesktopTransport(api) {
     toggleMiniWidget: (toMini) => api.toggleMiniWidget(toMini),
     getAppInfo: () => api.getAppInfo(),
     relaunchAsAdmin: () => api.relaunchAsAdmin(),
+    openSensorDriverPage: () => api.openSensorDriverPage(),
     getUpdateState: () => api.getUpdateState(),
     checkForUpdates: () => api.checkForUpdates(),
     installUpdate: () => api.installUpdate(),
