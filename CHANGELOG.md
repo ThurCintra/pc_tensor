@@ -5,6 +5,16 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.5.0] - 2026-11-10
+
+### Adicionado
+
+- **Início com o Windows sem o UAC:** o app abria no boot sem administrador e se reabria pedindo o UAC toda vez que
+  o PC ligava. Agora ele é aberto por uma tarefa do Agendador de Tarefas que já roda como administrador, sem
+  perguntar nada (sem parar na bateria nem limite de tempo). Quem já tinha o início com o Windows ligado é migrado
+  sozinho na próxima vez que o app abrir como administrador. Sem administrador, segue a entrada comum, que pede o
+  UAC como antes; desligar a opção ou desinstalar o app remove a tarefa.
+
 ## [1.4.3] - 2026-10-28
 
 ### Adicionado
@@ -202,7 +212,8 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.3...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.3...v1.5.0
 [1.4.3]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.0...v1.4.1

@@ -12,6 +12,7 @@ const { TrayController } = require('./tray');
 const { registerIpcHandlers } = require('./ipc');
 const { UpdateService } = require('./updater');
 const { ServiceProcess } = require('./service-process');
+const { AutoLaunch } = require('./auto-launch');
 const system = require('./system');
 
 const METRICS_INTERVAL_MS = 1200;
@@ -29,7 +30,7 @@ app.commandLine.appendSwitch('disable-background-timer-throttling');
 const ctx = {
   isQuitting: false,
   isElevated: false,
-  autoLaunch: system.autoLaunch,
+  autoLaunch: new AutoLaunch({ app }),
   settingsStore: null,
   collector: null,
   mobileServer: null,
@@ -46,8 +47,8 @@ const actions = {
   showQr: () => ctx.windows.showQr(),
   refreshTray: () => ctx.tray.refresh(),
 
-  setAutoLaunch(enabled) {
-    ctx.autoLaunch.set(enabled);
+  async setAutoLaunch(enabled) {
+    await ctx.autoLaunch.set(enabled);
     ctx.tray.refresh();
   },
 
@@ -126,7 +127,8 @@ function startMetricsLoop() {
 }
 
 async function bootstrap() {
-  system.autoLaunch.configureOnFirstRun();
+  await ctx.autoLaunch.init({ isElevated: ctx.isElevated });
+  await ctx.autoLaunch.configureOnFirstRun();
 
   ctx.settingsStore = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
   const settings = ctx.settingsStore.get();
