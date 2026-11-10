@@ -29,4 +29,6 @@
   DetailPrint "Removendo regras no Firewall do Windows do PC Sentinel..."
   ExecWait 'netsh advfirewall firewall delete rule name="PC Sentinel LAN (3890)"'
   ExecWait 'netsh advfirewall firewall delete rule name="PC Sentinel Service (3891)"'
+  ; Tarefa agendada que abre o app como administrador ao entrar no Windows (src/main/auto-launch.js)
+  nsExec::Exec 'schtasks /Delete /TN "PC Sentinel" /F'
 !macroend

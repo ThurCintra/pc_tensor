@@ -40,37 +40,6 @@ function launchElevatedCopy(extraArgs = []) {
 }
 
 /**
- * Iniciar com o Windows. Só existe no app instalado: em dev o atalho apontaria para o electron.exe.
- * Na primeira execução fica ligado; depois a escolha é do usuário e nunca é sobrescrita.
- */
-const autoLaunch = {
-  getState() {
-    return {
-      supported: Boolean(app.isPackaged),
-      enabled: app.isPackaged ? app.getLoginItemSettings().openAtLogin : false,
-    };
-  },
-
-  set(enabled) {
-    if (!app.isPackaged) return;
-    app.setLoginItemSettings({ openAtLogin: Boolean(enabled), path: process.execPath, args: [] });
-  },
-
-  configureOnFirstRun() {
-    if (!app.isPackaged) return;
-    const marker = path.join(app.getPath('userData'), 'autolaunch-configured');
-    if (fs.existsSync(marker)) return;
-    try {
-      this.set(true);
-      fs.mkdirSync(path.dirname(marker), { recursive: true });
-      fs.writeFileSync(marker, new Date().toISOString(), 'utf-8');
-    } catch (err) {
-      console.error('[PC Sentinel] Erro ao configurar o início com o Windows:', err);
-    }
-  },
-};
-
-/**
  * Histórico térmico em %APPDATA%: o diretório de trabalho do app instalado (System32 ou
  * Program Files) não é gravável. Copia o histórico de versões antigas, que gravavam no cwd.
  */
@@ -104,7 +73,6 @@ module.exports = {
   shouldAutoElevate,
   detectElevation,
   launchElevatedCopy,
-  autoLaunch,
   resolveThermalDbPath,
   notify,
 };

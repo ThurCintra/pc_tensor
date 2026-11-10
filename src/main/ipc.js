@@ -32,7 +32,7 @@ function registerIpcHandlers(ctx, actions) {
     const next = settingsStore.update(partial);
     mobileServer.actionRouter.setBoostTargets(next.boostTargets);
 
-    if (typeof partial.autoLaunch === 'boolean') actions.setAutoLaunch(partial.autoLaunch);
+    if (typeof partial.autoLaunch === 'boolean') await actions.setAutoLaunch(partial.autoLaunch);
     if (next.mobilePort !== previousPort) {
       await mobileServer.changePort(next.mobilePort);
       actions.refreshTray();
