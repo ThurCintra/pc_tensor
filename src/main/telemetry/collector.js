@@ -236,6 +236,8 @@ class SystemCollector extends EventEmitter {
       bottleneck,
       sessionBenchmark: {
         state: sessionState.state,
+        armingProgress: sessionState.armingProgress,
+        sessionStartTime: sessionState.sessionStartTime,
         ringStats: sessionState.ringStats,
         lastReport: sessionState.lastReport,
       },

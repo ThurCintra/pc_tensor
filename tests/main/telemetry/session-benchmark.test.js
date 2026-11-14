@@ -76,5 +76,59 @@ describe('SessionBenchmark & RingBuffer', () => {
       expect(report.cpu.peakTemp).toBe(86);
       expect(report.throttlingEventsCount).toBeGreaterThanOrEqual(1);
     });
+
+    // Jogo real: carga oscilando, com quedas curtas (menus, carregamentos), lida a cada 1,2 s
+    const feedFor = (benchmark, start, ms, loadAt) => {
+      let t = start;
+      for (; t < start + ms; t += 1200) {
+        benchmark.feedSample({
+          timestamp: t,
+          cpuLoad: 30,
+          gpuLoad: loadAt(t),
+          cpuTemp: 70,
+          gpuTemp: 72,
+          ramUsedGB: 10,
+        });
+      }
+      return t;
+    };
+
+    it('começa a sessão em jogo com carga oscilando (quedas curtas não zeram a contagem)', () => {
+      const benchmark = new SessionBenchmark();
+      // 10 s de carga alta e 4 s de queda, repetidos: antes, cada queda zerava a contagem e nunca começava
+      const end = feedFor(benchmark, 0, 75_000, (t) => (t % 14_000 < 10_000 ? 85 : 25));
+      expect(benchmark.state).toBe('HIGH_LOAD');
+      // o relatório conta desde o início da carga alta, não do momento em que a sessão foi confirmada
+      expect(benchmark.activeSession.startTime).toBe(0);
+      expect(benchmark.activeSession.samples.length).toBeGreaterThan(40);
+      expect(end).toBeGreaterThan(60_000);
+    });
+
+    it('não começa com picos isolados de carga', () => {
+      const benchmark = new SessionBenchmark();
+      // pico de 1 leitura a cada 12 s: dentro da tolerância de queda, mas longe da maioria das leituras
+      feedFor(benchmark, 0, 180_000, (t) => (t % 12_000 < 1200 ? 90 : 10));
+      expect(benchmark.state).toBe('IDLE');
+    });
+
+    it('zera a contagem quando a carga cai de verdade', () => {
+      const benchmark = new SessionBenchmark();
+      let t = feedFor(benchmark, 0, 40_000, () => 85);
+      expect(benchmark.feedSample({ timestamp: t, cpuLoad: 10, gpuLoad: 10 }).armingProgress).toBeGreaterThan(0.5);
+      t = feedFor(benchmark, t, 20_000, () => 10); // 20 s em repouso: passou da tolerância
+      expect(benchmark.highLoadStartTime).toBeNull();
+      expect(benchmark.feedSample({ timestamp: t, cpuLoad: 10, gpuLoad: 10 }).armingProgress).toBe(0);
+    });
+
+    it('sem sensor de temperatura, o relatório traz vazio em vez de 0 °C', () => {
+      const benchmark = new SessionBenchmark({ highLoadDurationMs: 0, cooldownDurationMs: 0 });
+      const reports = [];
+      benchmark.on('SESSION_REPORT_READY', (r) => reports.push(r));
+      benchmark.feedSample({ timestamp: 1, cpuLoad: 90, gpuLoad: null, cpuTemp: null, gpuTemp: null });
+      benchmark.feedSample({ timestamp: 2, cpuLoad: 5, gpuLoad: null });
+      benchmark.feedSample({ timestamp: 3, cpuLoad: 5, gpuLoad: null });
+      expect(reports[0].cpu.peakTemp).toBeNull();
+      expect(reports[0].cpu.peakLoad).toBe(90);
+    });
   });
 });

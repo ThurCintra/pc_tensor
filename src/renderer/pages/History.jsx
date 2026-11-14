@@ -15,6 +15,23 @@ function statText(stats, unit) {
   return `${stats.min.toFixed(0)} / ${stats.avg.toFixed(0)} / ${stats.max.toFixed(0)} ${unit}`;
 }
 
+/** O que o detector de sessões está fazendo agora: sessão aberta, detectando carga alta ou em repouso. */
+export function sessionStatusText(session) {
+  if (!session) return null;
+  if (session.state === 'HIGH_LOAD' || session.state === 'COOLDOWN') {
+    const since = isNum(session.sessionStartTime)
+      ? ` desde ${new Date(session.sessionStartTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+      : '';
+    return session.state === 'COOLDOWN'
+      ? `Sessão em andamento${since}: carga baixa, encerra em 1 min se continuar assim.`
+      : `Sessão em andamento${since}.`;
+  }
+  if (session.armingProgress > 0) {
+    return `Carga alta detectada: a sessão começa em instantes (${Math.round(session.armingProgress * 100)}%).`;
+  }
+  return null;
+}
+
 export function History({ history, metrics, lastReport }) {
   const [minutes, setMinutes] = useState(5);
   const thresholds = metrics?.alerts?.thresholds;
@@ -38,6 +55,7 @@ export function History({ history, metrics, lastReport }) {
 
   const hasTemps = samples.some((s) => isNum(s.cpuTemp) || isNum(s.gpuTemp));
   const report = lastReport || metrics?.sessionBenchmark?.lastReport;
+  const sessionStatus = sessionStatusText(metrics?.sessionBenchmark);
 
   return (
     <div className="page">
@@ -90,6 +108,11 @@ export function History({ history, metrics, lastReport }) {
         </Card>
 
         <Card title="Última sessão de carga" icon={Timer}>
+          {sessionStatus && (
+            <p className="muted" role="status" style={{ marginTop: 0 }}>
+              {sessionStatus}
+            </p>
+          )}
           {report ? (
             <Rows>
               <Row label="Duração">{report.durationFormatted}</Row>
@@ -104,8 +127,8 @@ export function History({ history, metrics, lastReport }) {
             </Rows>
           ) : (
             <p className="muted" style={{ margin: 0 }}>
-              Uma sessão começa quando o PC fica sob carga alta (jogo, renderização) e termina quando ele volta ao
-              repouso. O resumo aparece aqui.
+              Uma sessão começa quando o processador ou a placa de vídeo passam de 60% de uso por cerca de 1 minuto
+              (jogo, renderização) e termina depois de 1 minuto em repouso. O resumo aparece aqui.
             </p>
           )}
         </Card>

@@ -91,6 +91,10 @@ class RingBuffer {
  * SessionBenchmark
  * Máquina de estados para diagnóstico de sessões de alta carga (Gaming / Render / Benchmarks).
  * Estados: IDLE -> HIGH_LOAD -> COOLDOWN -> IDLE
+ *
+ * A carga de um jogo oscila (menus, carregamentos, cenas leves): exigir todas as leituras acima do limite por
+ * minutos seguidos fazia a sessão quase nunca começar. Agora quedas curtas (até dipToleranceMs) não zeram a
+ * contagem, e a sessão começa quando a maior parte (minHighRatio) das leituras da janela foi de carga alta.
  */
 class SessionBenchmark extends EventEmitter {
   constructor(options = {}) {
@@ -99,21 +103,56 @@ class SessionBenchmark extends EventEmitter {
     this.ringBuffer = new RingBuffer(options.bufferCapacity || 900);
 
     // Parâmetros de disparo (em ms)
-    this.highLoadThreshold = options.highLoadThreshold ?? 65; // %
-    this.highLoadDurationMs = options.highLoadDurationMs ?? 180000; // 3 minutos
+    this.highLoadThreshold = options.highLoadThreshold ?? 60; // %
+    this.highLoadDurationMs = options.highLoadDurationMs ?? 60000; // 1 minuto
+    this.dipToleranceMs = options.dipToleranceMs ?? 15000; // queda de carga que não zera a contagem
+    this.minHighRatio = options.minHighRatio ?? 0.7; // fração das leituras da janela que precisa ser de carga alta
     this.idleThreshold = options.idleThreshold ?? 40; // %
     this.cooldownDurationMs = options.cooldownDurationMs ?? 60000; // 1 minuto
     this.throttleTempThreshold = options.throttleTempThreshold ?? 85; // °C
 
     this.state = 'IDLE'; // 'IDLE' | 'HIGH_LOAD' | 'COOLDOWN'
     this.highLoadStartTime = null;
+    this.lastHighTime = null;
+    this.armingSamples = 0;
+    this.armingHighSamples = 0;
     this.cooldownStartTime = null;
     this.activeSession = null;
     this.lastReport = null;
   }
 
+  resetArming() {
+    this.highLoadStartTime = null;
+    this.lastHighTime = null;
+    this.armingSamples = 0;
+    this.armingHighSamples = 0;
+  }
+
+  /** Abre a sessão a partir do início da carga alta: as leituras da janela de detecção entram no relatório. */
+  startSession(now) {
+    const samples = this.ringBuffer.toArray().filter((s) => s.timestamp >= this.highLoadStartTime);
+    const bottleneckFrequency = {};
+    for (const s of samples) bottleneckFrequency[s.bottleneckState] = (bottleneckFrequency[s.bottleneckState] || 0) + 1;
+    this.state = 'HIGH_LOAD';
+    this.activeSession = {
+      id: `session_${now}`,
+      startTime: this.highLoadStartTime,
+      samples,
+      throttlingCount: samples.filter((s) => s.isThrottling).length,
+      bottleneckFrequency,
+    };
+    this.resetArming();
+    this.emit('SESSION_STATE_CHANGED', { state: this.state, session: this.activeSession });
+  }
+
+  /** De 0 a 1: quanto falta para a carga alta virar sessão (para a tela mostrar que está detectando). */
+  armingProgress(now) {
+    if (this.state !== 'IDLE' || this.highLoadStartTime === null) return 0;
+    return Math.min(1, (now - this.highLoadStartTime) / this.highLoadDurationMs);
+  }
+
   feedSample(metrics) {
-    const now = metrics.timestamp || Date.now();
+    const now = metrics.timestamp ?? Date.now();
 
     const sample = {
       timestamp: now,
@@ -138,22 +177,21 @@ class SessionBenchmark extends EventEmitter {
     switch (this.state) {
       case 'IDLE':
         if (isHighNow) {
-          if (!this.highLoadStartTime) {
-            this.highLoadStartTime = now;
-          } else if (now - this.highLoadStartTime >= this.highLoadDurationMs) {
-            // Gatilho de entrada na sessão de alta performance
-            this.state = 'HIGH_LOAD';
-            this.activeSession = {
-              id: `session_${now}`,
-              startTime: this.highLoadStartTime,
-              samples: [sample],
-              throttlingCount: sample.isThrottling ? 1 : 0,
-              bottleneckFrequency: { [sample.bottleneckState]: 1 },
-            };
-            this.emit('SESSION_STATE_CHANGED', { state: this.state, session: this.activeSession });
-          }
-        } else {
-          this.highLoadStartTime = null;
+          if (this.highLoadStartTime === null) this.highLoadStartTime = now;
+          this.lastHighTime = now;
+        }
+        if (this.highLoadStartTime === null) break;
+
+        this.armingSamples++;
+        if (isHighNow) this.armingHighSamples++;
+
+        if (!isHighNow && now - this.lastHighTime > this.dipToleranceMs) {
+          this.resetArming(); // a carga caiu de verdade, não foi só uma oscilação
+        } else if (
+          now - this.highLoadStartTime >= this.highLoadDurationMs &&
+          this.armingHighSamples / this.armingSamples >= this.minHighRatio
+        ) {
+          this.startSession(now);
         }
         break;
 
@@ -191,7 +229,7 @@ class SessionBenchmark extends EventEmitter {
           // Concluiu a sessão! Gera o relatório pós-sessão
           const report = this.finalizeSession(now);
           this.state = 'IDLE';
-          this.highLoadStartTime = null;
+          this.resetArming();
           this.cooldownStartTime = null;
           this.activeSession = null;
           this.lastReport = report;
@@ -204,6 +242,8 @@ class SessionBenchmark extends EventEmitter {
 
     return {
       state: this.state,
+      armingProgress: this.armingProgress(now),
+      sessionStartTime: this.activeSession?.startTime ?? null,
       ringStats: this.ringBuffer.getStats(),
       lastReport: this.lastReport,
     };
@@ -230,9 +270,10 @@ class SessionBenchmark extends EventEmitter {
           count++;
         }
       }
+      // Sem sensor (null) o relatório mostra "—", não "0 °C"
       return {
-        peak: count > 0 ? Number(max.toFixed(1)) : 0,
-        avg: count > 0 ? Number((sum / count).toFixed(1)) : 0,
+        peak: count > 0 ? Number(max.toFixed(1)) : null,
+        avg: count > 0 ? Number((sum / count).toFixed(1)) : null,
       };
     };
 

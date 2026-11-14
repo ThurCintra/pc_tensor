@@ -5,6 +5,16 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.4.5] - 2026-11-14
+
+### Corrigido
+
+- **Relatório de sessão de carga alta não começava:** exigia 3 minutos seguidos acima de 65% de uso, e uma única
+  leitura abaixo disso zerava a contagem; como a carga de um jogo oscila, a sessão quase nunca começava. Agora ela
+  começa com cerca de 1 minuto acima de 60% (processador ou placa de vídeo), quedas de até 15 s não zeram a contagem
+  e o relatório conta desde o início da carga alta. O *Histórico* mostra quando a carga alta foi detectada e a sessão
+  em andamento, e sem sensor de temperatura o relatório mostra "—" em vez de 0 °C.
+
 ## [1.4.4] - 2026-11-10
 
 ### Corrigido
@@ -212,7 +222,8 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.4...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.5...HEAD
+[1.4.5]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.1...v1.4.2
