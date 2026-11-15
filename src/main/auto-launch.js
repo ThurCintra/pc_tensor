@@ -107,16 +107,44 @@ class AutoLaunch {
     return this.app.getLoginItemSettings().openAtLogin;
   }
 
+  /** Marca que o usuário desligou o início com o Windows (a ausência da tarefa sozinha não diz isso). */
+  get optOutFile() {
+    return path.join(this.app.getPath('userData'), 'autolaunch-disabled');
+  }
+
+  get userOptedOut() {
+    return fs.existsSync(this.optOutFile);
+  }
+
+  get configured() {
+    return fs.existsSync(path.join(this.app.getPath('userData'), 'autolaunch-configured'));
+  }
+
+  setOptOut(optedOut) {
+    try {
+      if (optedOut) fs.writeFileSync(this.optOutFile, new Date().toISOString(), 'utf-8');
+      else fs.rmSync(this.optOutFile, { force: true });
+    } catch (err) {
+      this.log.error('[PC Sentinel] Erro ao gravar a escolha de início com o Windows:', err);
+    }
+  }
+
   setLoginItem(enabled) {
     this.app.setLoginItemSettings({ openAtLogin: Boolean(enabled), path: this.execPath, args: [] });
   }
 
-  /** Lê se a tarefa existe e migra a entrada antiga (que pedia o UAC a cada boot) para a tarefa elevada. */
+  /**
+   * Lê se a tarefa existe e migra a entrada antiga (que pedia o UAC a cada boot) para a tarefa elevada.
+   * Também recria a tarefa que sumiu sem o usuário desligar a opção: o desinstalador da 1.4.4 e da 1.4.5 a
+   * apagava também nas atualizações (o instalador novo roda o desinstalador da versão anterior).
+   */
   async init({ isElevated }) {
     this.isElevated = Boolean(isElevated);
     if (!this.supported) return;
     this.taskEnabled = (await this.run(['/Query', '/TN', TASK_NAME])).ok;
-    if (this.isElevated && this.loginItemEnabled()) await this.set(true);
+    if (!this.isElevated) return;
+    const lost = !this.taskEnabled && this.configured && !this.userOptedOut;
+    if (this.loginItemEnabled() || lost) await this.set(true);
   }
 
   getState() {
@@ -125,6 +153,7 @@ class AutoLaunch {
 
   async set(enabled) {
     if (!this.supported) return;
+    this.setOptOut(!enabled);
     if (!enabled) {
       if (this.taskEnabled) this.taskEnabled = !(await this.run(['/Delete', '/TN', TASK_NAME, '/F'])).ok;
       this.setLoginItem(false);

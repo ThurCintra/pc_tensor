@@ -5,6 +5,15 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.4.6] - 2026-11-15
+
+### Corrigido
+
+- **Início com o Windows sumia ao atualizar:** o instalador novo roda o desinstalador da versão anterior, e ele
+  apagava a tarefa que abre o app como administrador no boot. Agora o desinstalador só remove a tarefa numa
+  desinstalação de verdade, e o app recria a tarefa que sumiu sem o usuário ter desligado a opção (o que também
+  restaura quem atualizou da 1.4.4 ou da 1.4.5).
+
 ## [1.4.5] - 2026-11-14
 
 ### Corrigido
@@ -222,7 +231,8 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.5...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.6...HEAD
+[1.4.6]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.2...v1.4.3

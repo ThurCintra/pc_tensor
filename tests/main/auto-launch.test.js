@@ -106,6 +106,30 @@ describe('início com o Windows', () => {
     expect(calls(run, '/Create')).toHaveLength(1);
   });
 
+  it('recria a tarefa apagada por uma atualização (o usuário não desligou a opção)', async () => {
+    const { autoLaunch, run, userData } = setup();
+    fs.writeFileSync(path.join(userData, 'autolaunch-configured'), 'x');
+    await autoLaunch.init({ isElevated: true });
+
+    expect(calls(run, '/Create')).toHaveLength(1);
+    expect(autoLaunch.getState().enabled).toBe(true);
+  });
+
+  it('não recria a tarefa de quem desligou o início com o Windows', async () => {
+    const first = setup({ taskExists: true });
+    fs.writeFileSync(path.join(first.userData, 'autolaunch-configured'), 'x');
+    await first.autoLaunch.init({ isElevated: true });
+    await first.autoLaunch.set(false);
+
+    const again = new AutoLaunch({ ...first.autoLaunch, run: first.run });
+    first.run.mockClear();
+    await again.init({ isElevated: true });
+    expect(calls(first.run, '/Create')).toHaveLength(0);
+
+    await again.set(true); // ligar de novo apaga a marca
+    expect(fs.existsSync(path.join(first.userData, 'autolaunch-disabled'))).toBe(false);
+  });
+
   it('a tarefa não para na bateria nem tem limite de tempo (o padrão encerraria o app em 72 h)', () => {
     const xml = buildTaskXml({ execPath: 'C:\\A & B\\PC Sentinel.exe', userId: 'PC\\Arthur' });
     expect(xml).toContain('<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>');
