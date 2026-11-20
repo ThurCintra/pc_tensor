@@ -51,7 +51,14 @@ export interface TelemetryFrame {
   gpu: GpuData;
   memory: { usedMb: number | null; totalMb: number | null; loadPct: number | null };
   board: { name: string | null; systemTempC: number | null; vrmTempC: number | null };
-  storage: { name: string; tempC: number | null }[];
+  storage: {
+    name: string;
+    tempC: number | null;
+    /** Leitura e gravação em bytes/s e atividade em %; null sem administrador (adicionado sem quebrar o v2). */
+    readBps?: number | null;
+    writeBps?: number | null;
+    activityPct?: number | null;
+  }[];
   fans: { name: string; rpm: number | null; pct: number | null }[];
   network: {
     adapter: string | null;

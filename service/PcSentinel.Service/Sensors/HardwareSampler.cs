@@ -123,7 +123,19 @@ public sealed class HardwareSampler : IDisposable
                         .Where(s => s.SensorType == SensorType.Temperature && s.Value > 0)
                         .Select(s => (double?)s.Value)
                         .FirstOrDefault();
-                    storage.Add(new StorageData(hw.Name, Round(diskTemp)));
+                    // Leitura, gravação e atividade: substituem os contadores da ponte antiga (que ficava aberta só
+                    // para isso, ~40 MB a mais de memória)
+                    double? Throughput(string name) => hw.Sensors
+                        .Where(s => s.SensorType == SensorType.Throughput && s.Value is not null &&
+                                    s.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+                        .Select(s => (double?)Math.Round((double)s.Value!.Value))
+                        .FirstOrDefault();
+                    double? activity = hw.Sensors
+                        .Where(s => s.SensorType == SensorType.Load && s.Value is not null &&
+                                    s.Name.Contains("Total Activity", StringComparison.OrdinalIgnoreCase))
+                        .Select(s => (double?)s.Value)
+                        .FirstOrDefault();
+                    storage.Add(new StorageData(hw.Name, Round(diskTemp), Throughput("Read"), Throughput("Write"), Round(activity)));
                     break;
             }
         }

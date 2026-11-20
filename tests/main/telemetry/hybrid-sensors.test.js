@@ -31,6 +31,15 @@ const FRAME = {
   fans: [{ name: 'CPU Fan', rpm: 1100, pct: 40 }],
 };
 
+/** Quadro de um serviço rodando como administrador: ele também mede o disco. */
+const FRAME_WITH_DISK = {
+  ...FRAME,
+  storage: [
+    { name: 'KINGSTON SNV3S500G', tempC: 44, readBps: 2000000, writeBps: 500000, activityPct: 12.5 },
+    { name: 'HDD', tempC: 35, readBps: 1000000, writeBps: null, activityPct: 3 },
+  ],
+};
+
 /** Ponte simulada: guarda o modo e responde com uma leitura do modo atual. */
 function fakeBridge() {
   const bridge = {
@@ -82,6 +91,16 @@ describe('frameToBridgeData', () => {
     });
   });
 
+  it('soma a leitura e a gravação de todos os discos e usa a atividade do principal', () => {
+    const data = frameToBridgeData(FRAME_WITH_DISK, true);
+    expect(data.diskIo).toEqual({ readBytesSec: 3000000, writeBytesSec: 500000 });
+    expect(data.storage.load).toBe(12.5);
+  });
+
+  it('sem os campos de disco (serviço sem administrador), não inventa I/O', () => {
+    expect(frameToBridgeData(FRAME, false).diskIo).toBeNull();
+  });
+
   it('sem administrador e sem leitura, pede elevação como a ponte fazia', () => {
     const data = frameToBridgeData({ ...FRAME, cpu: { ...FRAME.cpu, tempC: null } }, false);
     expect(data.cpu.requiresElevation).toBe(true);
@@ -90,23 +109,39 @@ describe('frameToBridgeData', () => {
 });
 
 describe('HybridSensorSource', () => {
-  it('com o serviço no ar, os sensores vêm dele e a ponte fica só nos contadores de disco', () => {
+  it('com o serviço medindo o disco, a ponte fica desligada (menos um processo na memória)', () => {
     let now = 0;
     const service = fakeService();
     const bridge = fakeBridge();
     const hybrid = new HybridSensorSource({ service, bridge, now: () => now });
 
     hybrid.start();
-    expect(bridge.mode).toBe('counters'); // nunca abre o LibreHardwareMonitor enquanto espera o serviço
+    expect(bridge.mode).toBe('off'); // nunca abre o LibreHardwareMonitor enquanto espera o serviço
     expect(service.start).toHaveBeenCalled();
+
+    service.data = frameToBridgeData(FRAME_WITH_DISK, true);
+    const data = hybrid.getFreshData();
+    expect(hybrid.source).toBe('service');
+    expect(bridge.mode).toBe('off');
+    expect(bridge.modes).toEqual([]);
+    expect(data.diskIo).toEqual({ readBytesSec: 3000000, writeBytesSec: 500000 }); // I/O do serviço
+    expect(data.storage).toMatchObject({ temp: 44, load: 12.5 });
+  });
+
+  it('com o serviço sem medir o disco (sem administrador), a ponte roda só os contadores de disco', () => {
+    let now = 0;
+    const service = fakeService();
+    const bridge = fakeBridge();
+    const hybrid = new HybridSensorSource({ service, bridge, now: () => now });
+    hybrid.start();
 
     service.data = frameToBridgeData(FRAME, true);
     const data = hybrid.getFreshData();
     expect(hybrid.source).toBe('service');
+    expect(bridge.mode).toBe('counters');
     expect(data.cpu.temp).toBe(61.5);
     expect(data.diskIo).toEqual({ readBytesSec: 1048576, writeBytesSec: 0 }); // I/O da ponte
     expect(data.storage).toMatchObject({ temp: 44, load: 7 });
-    expect(bridge.modes).toEqual([]);
   });
 
   it('se o serviço não sobe no tempo de tolerância, a ponte assume os sensores', () => {
@@ -117,7 +152,7 @@ describe('HybridSensorSource', () => {
 
     now = STARTUP_GRACE_MS - 1;
     hybrid.getFreshData();
-    expect(bridge.mode).toBe('counters');
+    expect(bridge.mode).toBe('off');
 
     now = STARTUP_GRACE_MS;
     const data = hybrid.getFreshData();
@@ -157,7 +192,7 @@ describe('HybridSensorSource', () => {
     now += HEALTHY_FOR_MS;
     expect(hybrid.getFreshData().cpu.temp).toBe(61.5);
     expect(bridge.mode).toBe('counters');
-    expect(bridge.modes).toEqual(['full', 'counters']);
+    expect(bridge.modes).toEqual(['counters', 'full', 'counters']);
   });
 
   it('stop() encerra o serviço e a ponte', () => {
@@ -258,5 +293,32 @@ describe('SensorBridge.setMode', () => {
     children[1].stdout.emit('data', Buffer.from('{"success":true,"hardware":false}\n'));
     expect(bridge.getFreshData()).toMatchObject({ hardware: false });
     bridge.stop();
+  });
+
+  it("no modo 'off' encerra o processo e não abre outro (nem depois de ele sair)", () => {
+    vi.useFakeTimers();
+    const exe = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'pcs-bridge-')), 'pc-sensor-bridge.exe');
+    fs.writeFileSync(exe, '');
+    const children = [];
+    const spawnFn = vi.fn(() => {
+      const child = fakeChild();
+      children.push(child);
+      return child;
+    });
+    const bridge = new SensorBridge({ candidates: [exe], spawnFn, mode: 'counters' });
+    bridge.start();
+    expect(spawnFn).toHaveBeenCalledTimes(1);
+
+    bridge.setMode('off');
+    expect(children[0].kill).toHaveBeenCalled();
+    vi.advanceTimersByTime(60_000);
+    expect(spawnFn).toHaveBeenCalledTimes(1);
+    expect(bridge.getFreshData()).toBeNull();
+
+    bridge.setMode('full'); // o serviço caiu: a ponte volta
+    expect(spawnFn).toHaveBeenCalledTimes(2);
+    expect(spawnFn.mock.calls[1][1]).toEqual(['--stream']);
+    bridge.stop();
+    vi.useRealTimers();
   });
 });

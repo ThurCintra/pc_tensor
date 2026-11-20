@@ -81,7 +81,7 @@ Todas as mensagens usam o mesmo envelope:
   },
   "memory": { "usedMb": 11240, "totalMb": 15560, "loadPct": 72.2 },
   "board": { "name": "MSI PRO B650M-P (MS-7E27)", "systemTempC": 36.0, "vrmTempC": 58.0 },
-  "storage": [{ "name": "KINGSTON SNV3S500G", "tempC": 44.0 }],
+  "storage": [{ "name": "KINGSTON SNV3S500G", "tempC": 44.0, "readBps": 241978, "writeBps": 16132, "activityPct": 0.5 }],
   "fans": [{ "name": "CPU Fan", "rpm": 1240, "pct": 48.0 }],
   "network": {
     "adapter": "Ethernet",
@@ -125,6 +125,7 @@ Campos de cada bloco:
 |---|---|
 | `cpu.tempSource` | `sensor` (núcleos, exige administrador), `amdDriver` (driver da placa AMD) ou `ioDie` (die de E/S do Ryzen pela GPU integrada: real, porém mais frio que os núcleos). Com `ioDie` a previsão de throttling e a linha de base de degradação da CPU ficam desligadas |
 | `cpu.vcoreV` | Tensão medida (SVI2/SVI3 na AMD, "CPU Core" na Intel); o VID pedido pelo processador não é usado |
+| `storage[].readBps` / `writeBps` | Leitura e gravação do disco em bytes/s; `activityPct` é o tempo ativo (%). Exigem administrador (`null` sem ele). Campos novos e opcionais: clientes antigos do v2 continuam válidos |
 | `thermal.slopeCPerS` | dT/dt em °C/s: inclinação da reta de mínimos quadrados sobre os últimos 10 s |
 | `thermal.timeToThrottleS` | Segundos até `limitC` mantida a inclinação; `null` se a temperatura está estável, caindo ou levaria mais de 120 s |
 | `thermal.throttling` | Temperatura já está no limite |

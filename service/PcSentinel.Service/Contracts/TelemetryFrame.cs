@@ -60,7 +60,13 @@ public sealed record MemoryData(double? UsedMb, double? TotalMb, double? LoadPct
 
 public sealed record BoardData(string? Name, double? SystemTempC, double? VrmTempC);
 
-public sealed record StorageData(string Name, double? TempC);
+/// <summary>Disco: temperatura, leitura e gravação em bytes/s e atividade (%) quando o sensor existe.</summary>
+public sealed record StorageData(
+    string Name,
+    double? TempC,
+    double? ReadBps = null,
+    double? WriteBps = null,
+    double? ActivityPct = null);
 
 public sealed record FanData(string Name, double? Rpm, double? Pct);
 

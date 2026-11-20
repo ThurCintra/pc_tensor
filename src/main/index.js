@@ -26,6 +26,14 @@ app.setPath('userData', process.env.PC_SENTINEL_DATA_DIR || path.join(app.getPat
 app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 
+// Memória (medido no Pit Wall, a tela mais pesada):
+// - sem aceleração gráfica o processo de GPU deixa de reservar ~100 MB e a CPU fica igual (~1,5% do PC), porque
+//   a interface é estática e atualiza a cada 1,2 s;
+// - o V8 otimizado para tamanho troca um pouco de velocidade de JavaScript, que aqui sobra, por ~55 MB a menos.
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('js-flags', '--optimize-for-size');
+require('v8').setFlagsFromString('--optimize-for-size');
+
 /** Estado compartilhado entre janelas, bandeja e IPC. */
 const ctx = {
   isQuitting: false,

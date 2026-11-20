@@ -92,6 +92,8 @@ class WindowManager {
         preload: paths.preload,
         contextIsolation: true,
         nodeIntegration: false,
+        // Sem campos de texto livre que precisem de corretor: não carrega os dicionários (memória)
+        spellcheck: false,
       },
     });
 
@@ -170,7 +172,7 @@ class WindowManager {
       autoHideMenuBar: true,
       backgroundColor: this.background(),
       title: 'PC Sentinel - Conectar celular',
-      webPreferences: { nodeIntegration: false, contextIsolation: true },
+      webPreferences: { nodeIntegration: false, contextIsolation: true, spellcheck: false },
     });
     this.qrWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(qrPageHtml(info))}`);
     this.qrWindow.on('closed', () => {

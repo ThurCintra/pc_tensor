@@ -11,7 +11,8 @@ const STALE_AFTER_MS = 4500;
  * última leitura válida. Cada linha do stdout é um JSON completo com CPU, GPU, placa-mãe, disco e I/O.
  *
  * Modos: 'full' lê os sensores pelo LibreHardwareMonitor; 'counters' (--no-hardware) só lê o I/O de disco pelos
- * contadores do Windows, para quando o serviço nativo já está lendo os sensores (ver HybridSensorSource).
+ * contadores do Windows, para quando o serviço nativo já está lendo os sensores (ver HybridSensorSource); 'off'
+ * não roda o processo, para quando o serviço também mede o disco.
  */
 class SensorBridge {
   constructor({ candidates = sensorBridgeCandidates(), spawnFn = spawn, now = () => Date.now(), mode = 'full' } = {}) {
@@ -27,7 +28,7 @@ class SensorBridge {
   }
 
   start() {
-    if (this.process || this.stopped) return;
+    if (this.process || this.stopped || this.mode === 'off') return;
 
     const exe = this.candidates.find((p) => fs.existsSync(p));
     if (!exe) return;

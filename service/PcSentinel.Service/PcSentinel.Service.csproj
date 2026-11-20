@@ -10,15 +10,35 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <RootNamespace>PcSentinel.Service</RootNamespace>
     <AssemblyName>pc-sentinel-service</AssemblyName>
-    <Version>1.4.6</Version>
+    <Version>1.4.7</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Publicação: um executável com o runtime embutido, sem exigir .NET instalado no PC do usuário -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!--
+      Sem compressão: com ela o .NET descompacta todas as bibliotecas para a memória ao abrir (~155 MB de
+      working set); sem ela, as bibliotecas são mapeadas direto do .exe e só as páginas usadas ocupam RAM
+      (~86 MB). O .exe fica maior no disco, mas o instalador já é comprimido.
+    -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <!--
+      Memória: o SDK Web liga o GC de servidor, que cria um heap por núcleo (12 num Ryzen 6/12) e chegava a
+      ~200 MB. Um serviço de fundo com poucas conexões fica bem melhor com o GC de estação, sem a coleta
+      concorrente (menos uma thread e menos memória reservada) e com o modo de economia de memória.
+    -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 0 a 9: quanto o GC prioriza compactar e devolver memória em vez de crescer o heap -->
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="7" />
+    <!-- Devolve ao Windows a memória livre do heap em vez de mantê-la reservada -->
+    <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />

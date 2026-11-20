@@ -5,6 +5,19 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.4.7] - 2026-11-20
+
+### Corrigido
+
+- **Uso de memória menor (de ~629 MB para ~390 MB no total):**
+  - O serviço nativo não é mais compactado dentro do executável: o .NET descompactava todas as bibliotecas na
+    memória ao abrir. Agora elas são lidas direto do disco (de ~219 MB para ~132 MB). O executável do serviço fica
+    maior no disco, mas o instalador continua do mesmo tamanho.
+  - O serviço passa a medir leitura, gravação e atividade do disco, e a ponte de sensores antiga fica desligada
+    enquanto ele está no ar (~38 MB a menos). Sem administrador ou sem o serviço, a ponte volta como antes.
+  - A janela não usa mais a aceleração gráfica e o JavaScript é otimizado para memória (~100 MB a menos), com o
+    mesmo uso de processador. O corretor ortográfico, que não era usado, foi desligado.
+
 ## [1.4.6] - 2026-11-15
 
 ### Corrigido
@@ -231,7 +244,8 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.6...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.7...HEAD
+[1.4.7]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.3...v1.4.4
