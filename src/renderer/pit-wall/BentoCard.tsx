@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 
 interface BentoCardProps {
   title: string;
-  icon: LucideIcon;
+  icon: PhosphorIcon;
   highlight?: boolean;
   className?: string;
   action?: ReactNode;
@@ -13,14 +13,12 @@ interface BentoCardProps {
 /** Moldura dos cards do Pit Wall, no visual dos cards do resto do app. */
 export function BentoCard({ title, icon: Icon, highlight, className = '', action, children }: BentoCardProps) {
   return (
-    <section
-      className={`flex min-h-0 flex-col gap-3 rounded-card border bg-card p-4 transition-[border-color,box-shadow] duration-300 ${
-        highlight ? 'border-accent shadow-[0_0_0_1px_var(--accent)]' : 'border-line'
-      } ${className}`}
-    >
-      <header className="flex items-center gap-2 text-sm font-semibold text-fg-2">
-        <Icon size={16} aria-hidden />
-        <h2 className="m-0 flex-1 text-sm font-semibold">{title}</h2>
+    <section className={`card min-h-0 gap-3 ${highlight ? 'highlight' : ''} ${className}`}>
+      <header className="flex items-center gap-2">
+        <h2 className="card-title flex-1">
+          <Icon size={16} aria-hidden />
+          {title}
+        </h2>
         {action}
       </header>
       {children}

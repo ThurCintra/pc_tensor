@@ -72,6 +72,9 @@ class ProcessMonitor {
         .sort((a, b) => b.score - a.score)
         .slice(0, 5);
 
+      // Caminho do .exe só para buscar o ícone; não vai nas métricas (revelaria pastas do usuário ao celular)
+      const pathByPid = new Map(list.map((p) => [p.pid, p.path]));
+      this.exePaths = new Map(sorted.map((p) => [p.pid, pathByPid.get(p.pid) || null]));
       this.cachedProcesses = sorted;
       this.lastProcessCheck = now;
     } catch {
@@ -81,6 +84,11 @@ class ProcessMonitor {
     }
 
     return this.cachedProcesses;
+  }
+
+  /** Caminho do executável de um processo da lista atual (null se não estiver nela ou for do sistema). */
+  getExecutablePath(pid) {
+    return this.exePaths?.get(pid) ?? null;
   }
 
   /**

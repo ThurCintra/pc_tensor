@@ -15,9 +15,7 @@ export function SessionReportDialog({ report, onClose }) {
         </button>
       }
     >
-      <p className="muted" style={{ marginTop: 0 }}>
-        Resumo do período em que o PC ficou sob carga alta.
-      </p>
+      <p className="muted">Resumo do período em que o PC ficou sob carga alta.</p>
       <Rows>
         <Row label="Duração">{report.durationFormatted}</Row>
         <Row label="Pico da CPU">{temps(report.cpu)}</Row>

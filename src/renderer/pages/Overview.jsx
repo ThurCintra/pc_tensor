@@ -1,15 +1,15 @@
 import {
+  CaretRight,
   Cpu,
-  MonitorSmartphone,
-  MemoryStick,
-  Wifi,
-  HardDrive,
+  GraphicsCard,
+  HardDrives,
+  ListBullets,
+  Memory,
   Stethoscope,
   Thermometer,
-  ListOrdered,
-  ChevronRight,
-} from 'lucide-react';
-import { PageHeader, Card, Meter, Badge, InfoBar, Rows, Row, StatValue, EmptyState } from '../components/ui';
+  WifiHigh,
+} from '@phosphor-icons/react';
+import { PageHeader, Card, LabeledMeter, Badge, InfoBar, Rows, Row, StatValue, EmptyState } from '../components/ui';
 import { isNum, fixed, tempLevel, loadLevel, DASH } from '../lib/format';
 import { peakOf } from '../hooks/useTelemetry';
 import { getTransport } from '../lib/transport';
@@ -31,7 +31,7 @@ function TempCaption({ temp, limit, peak }) {
   const level = tempLevel(temp, limit);
   const label = { critical: 'Acima do limite', caution: 'Elevada', normal: 'Normal' }[level];
   return (
-    <div className="stat-caption" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div className="stat-caption">
       {label && <Badge tone={level === 'normal' ? 'success' : level}>{label}</Badge>}
       {isNum(peak) && <span>Pico da sessão {peak.toFixed(0)} °C</span>}
     </div>
@@ -121,55 +121,74 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
       )}
 
       <div className="grid">
-        <Card title="Processador" icon={Cpu}>
-          <StatValue value={t.cpuMain} unit="°C" />
-          <TempCaption temp={t.cpuMain} limit={thresholds.cpuTempC} peak={peakOf(history, 'cpuTemp')} />
-          <div style={{ marginTop: 14 }}>
-            <div className="core-label">
-              <span>Uso</span>
-              <span className="tabular">{fixed(metrics.cpu?.loadPercent)}%</span>
-            </div>
-            <Meter
+        <Card
+          title="Processador"
+          icon={Cpu}
+          footer={
+            <LabeledMeter
+              label="Uso"
+              valueText={`${fixed(metrics.cpu?.loadPercent)}%`}
               value={metrics.cpu?.loadPercent}
               level={loadLevel(metrics.cpu?.loadPercent)}
-              label="Uso do processador"
+              ariaLabel="Uso do processador"
             />
-          </div>
+          }
+        >
+          <StatValue value={t.cpuMain} unit="°C" />
+          <TempCaption temp={t.cpuMain} limit={thresholds.cpuTempC} peak={peakOf(history, 'cpuTemp')} />
         </Card>
 
-        <Card title="Placa de vídeo" icon={MonitorSmartphone}>
+        <Card
+          title="Placa de vídeo"
+          icon={GraphicsCard}
+          footer={
+            <div className="stat-caption">
+              {t.gpuName || 'GPU'}
+              {isNum(t.gpuVramUsedMB) &&
+                isNum(t.gpuVramTotalMB) &&
+                ` · VRAM ${(t.gpuVramUsedMB / 1024).toFixed(1)}/${(t.gpuVramTotalMB / 1024).toFixed(1)} GB`}
+              {isNum(t.gpuPowerWatts) && ` · ${t.gpuPowerWatts.toFixed(0)} W`}
+            </div>
+          }
+        >
           <StatValue value={t.gpu} unit="°C" />
           <TempCaption temp={t.gpu} limit={thresholds.gpuTempC} peak={peakOf(history, 'gpuTemp')} />
-          <div className="stat-caption" style={{ marginTop: 14 }}>
-            {t.gpuName || 'GPU'}
-            {isNum(t.gpuVramUsedMB) &&
-              isNum(t.gpuVramTotalMB) &&
-              ` · VRAM ${(t.gpuVramUsedMB / 1024).toFixed(1)}/${(t.gpuVramTotalMB / 1024).toFixed(1)} GB`}
-            {isNum(t.gpuPowerWatts) && ` · ${t.gpuPowerWatts.toFixed(0)} W`}
-          </div>
         </Card>
 
-        <Card title="Memória" icon={MemoryStick}>
+        <Card
+          title="Memória"
+          icon={Memory}
+          footer={
+            <LabeledMeter
+              label="Uso"
+              valueText={`${fixed(memory.percentUsed)}%`}
+              value={memory.percentUsed}
+              level={loadLevel(memory.percentUsed)}
+              ariaLabel="Uso de memória"
+            />
+          }
+        >
           <StatValue value={memory.percentUsed} unit="%" emptyText={DASH} />
           <div className="stat-caption">
             {fixed(memory.usedGB, 1)} de {fixed(memory.totalGB, 1)} GB em uso
+            {isNum(metrics.swap?.usedMB) &&
+              metrics.swap.totalMB > 0 &&
+              ` · paginação ${(metrics.swap.usedMB / 1024).toFixed(1)} GB`}
           </div>
-          <div style={{ marginTop: 14 }}>
-            <Meter value={memory.percentUsed} level={loadLevel(memory.percentUsed)} label="Uso de memória" />
-          </div>
-          {isNum(metrics.swap?.usedMB) && metrics.swap.totalMB > 0 && (
-            <div className="stat-caption" style={{ marginTop: 8 }}>
-              Arquivo de paginação {(metrics.swap.usedMB / 1024).toFixed(1)} GB
-            </div>
-          )}
         </Card>
 
-        <Card title="Rede" icon={Wifi} action={<Badge tone={netTone}>{netLabel}</Badge>}>
+        <Card
+          title="Rede"
+          icon={WifiHigh}
+          action={<Badge tone={netTone}>{netLabel}</Badge>}
+          footer={
+            <div className="stat-caption">
+              Variação {fixed(network.jitterMs, 1)} ms · perda {fixed(network.packetLossPercent)}%
+            </div>
+          }
+        >
           <StatValue value={network.latencyMs} unit="ms" emptyText={DASH} />
-          <div className="stat-caption">
-            Latência até {network.host || '1.1.1.1'} · variação {fixed(network.jitterMs, 1)} ms · perda{' '}
-            {fixed(network.packetLossPercent)}%
-          </div>
+          <div className="stat-caption">Latência até {network.host || '1.1.1.1'}</div>
         </Card>
       </div>
 
@@ -177,29 +196,31 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
         <Card title="Núcleos" icon={Cpu} action={<span className="faint">{cores.length} threads</span>}>
           <div className="cores">
             {cores.map((load, i) => (
-              <div key={i}>
-                <div className="core-label">
-                  <span>{i}</span>
-                  <span className="tabular">{fixed(load)}%</span>
-                </div>
-                <Meter value={load} level={loadLevel(load)} label={`Núcleo ${i}`} />
-              </div>
+              <LabeledMeter
+                key={i}
+                label={i}
+                valueText={`${fixed(load)}%`}
+                value={load}
+                level={loadLevel(load)}
+                ariaLabel={`Núcleo ${i}`}
+              />
             ))}
           </div>
         </Card>
 
-        <Card title="Armazenamento" icon={HardDrive}>
+        <Card title="Armazenamento" icon={HardDrives}>
           <Rows>
             {disks.length === 0 && <Row label="Unidades">{DASH}</Row>}
             {disks.map((d) => (
-              <div className="row" key={d.mount || d.fs} style={{ display: 'block' }}>
-                <div className="core-label" style={{ fontSize: 14, color: 'var(--text)' }}>
-                  <span>{d.mount || d.fs}</span>
-                  <span className="tabular muted">
-                    {fixed(d.usedGB, 0)} de {fixed(d.sizeGB, 0)} GB
-                  </span>
-                </div>
-                <Meter value={d.percentUsed} level={loadLevel(d.percentUsed)} label={`Ocupação de ${d.mount}`} />
+              <div className="row meter-row" key={d.mount || d.fs}>
+                <LabeledMeter
+                  strong
+                  label={d.mount || d.fs}
+                  valueText={`${fixed(d.usedGB, 0)} de ${fixed(d.sizeGB, 0)} GB`}
+                  value={d.percentUsed}
+                  level={loadLevel(d.percentUsed)}
+                  ariaLabel={`Ocupação de ${d.mount}`}
+                />
               </div>
             ))}
             <Row label="Leitura / gravação">
@@ -218,14 +239,14 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
           action={bottleneck && <Badge tone={BOTTLENECK_TONE[bottleneck.severity]}>{bottleneck.label}</Badge>}
         >
           {bottleneck ? (
-            <>
-              <p style={{ margin: '0 0 8px' }}>{bottleneck.description}</p>
-              <ul style={{ margin: 0, paddingLeft: 18 }} className="muted">
+            <div className="stack-sm">
+              <p>{bottleneck.description}</p>
+              <ul className="recommendations">
                 {(bottleneck.recommendations || []).map((r) => (
                   <li key={r}>{r}</li>
                 ))}
               </ul>
-            </>
+            </div>
           ) : (
             <span className="muted">{DASH}</span>
           )}
@@ -249,10 +270,10 @@ export function Overview({ metrics, history, appInfo, onNavigate, onRelaunchAsAd
 
       <Card
         title="Processos que mais consomem"
-        icon={ListOrdered}
+        icon={ListBullets}
         action={
           <button className="btn subtle" onClick={() => onNavigate('processes')}>
-            Ver todos <ChevronRight size={14} />
+            Ver todos <CaretRight size={14} />
           </button>
         }
       >

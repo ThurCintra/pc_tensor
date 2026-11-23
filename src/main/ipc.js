@@ -1,5 +1,6 @@
 const { app, ipcMain, shell } = require('electron');
 const { releaseNotesUrl } = require('./updater');
+const { ProcessIconCache } = require('./process-icons');
 
 const SENSOR_DRIVER_URL = 'https://pawnio.eu';
 
@@ -63,6 +64,13 @@ function registerIpcHandlers(ctx, actions) {
   ipcMain.handle('updates:open-notes', (_event, version) => shell.openExternal(releaseNotesUrl(version)));
 
   ipcMain.handle('action:execute', (_event, payload) => mobileServer.actionRouter.handleAction(payload));
+
+  // Ícone do programa na tela de Processos (pelo PID; o caminho do .exe fica no processo principal)
+  const processIcons = new ProcessIconCache({
+    getExecutablePath: (pid) => ctx.collector?.processMonitor?.getExecutablePath(pid) ?? null,
+    getFileIcon: (exePath) => app.getFileIcon(exePath, { size: 'normal' }),
+  });
+  ipcMain.handle('process:icon', (_event, pid) => processIcons.get(pid));
 }
 
 module.exports = { registerIpcHandlers };

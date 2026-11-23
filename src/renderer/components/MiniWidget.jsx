@@ -1,13 +1,13 @@
-import { Maximize2 } from 'lucide-react';
+import { ArrowsOut } from '@phosphor-icons/react';
 import { isNum, tempLevel } from '../lib/format';
-
-const LEVEL_COLOR = { critical: 'var(--critical)', caution: 'var(--caution)' };
 
 function Metric({ label, value, unit, level }) {
   return (
     <div className="mini-metric">
       <span>{label}</span>
-      <b style={{ color: LEVEL_COLOR[level] }}>{isNum(value) ? `${Math.round(value)}${unit}` : '—'}</b>
+      <b className={level === 'critical' || level === 'caution' ? level : undefined}>
+        {isNum(value) ? `${Math.round(value)}${unit}` : '—'}
+      </b>
     </div>
   );
 }
@@ -22,13 +22,12 @@ export function MiniWidget({ metrics, onExpand }) {
       <Metric label="GPU" value={t.gpu} unit="°" level={tempLevel(t.gpu, limits.gpuTempC)} />
       <Metric label="RAM" value={metrics?.memory?.percentUsed} unit="%" />
       <button
-        className="btn subtle"
+        className="btn subtle icon"
         onClick={onExpand}
         title="Abrir janela completa"
         aria-label="Abrir janela completa"
-        style={{ marginLeft: 'auto' }}
       >
-        <Maximize2 size={14} />
+        <ArrowsOut size={14} />
       </button>
     </div>
   );

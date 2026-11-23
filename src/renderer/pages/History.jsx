@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Thermometer, Activity, Timer } from 'lucide-react';
+import { Pulse, Sigma, Thermometer, Timer } from '@phosphor-icons/react';
 import { PageHeader, Card, Segmented, Rows, Row, EmptyState } from '../components/ui';
 import { LineChart } from '../components/LineChart';
 import { summarize, isNum, DASH } from '../lib/format';
@@ -81,7 +81,7 @@ export function History({ history, metrics, lastReport }) {
         )}
       </Card>
 
-      <Card title="Uso" icon={Activity}>
+      <Card title="Uso" icon={Pulse}>
         {samples.length > 1 ? (
           <LineChart
             samples={samples}
@@ -97,7 +97,7 @@ export function History({ history, metrics, lastReport }) {
       </Card>
 
       <div className="grid-2">
-        <Card title="Resumo do intervalo" action={<span className="faint">mín / média / máx</span>}>
+        <Card title="Resumo do intervalo" icon={Sigma} action={<span className="hint">mín / média / máx</span>}>
           <Rows>
             <Row label="Temperatura da CPU">{statText(stats.cpuTemp, '°C')}</Row>
             <Row label="Temperatura da GPU">{statText(stats.gpuTemp, '°C')}</Row>
@@ -108,29 +108,31 @@ export function History({ history, metrics, lastReport }) {
         </Card>
 
         <Card title="Última sessão de carga" icon={Timer}>
-          {sessionStatus && (
-            <p className="muted" role="status" style={{ marginTop: 0 }}>
-              {sessionStatus}
-            </p>
-          )}
-          {report ? (
-            <Rows>
-              <Row label="Duração">{report.durationFormatted}</Row>
-              <Row label="CPU (pico / média)">
-                {isNum(report.cpu?.peakTemp) ? `${report.cpu.peakTemp} / ${report.cpu.avgTemp} °C` : DASH}
-              </Row>
-              <Row label="GPU (pico / média)">
-                {isNum(report.gpu?.peakTemp) ? `${report.gpu.peakTemp} / ${report.gpu.avgTemp} °C` : DASH}
-              </Row>
-              <Row label="Memória (pico)">{isNum(report.ram?.peakUsedGB) ? `${report.ram.peakUsedGB} GB` : DASH}</Row>
-              <Row label="Gargalo predominante">{report.bottleneckDominant || DASH}</Row>
-            </Rows>
-          ) : (
-            <p className="muted" style={{ margin: 0 }}>
-              Uma sessão começa quando o processador ou a placa de vídeo passam de 60% de uso por cerca de 1 minuto
-              (jogo, renderização) e termina depois de 1 minuto em repouso. O resumo aparece aqui.
-            </p>
-          )}
+          <div className="stack">
+            {sessionStatus && (
+              <p className="muted" role="status">
+                {sessionStatus}
+              </p>
+            )}
+            {report ? (
+              <Rows>
+                <Row label="Duração">{report.durationFormatted}</Row>
+                <Row label="CPU (pico / média)">
+                  {isNum(report.cpu?.peakTemp) ? `${report.cpu.peakTemp} / ${report.cpu.avgTemp} °C` : DASH}
+                </Row>
+                <Row label="GPU (pico / média)">
+                  {isNum(report.gpu?.peakTemp) ? `${report.gpu.peakTemp} / ${report.gpu.avgTemp} °C` : DASH}
+                </Row>
+                <Row label="Memória (pico)">{isNum(report.ram?.peakUsedGB) ? `${report.ram.peakUsedGB} GB` : DASH}</Row>
+                <Row label="Gargalo predominante">{report.bottleneckDominant || DASH}</Row>
+              </Rows>
+            ) : (
+              <p className="muted">
+                Uma sessão começa quando o processador ou a placa de vídeo passam de 60% de uso por cerca de 1 minuto
+                (jogo, renderização) e termina depois de 1 minuto em repouso. O resumo aparece aqui.
+              </p>
+            )}
+          </div>
         </Card>
       </div>
     </div>

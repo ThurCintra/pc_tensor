@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Skull, X } from 'lucide-react';
+import { Skull, X } from '@phosphor-icons/react';
 import type { RecordedFrame, CrashReason, CrashSummary } from '../realtime/flight-recorder';
 import type { CrashState } from '../realtime/sentinel-store';
 import type { TelemetryFrame } from '../realtime/protocol';

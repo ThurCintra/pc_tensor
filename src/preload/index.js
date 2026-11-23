@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('sentinelAPI', {
 
   // Ações remotas (encerrar processo, plano de energia, Boost, mídia)
   executeAction: (action, params = {}) => ipcRenderer.invoke('action:execute', { action, ...params }),
+  getProcessIcon: (pid) => ipcRenderer.invoke('process:icon', pid),
 
   // Servidor do celular
   getMobileServerInfo: () => ipcRenderer.invoke('mobile-server:get-info'),

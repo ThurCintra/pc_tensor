@@ -1,0 +1,14 @@
+/*
+ * Estilos do PC Sentinel, na ordem em que se apoiam:
+ * - tokens.css: cores (claro/escuro), tipografia, espaçamento, raios e movimento;
+ * - base.css: reset, texto e foco;
+ * - layout.css: janela, menu lateral, página, seções, grades e pilhas;
+ * - components.css: cards, valores, avisos, botões, campos, tabela e diálogo;
+ * - features.css: peças de telas específicas (gráfico, QR Code, modo compacto, OLED).
+ * As telas do Pit Wall usam Tailwind (tailwind.css) apontando para os mesmos tokens.
+ */
+@import './tokens.css';
+@import './base.css';
+@import './layout.css';
+@import './components.css';
+@import './features.css';

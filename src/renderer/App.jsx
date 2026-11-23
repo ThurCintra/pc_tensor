@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react';
 import {
-  LayoutDashboard,
-  LineChart as LineChartIcon,
-  ListOrdered,
-  SlidersHorizontal,
+  ChartLineUp as LineChartIcon,
   Cpu,
-  Smartphone,
-  Settings as SettingsIcon,
-  PictureInPicture2,
-  Flag,
-} from 'lucide-react';
+  DeviceMobile,
+  FlagCheckered,
+  GearSix as SettingsIcon,
+  ListBullets,
+  PictureInPicture,
+  SlidersHorizontal,
+  SquaresFour,
+} from '@phosphor-icons/react';
 import { getTransport } from './lib/transport';
 import { useTelemetry } from './hooks/useTelemetry';
 import { useUpdates } from './hooks/useUpdates';
-import { InfoBar, Badge } from './components/ui';
+import { InfoBar } from './components/ui';
+import { Logo } from './components/Logo';
 import { MiniWidget } from './components/MiniWidget';
 import { SessionReportDialog } from './components/SessionReportDialog';
 import { Overview } from './pages/Overview';
@@ -26,16 +27,16 @@ import { Settings } from './pages/Settings';
 import { PitWall } from './pit-wall/PitWall';
 
 const PAGES = [
-  { id: 'overview', label: 'Visão geral', short: 'Início', icon: LayoutDashboard },
-  { id: 'pitwall', label: 'Pit Wall', short: 'Pit Wall', icon: Flag },
+  { id: 'overview', label: 'Visão geral', short: 'Início', icon: SquaresFour },
+  { id: 'pitwall', label: 'Pit Wall', short: 'Pit Wall', icon: FlagCheckered },
   { id: 'history', label: 'Histórico', short: 'Histórico', icon: LineChartIcon },
-  { id: 'processes', label: 'Processos', short: 'Processos', icon: ListOrdered },
+  { id: 'processes', label: 'Processos', short: 'Processos', icon: ListBullets },
   { id: 'controls', label: 'Controles', short: 'Controles', icon: SlidersHorizontal },
   { id: 'hardware', label: 'Hardware', short: 'Hardware', icon: Cpu },
 ];
 
 const DESKTOP_PAGES = [
-  { id: 'connection', label: 'Celular', short: 'Celular', icon: Smartphone, capability: 'connection' },
+  { id: 'connection', label: 'Celular', short: 'Celular', icon: DeviceMobile, capability: 'connection' },
   { id: 'settings', label: 'Configurações', short: 'Ajustes', icon: SettingsIcon, capability: 'settings' },
 ];
 
@@ -63,7 +64,7 @@ function NavItem({ page, active, onClick }) {
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
     >
-      <Icon size={18} />
+      <Icon size={18} aria-hidden />
       <span className="nav-label-long">{page.label}</span>
       <span className="nav-label-short">{page.short}</span>
     </button>
@@ -108,11 +109,11 @@ export default function App() {
 
   if (transport.mode === 'web' && status === 'unauthorized') {
     return (
-      <div className="content" style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
-        <div className="card" style={{ maxWidth: 420, textAlign: 'center', padding: 32 }}>
-          <img src="icon-192.png" alt="" width={48} height={48} />
-          <h1 style={{ font: '600 24px/32px var(--font-display)', margin: '12px 0 8px' }}>Pareie este aparelho</h1>
-          <p className="muted" style={{ margin: 0 }}>
+      <div className="content pairing">
+        <div className="card">
+          <Logo size={40} className="brand-mark" />
+          <h1>Pareie este aparelho</h1>
+          <p className="muted">
             No PC, abra o PC Sentinel, vá em <b>Celular</b> e leia o QR Code com a câmera. Se o código foi trocado, leia
             o novo.
           </p>
@@ -128,12 +129,10 @@ export default function App() {
     <div className="app">
       <nav className="sidebar" aria-label="Navegação principal">
         <div className="brand">
-          <img src="icon-192.png" alt="" />
-          <div>
+          <Logo size={22} className="brand-mark" />
+          <div className="brand-text">
             <div className="brand-name">PC Sentinel</div>
-            <Badge tone={statusTone} dot>
-              {statusLabel}
-            </Badge>
+            <span className={`status-dot ${statusTone}`} role="status" aria-label={statusLabel} title={statusLabel} />
           </div>
         </div>
 
@@ -148,7 +147,7 @@ export default function App() {
         ))}
         {transport.capabilities.miniWidget && (
           <button className="nav-item nav-desktop-only" onClick={() => toggleMini(true)}>
-            <PictureInPicture2 size={18} />
+            <PictureInPicture size={18} aria-hidden />
             <span className="nav-label-long">Modo compacto</span>
             <span className="nav-label-short">Compacto</span>
           </button>
@@ -157,7 +156,7 @@ export default function App() {
 
       <main className="content">
         {(status === 'offline' || notice || updateReady) && (
-          <div className="page" style={{ marginBottom: 16 }}>
+          <div className="page page-notices">
             {status === 'offline' && (
               <InfoBar tone="caution" title="Sem conexão com o PC.">
                 Tentando reconectar…
@@ -176,14 +175,7 @@ export default function App() {
               </InfoBar>
             )}
             {notice && (
-              <InfoBar
-                tone="caution"
-                actions={
-                  <button className="btn subtle" onClick={() => setNotice(null)}>
-                    Fechar
-                  </button>
-                }
-              >
+              <InfoBar tone="caution" onDismiss={() => setNotice(null)}>
                 {notice}
               </InfoBar>
             )}

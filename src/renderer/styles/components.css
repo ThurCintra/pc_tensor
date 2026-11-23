@@ -1,0 +1,640 @@
+/* Componentes compartilhados (src/renderer/components/ui.jsx): visual minimalista, bordas finas e sem sombra */
+
+/* ---------- Card ---------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+/* Card em destaque no Pit Wall (o que importa no perfil atual): só a borda mais forte */
+.card.highlight {
+  border-color: var(--text-tertiary);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 24px;
+  margin-bottom: var(--space-4);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--fs-label);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.card-title svg {
+  flex-shrink: 0;
+}
+
+.card-foot {
+  margin-top: auto;
+  padding-top: var(--space-5);
+}
+
+/* ---------- Valor grande ---------- */
+
+.stat-value {
+  font: 500 var(--fs-stat) / 1.1 var(--font-display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: var(--space-2);
+}
+
+.stat-value small {
+  font-size: var(--fs-body-lg);
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin-left: 2px;
+  letter-spacing: 0;
+}
+
+.stat-value.empty {
+  font-size: var(--fs-subtitle);
+  color: var(--text-tertiary);
+}
+
+.stat-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+/* ---------- Linhas rótulo/valor ---------- */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.row:last-child {
+  padding-bottom: 0;
+}
+
+.row-label {
+  color: var(--text-secondary);
+}
+
+.row-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.row.meter-row {
+  display: block;
+}
+
+/* ---------- Medidor ---------- */
+
+.meter-label {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.meter-label.strong {
+  font-size: var(--fs-body);
+  color: var(--text);
+}
+
+.meter {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.meter > span {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--meter-fill);
+  transition: width var(--duration) var(--ease);
+}
+
+.meter.caution > span {
+  background: var(--caution);
+}
+
+.meter.critical > span {
+  background: var(--critical);
+}
+
+/* ---------- Etiqueta ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.badge.success {
+  color: var(--success);
+}
+
+.badge.caution {
+  color: var(--caution);
+}
+
+.badge.critical {
+  color: var(--critical);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------- Barra de aviso ---------- */
+
+.infobar {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--info-bg);
+  --tone: var(--text-secondary);
+}
+
+.infobar > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--tone);
+}
+
+.infobar.caution {
+  --tone: var(--caution);
+  background: var(--caution-bg);
+}
+
+.infobar.critical {
+  --tone: var(--critical);
+  background: var(--critical-bg);
+}
+
+.infobar.success {
+  --tone: var(--success);
+  background: var(--success-bg);
+}
+
+.infobar-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.infobar-title {
+  font-weight: 500;
+  margin-right: 6px;
+}
+
+.infobar-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  align-items: center;
+  margin: -5px 0;
+}
+
+/* ---------- Botões ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--card);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--card-hover);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Ação principal: preto no tema claro, branco no escuro */
+.btn.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.btn.accent:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+/* Ação destrutiva confirmada (encerrar, desconectar) */
+.btn.danger-fill {
+  background: var(--critical-fill);
+  border-color: var(--critical-fill);
+  color: var(--critical-fill-text);
+}
+
+.btn.danger-fill:hover:not(:disabled) {
+  background: var(--critical-fill-hover);
+}
+
+/* Ação secundária sem moldura */
+.btn.subtle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.btn.subtle:hover:not(:disabled) {
+  background: var(--subtle);
+  color: var(--text);
+}
+
+/* Texto vermelho para ações que apagam ou encerram algo */
+.btn.danger {
+  color: var(--critical);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: var(--critical-bg);
+  color: var(--critical);
+}
+
+/* Em listas (Encerrar em cada processo) fica discreto e só avermelha ao passar o mouse */
+.btn.subtle.danger {
+  color: var(--text-tertiary);
+}
+
+.btn.icon {
+  min-width: var(--control-height);
+  padding: 6px;
+}
+
+.btn.icon.large {
+  min-width: 48px;
+  min-height: 40px;
+}
+
+/* Botão liga/desliga (aria-pressed) */
+.btn.toggle[aria-pressed='true'] {
+  background: var(--subtle);
+  color: var(--text);
+}
+
+/* Botão alto de ação única (Pit Wall): o texto pode quebrar em telas estreitas */
+.btn.tall {
+  min-height: 48px;
+  white-space: normal;
+}
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---------- Seletor segmentado ---------- */
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--subtle);
+}
+
+.segmented button {
+  border: 0;
+  background: transparent;
+  padding: 4px 12px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition:
+    background var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.segmented button:hover:not(.active) {
+  color: var(--text);
+}
+
+.segmented button.active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+/* ---------- Campos ---------- */
+
+.input {
+  min-height: var(--control-height);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--input-bg);
+  width: 100px;
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--text-secondary);
+  box-shadow: 0 0 0 3px var(--subtle);
+}
+
+.input.grow {
+  flex: 2 1 220px;
+  width: auto;
+}
+
+.input.code {
+  flex: 1 1 120px;
+  width: auto;
+  font-family: var(--mono);
+  letter-spacing: 4px;
+}
+
+textarea.input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.field-error {
+  font-size: var(--fs-caption);
+  color: var(--critical);
+}
+
+/* ---------- Interruptor ---------- */
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-track {
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  position: relative;
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform var(--duration-fast) var(--ease);
+}
+
+.switch input:checked + .switch-track {
+  background: var(--accent);
+}
+
+.switch input:checked + .switch-track::after {
+  background: var(--accent-text);
+  transform: translateX(16px);
+}
+
+.switch input:disabled + .switch-track {
+  opacity: 0.4;
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+/* ---------- Linha de configuração ---------- */
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Linhas seguidas numa seção viram um único bloco com divisórias finas */
+.section-body > .setting {
+  border-radius: 0;
+  border-top-width: 0;
+}
+
+.section-body > .setting:first-child {
+  border-top-width: 1px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.section-body > .setting:last-child {
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.section-body > .setting:only-child {
+  border-radius: var(--radius);
+}
+
+.setting.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.setting-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-desc {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* ---------- Tabela ---------- */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.table td {
+  padding: 6px var(--space-3);
+  height: 52px;
+  border-top: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+.table tbody tr {
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.table tbody tr:hover {
+  background: var(--card-hover);
+}
+
+.table .num {
+  text-align: right;
+}
+
+.table .name {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Estado vazio ---------- */
+
+.empty-state {
+  padding: var(--space-10) var(--space-4);
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+/* ---------- Diálogo ---------- */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 20;
+}
+
+.dialog {
+  width: min(480px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-dialog);
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+}
+
+.dialog-body h2 {
+  margin: 0;
+  font: 600 var(--fs-subtitle) / 1.3 var(--font-display);
+  letter-spacing: -0.015em;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 0 var(--space-6) var(--space-6);
+}
+
+@media (max-width: 760px) {
+  .table .hide-sm {
+    display: none;
+  }
+
+  .setting {
+    flex-wrap: wrap;
+  }
+}

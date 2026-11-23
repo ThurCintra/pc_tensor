@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Rocket } from 'lucide-react';
+import { RocketLaunch } from '@phosphor-icons/react';
 import type { HelloData, StutterBusterResult } from '../realtime/protocol';
 import type { SentinelStore } from '../realtime/sentinel-store';
 import { BentoCard, Muted } from './BentoCard';
@@ -34,12 +34,10 @@ export function StutterBusterCard({ store, hello, online, highlight, className }
   };
 
   return (
-    <BentoCard title="Stutter Buster" icon={Rocket} highlight={highlight} className={className}>
+    <BentoCard title="Stutter Buster" icon={RocketLaunch} highlight={highlight} className={className}>
       <button
         type="button"
-        className="btn accent w-full text-base font-semibold"
-        // .btn (styles.css) fixa altura e uma linha; aqui o texto pode quebrar no celular
-        style={{ minHeight: 48, height: 'auto', whiteSpace: 'normal' }}
+        className="btn accent tall w-full text-base font-semibold"
         disabled={!online || !available || state.kind === 'running'}
         onClick={run}
       >

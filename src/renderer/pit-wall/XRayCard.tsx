@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScanLine } from 'lucide-react';
+import { Scan } from '@phosphor-icons/react';
 import type { TelemetryFrame } from '../realtime/protocol';
 import { BentoCard, Muted } from './BentoCard';
 import { thermalColor } from './thermal-color';
@@ -35,7 +35,7 @@ export function XRayCard({ frame, highlight, className }: XRayCardProps) {
   const caseFan = frame.fans.find((f) => !/cpu|pump/i.test(f.name))?.rpm ?? null;
 
   return (
-    <BentoCard title="Raio-X" icon={ScanLine} highlight={highlight} className={className}>
+    <BentoCard title="Raio-X" icon={Scan} highlight={highlight} className={className}>
       <svg
         viewBox="0 0 400 260"
         className="h-auto w-full select-none"

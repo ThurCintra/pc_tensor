@@ -34,6 +34,7 @@ function createDesktopTransport(api) {
     },
     getHardwareInfo: (force) => api.getHardwareInfo(force),
     executeAction: (action, params) => api.executeAction(action, params),
+    getProcessIcon: (pid) => api.getProcessIcon(pid),
     getServerInfo: () => api.getMobileServerInfo(),
     toggleServer: (start) => api.toggleMobileServer(start),
     revokeToken: () => api.revokeMobileToken(),

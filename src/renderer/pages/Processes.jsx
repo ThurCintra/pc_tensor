@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { ShieldCheck } from '@phosphor-icons/react';
 import { PageHeader, Card, InfoBar, EmptyState } from '../components/ui';
 import { Dialog } from '../components/Dialog';
+import { ProcessIcon } from '../components/ProcessIcon';
 import { useAction } from '../hooks/useAction';
 import { fixed } from '../lib/format';
 
@@ -21,19 +22,19 @@ export function Processes({ metrics }) {
       <PageHeader title="Processos" subtitle="Programas que mais usam processador e memória agora" />
 
       {result && (
-        <InfoBar
-          tone={result.tone}
-          actions={
-            <button className="btn subtle" onClick={clearResult} aria-label="Fechar">
-              <X size={14} />
-            </button>
-          }
-        >
+        <InfoBar tone={result.tone} onDismiss={clearResult}>
           {result.message}
         </InfoBar>
       )}
 
-      <Card>
+      <Card
+        footer={
+          <p className="hint cluster">
+            <ShieldCheck size={14} aria-hidden />
+            Processos essenciais do Windows são protegidos e não podem ser encerrados.
+          </p>
+        }
+      >
         {processes.length === 0 ? (
           <EmptyState>Nenhum processo com consumo relevante no momento.</EmptyState>
         ) : (
@@ -51,13 +52,16 @@ export function Processes({ metrics }) {
               {processes.map((p) => (
                 <tr key={p.pid}>
                   <td className="name" title={p.name}>
-                    {p.name}
+                    <span className="process-name">
+                      <ProcessIcon pid={p.pid} />
+                      <span>{p.name}</span>
+                    </span>
                   </td>
                   <td className="hide-sm faint">{p.pid}</td>
                   <td className="num">{fixed(p.cpuPercent, 1)}%</td>
                   <td className="num">{fixed(p.memoryMB)} MB</td>
                   <td className="num">
-                    <button className="btn danger" disabled={busy === p.pid} onClick={() => setConfirm(p)}>
+                    <button className="btn subtle danger" disabled={busy === p.pid} onClick={() => setConfirm(p)}>
                       Encerrar
                     </button>
                   </td>
@@ -68,17 +72,13 @@ export function Processes({ metrics }) {
         )}
       </Card>
 
-      <p className="faint" style={{ margin: 0, fontSize: 12 }}>
-        Processos essenciais do Windows são protegidos e não podem ser encerrados.
-      </p>
-
       {confirm && (
         <Dialog
           title={`Encerrar ${confirm.name}?`}
           onClose={() => setConfirm(null)}
           footer={
             <>
-              <button className="btn accent" onClick={kill}>
+              <button className="btn danger-fill" onClick={kill}>
                 Encerrar
               </button>
               <button className="btn" onClick={() => setConfirm(null)}>
@@ -87,7 +87,7 @@ export function Processes({ metrics }) {
             </>
           }
         >
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="muted">
             O processo (PID {confirm.pid}) será fechado imediatamente. Trabalho não salvo nesse programa será perdido.
           </p>
         </Dialog>

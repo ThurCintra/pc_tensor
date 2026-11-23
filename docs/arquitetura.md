@@ -69,8 +69,15 @@ para o celular. `lib/transport.js` decide o modo:
   ações. O token vem do link do QR Code e fica no `localStorage` do aparelho, para o atalho na tela
   inicial continuar pareado.
 
-O visual segue o Windows 11 (tokens em `styles.css`) e troca entre claro e escuro por
-`prefers-color-scheme`. Abaixo de 760 px a navegação lateral vira uma barra inferior.
+O visual é minimalista (cinzas neutros, bordas finas, fonte Geist e ícones Phosphor em traço fino) e troca
+entre claro e escuro por `prefers-color-scheme`. Os estilos ficam em `src/renderer/styles/`:
+
+- `tokens.css`: cores dos dois temas, tipografia, espaçamento, raios e movimento (a única fonte de valores);
+- `base.css`, `layout.css`, `components.css` e `features.css`: reset, estrutura, componentes de `ui.jsx` e
+  peças de telas específicas;
+- `tailwind.css`: utilitários do Pit Wall, apontando para os mesmos tokens.
+
+Abaixo de 760 px a navegação lateral vira uma barra inferior.
 
 ## Princípio dos dados reais
 

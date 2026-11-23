@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Setting } from '../components/ui';
 import { useSentinel } from '../realtime/useSentinel';
 import type { CloudStatus } from '../realtime/protocol';
 
@@ -81,7 +82,7 @@ export function CloudSection() {
   };
 
   if (connection !== 'online' || !cloud) {
-    return <p className="setting-desc">Aguardando o serviço de telemetria do PC…</p>;
+    return <Setting title="Conta na nuvem" description="Aguardando o serviço de telemetria do PC…" />;
   }
 
   const paired = cloud.state !== 'UNPAIRED' && cloud.state !== 'UNAUTHORIZED';
@@ -93,28 +94,30 @@ export function CloudSection() {
         : STATE_TEXT[cloud.state];
 
   return (
-    <div>
-      <div className="setting">
-        <div className="setting-text">
-          <div>Conta na nuvem</div>
-          <div className="setting-desc">{description}</div>
-        </div>
+    <>
+      <Setting title="Conta na nuvem" description={description}>
         {paired && (
-          <button className="btn" onClick={unpair} disabled={busy}>
+          <button className="btn danger" onClick={unpair} disabled={busy}>
             Desvincular
           </button>
         )}
-      </div>
+      </Setting>
 
       {!paired && (
-        <form className="setting" style={{ display: 'block' }} onSubmit={pair}>
-          <div className="setting-desc" style={{ marginBottom: 8 }}>
-            No site, abra <b>Meus Computadores → Adicionar computador</b> e digite aqui o código de 6 dígitos.
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <Setting
+          as="form"
+          stacked
+          onSubmit={pair}
+          title="Vincular este PC"
+          description={
+            <>
+              No site, abra <b>Meus Computadores → Adicionar computador</b> e digite aqui o código de 6 dígitos.
+            </>
+          }
+        >
+          <div className="cluster">
             <input
-              className="input"
-              style={{ flex: '2 1 220px' }}
+              className="input grow"
               type="url"
               placeholder="https://endereço-do-site"
               aria-label="Endereço do site"
@@ -123,8 +126,7 @@ export function CloudSection() {
               required
             />
             <input
-              className="input"
-              style={{ flex: '1 1 120px', letterSpacing: 4, fontFamily: 'var(--mono)' }}
+              className="input code"
               inputMode="numeric"
               pattern="\d{6}"
               maxLength={6}
@@ -139,12 +141,12 @@ export function CloudSection() {
             </button>
           </div>
           {error && (
-            <div className="setting-desc" style={{ color: 'var(--critical)', marginTop: 8 }} role="alert">
+            <div className="field-error" role="alert">
               {error}
             </div>
           )}
-        </form>
+        </Setting>
       )}
-    </div>
+    </>
   );
 }

@@ -1,21 +1,27 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, ArrowUpCircle, CheckCircle2, Download, ExternalLink, Info, RefreshCw } from 'lucide-react';
-import { Badge, Meter, Switch } from '../components/ui';
+import {
+  ArrowCircleUp,
+  ArrowSquareOut,
+  ArrowsClockwise,
+  CheckCircle,
+  DownloadSimple,
+  Info,
+  Warning,
+} from '@phosphor-icons/react';
+import { Badge, Meter, Setting, Switch } from '../components/ui';
 import { getTransport } from '../lib/transport';
 import { describeUpdateState } from '../hooks/useUpdates';
 
 /** Ícone, cor e etiqueta de cada estado do UpdateService (src/main/updater.js). */
 const LOOK = {
   unsupported: { icon: Info, tone: '', badge: 'Só no app instalado' },
-  idle: { icon: RefreshCw, tone: '', badge: null },
-  checking: { icon: RefreshCw, tone: '', badge: 'Verificando', spin: true },
-  downloading: { icon: Download, tone: 'caution', badge: 'Baixando' },
-  downloaded: { icon: ArrowUpCircle, tone: 'success', badge: 'Pronta para instalar' },
-  'up-to-date': { icon: CheckCircle2, tone: 'success', badge: 'Atualizado' },
-  error: { icon: AlertTriangle, tone: 'critical', badge: 'Falhou' },
+  idle: { icon: ArrowsClockwise, tone: '', badge: null },
+  checking: { icon: ArrowsClockwise, tone: '', badge: 'Verificando', spin: true },
+  downloading: { icon: DownloadSimple, tone: 'caution', badge: 'Baixando' },
+  downloaded: { icon: ArrowCircleUp, tone: 'success', badge: 'Pronta para instalar' },
+  'up-to-date': { icon: CheckCircle, tone: 'success', badge: 'Atualizado' },
+  error: { icon: Warning, tone: 'critical', badge: 'Falhou' },
 };
-
-const ICON_COLOR = { success: 'var(--success)', caution: 'var(--caution)', critical: 'var(--critical)' };
 
 /** "agora há pouco", "há 5 min", "há 2 h", "em 24/10 às 13:42". */
 export function lastCheckedText(checkedAt, now = Date.now()) {
@@ -51,18 +57,13 @@ export function UpdatesSection({ appInfo, updates, checkOnStartup, onCheckOnStar
   }, []);
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="setting" style={{ alignItems: 'flex-start' }}>
-        <div className="flex min-w-0 flex-1 gap-3">
-          <Icon
-            size={28}
-            className={`mt-0.5 shrink-0 ${look.spin ? 'animate-spin' : ''}`}
-            style={{ color: ICON_COLOR[look.tone] || 'var(--accent)' }}
-            aria-hidden
-          />
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-base font-semibold">PC Sentinel {version}</span>
+    <>
+      <div className="setting update-card">
+        <div className={`update-status ${look.tone}`}>
+          <Icon size={28} className={look.spin ? 'spin' : ''} aria-hidden />
+          <div className="stack-sm update-text">
+            <div className="cluster">
+              <span className="update-version">PC Sentinel {version}</span>
               {look.badge && (
                 <Badge tone={look.tone} dot={status === 'downloaded'}>
                   {look.badge}
@@ -73,7 +74,10 @@ export function UpdatesSection({ appInfo, updates, checkOnStartup, onCheckOnStar
               {describeUpdateState(state)}
             </div>
             {status === 'downloading' && (
-              <Meter value={state.percent ?? 0} label={`Download da versão ${state.availableVersion || 'nova'}`} />
+              <Meter
+                value={state.percent ?? 0}
+                label={`DownloadSimple da versão ${state.availableVersion || 'nova'}`}
+              />
             )}
             {status === 'downloaded' && (
               <div className="setting-desc">
@@ -84,37 +88,36 @@ export function UpdatesSection({ appInfo, updates, checkOnStartup, onCheckOnStar
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div className="update-actions">
           {status === 'downloaded' ? (
             <button className="btn accent" onClick={updates.install}>
               Reiniciar e atualizar
             </button>
           ) : (
             <button className="btn" onClick={updates?.check} disabled={busy}>
-              <RefreshCw size={14} className={status === 'checking' ? 'animate-spin' : ''} aria-hidden />
+              <ArrowsClockwise size={14} className={status === 'checking' ? 'spin' : ''} aria-hidden />
               {status === 'checking' ? 'Verificando…' : 'Verificar agora'}
             </button>
           )}
           {transport.openReleaseNotes && (
             <button className="btn subtle" onClick={() => transport.openReleaseNotes(notesVersion)}>
-              <ExternalLink size={14} aria-hidden />
+              <ArrowSquareOut size={14} aria-hidden />
               {state?.availableVersion ? `Novidades da ${state.availableVersion}` : 'Novidades desta versão'}
             </button>
           )}
         </div>
       </div>
 
-      <div className="setting">
-        <div className="setting-text">
-          <div>Procurar atualizações ao abrir o app</div>
-          <div className="setting-desc">
-            {checkOnStartup
-              ? 'Procura alguns segundos depois de abrir e baixa em segundo plano; instala quando você reiniciar o app.'
-              : 'Desligado: o app só procura quando você clicar em "Verificar agora".'}
-          </div>
-        </div>
+      <Setting
+        title="Procurar atualizações ao abrir o app"
+        description={
+          checkOnStartup
+            ? 'Procura alguns segundos depois de abrir e baixa em segundo plano; instala quando você reiniciar o app.'
+            : 'Desligado: o app só procura quando você clicar em "Verificar agora".'
+        }
+      >
         <Switch checked={checkOnStartup} disabled={!supported} onChange={onCheckOnStartupChange} />
-      </div>
-    </div>
+      </Setting>
+    </>
   );
 }

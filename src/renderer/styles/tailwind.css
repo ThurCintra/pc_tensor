@@ -1,13 +1,13 @@
 /*
  * Tailwind 4 para as telas do Pit Wall (src/renderer/pit-wall).
  * Sem o preflight (reset de estilos) para não mudar as telas existentes; as cores apontam para os mesmos
- * tokens de styles.css, então o tema claro/escuro do Windows vale também aqui.
+ * tokens de tokens.css, então o tema claro/escuro do Windows vale também aqui.
  */
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
-@source './pit-wall';
+@source '../pit-wall';
 
 @theme inline {
   --color-bg: var(--bg);

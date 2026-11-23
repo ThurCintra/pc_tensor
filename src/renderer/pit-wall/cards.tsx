@@ -1,4 +1,4 @@
-import { Cpu, Gauge, HardDrive, MonitorPlay, Network, Wrench } from 'lucide-react';
+import { Cpu, Gauge, HardDrives, MonitorPlay, Network, Wrench } from '@phosphor-icons/react';
 import type { CpuData, GpuData, LagVerdict, SiliconEfficiency, TelemetryFrame } from '../realtime/protocol';
 import { Bar, BentoCard, BigValue, Muted } from './BentoCard';
 import { thermalColor } from './thermal-color';
@@ -66,7 +66,7 @@ export function VramCard({ frame, highlight, className }: CardProps) {
   const color =
     pct !== null && pct >= 95 ? 'var(--critical)' : pct !== null && pct >= 85 ? 'var(--caution)' : 'var(--accent)';
   return (
-    <BentoCard title="Memória de vídeo" icon={HardDrive} highlight={highlight} className={className}>
+    <BentoCard title="Memória de vídeo" icon={HardDrives} highlight={highlight} className={className}>
       <BigValue value={num(pct)} unit="%" />
       <Bar pct={pct} color={color} />
       <Muted>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { History, MoonStar, Sun, Vibrate } from 'lucide-react';
+import { Moon, Sun } from '@phosphor-icons/react';
+import { Badge, Card as UiCard, EmptyState, PageHeader, Section, Setting, Switch } from '../components/ui';
 import { useSentinel } from '../realtime/useSentinel';
 import type { CrashReport } from '../realtime/flight-recorder';
 import type { TelemetryFrame } from '../realtime/protocol';
@@ -11,6 +12,14 @@ import { XRayCard } from './XRayCard';
 import { PostMortem } from './PostMortem';
 import { PROFILE_LABELS, SIZE_CLASSES, layoutFor, type CardSlot } from './layout';
 import { useOledShift, usePersistentToggle, useWakeLock, type WakeLockStatus } from './useWakeLock';
+
+const STATUS_TONE = {
+  idle: 'caution',
+  connecting: 'caution',
+  online: 'success',
+  stalled: 'critical',
+  offline: 'caution',
+} as const;
 
 const STATUS_TEXT = {
   idle: 'Procurando o serviço do PC…',
@@ -57,15 +66,14 @@ export function PitWall() {
       style={oled ? { transform: `translate(${shiftX}px, ${shiftY}px)` } : undefined}
       data-testid="pit-wall"
     >
-      <div className="page-header">
-        <div>
-          <h1>Pit Wall</h1>
-          <p>
-            {frame
-              ? `${PROFILE_LABELS[profile]}${frame.context.foregroundExe ? ` · ${frame.context.foregroundExe}` : ''}`
-              : 'Telemetria ao vivo do PC, alertas e caixa preta'}
-          </p>
-        </div>
+      <PageHeader
+        title="Pit Wall"
+        subtitle={
+          frame
+            ? `${PROFILE_LABELS[profile]}${frame.context.foregroundExe ? ` · ${frame.context.foregroundExe}` : ''}`
+            : 'Telemetria ao vivo do PC, alertas e caixa preta'
+        }
+      >
         <HudControls
           keepAwake={keepAwake}
           onKeepAwake={setKeepAwake}
@@ -73,7 +81,7 @@ export function PitWall() {
           oled={oled}
           onOled={setOled}
         />
-      </div>
+      </PageHeader>
 
       <StatusBar status={status} alert={recentAlert} />
 
@@ -84,11 +92,13 @@ export function PitWall() {
           ))}
         </div>
       ) : (
-        <p className="text-fg-2">
-          {status === 'idle'
-            ? 'O serviço nativo do PC Sentinel ainda não respondeu. No PC, abra o app; no celular, leia o QR Code de novo.'
-            : 'Aguardando a primeira leitura…'}
-        </p>
+        <UiCard>
+          <EmptyState>
+            {status === 'idle'
+              ? 'O serviço nativo do PC Sentinel ainda não respondeu. No PC, abra o app; no celular, leia o QR Code de novo.'
+              : 'Aguardando a primeira leitura…'}
+          </EmptyState>
+        </UiCard>
       )}
 
       <BlackBox store={store} refreshKey={crash?.report.id ?? null} />
@@ -165,10 +175,10 @@ function HudControls({
 }) {
   const wakeLockOn = keepAwake && wakeLock !== 'unsupported';
   return (
-    <div className="btn-group">
+    <>
       <button
         type="button"
-        className="btn subtle hud-toggle"
+        className="btn subtle toggle"
         aria-pressed={wakeLockOn}
         disabled={wakeLock === 'unsupported'}
         title={keepAwake ? WAKE_LOCK_HINT[wakeLock] : 'Tela sempre ativa: desligada.'}
@@ -180,24 +190,24 @@ function HudControls({
       </button>
       <button
         type="button"
-        className="btn subtle hud-toggle"
+        className="btn subtle toggle"
         aria-pressed={oled}
         title="Fundo preto absoluto e um deslocamento de 1 px por minuto para não marcar telas OLED."
         onClick={() => onOled(!oled)}
       >
-        <MoonStar size={14} aria-hidden />
+        <Moon size={14} aria-hidden />
         Proteção OLED
       </button>
-    </div>
+    </>
   );
 }
 
 function StatusBar({ status, alert }: { status: keyof typeof STATUS_TEXT; alert: string | null }) {
-  const tone =
-    status === 'online' ? 'bg-ok-bg text-ok' : status === 'stalled' ? 'bg-crit-bg text-crit' : 'bg-warn-bg text-warn';
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3" role="status" aria-live="polite">
-      <span className={`rounded-full px-3 py-1 text-sm font-semibold ${tone}`}>{STATUS_TEXT[status]}</span>
+    <div className="cluster" role="status" aria-live="polite">
+      <Badge tone={STATUS_TONE[status]} dot>
+        {STATUS_TEXT[status]}
+      </Badge>
       {alert && <span className="text-sm font-semibold text-warn">{alert}</span>}
     </div>
   );
@@ -220,10 +230,7 @@ function BlackBox({ store, refreshKey }: { store: SentinelStore; refreshKey: str
 
   if (reports.length === 0) return null;
   return (
-    <section className="mt-6">
-      <h2 className="section-title flex items-center gap-2">
-        <History size={16} aria-hidden /> Caixa preta
-      </h2>
+    <Section title="Caixa preta">
       <ul className="m-0 flex list-none flex-col gap-1 p-0">
         {reports.map((r) => (
           <li key={r.id}>
@@ -238,7 +245,7 @@ function BlackBox({ store, refreshKey }: { store: SentinelStore; refreshKey: str
           </li>
         ))}
       </ul>
-    </section>
+    </Section>
   );
 }
 
@@ -246,17 +253,14 @@ function HapticToggle({ store }: { store: SentinelStore }) {
   const [enabled, setEnabled] = useState(store.haptics.enabled);
   if (!store.haptics.supported) return null;
   return (
-    <label className="mt-4 flex items-center gap-2 text-sm text-fg-2">
-      <Vibrate size={16} aria-hidden />
-      <input
-        type="checkbox"
+    <Setting title="Vibrar com alertas durante jogos" description="Neste celular, cada alerta do PC vira uma vibração">
+      <Switch
         checked={enabled}
-        onChange={(e) => {
-          store.haptics.setEnabled(e.target.checked);
-          setEnabled(e.target.checked);
+        onChange={(checked) => {
+          store.haptics.setEnabled(checked);
+          setEnabled(checked);
         }}
       />
-      Vibrar com alertas durante jogos
-    </label>
+    </Setting>
   );
 }

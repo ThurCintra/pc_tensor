@@ -1,19 +1,19 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import {
-  RefreshCw,
-  Copy,
-  Download,
+  ArrowsClockwise,
   Check,
-  Monitor,
-  CircuitBoard,
+  Circuitry,
+  Copy,
   Cpu,
-  MonitorSmartphone,
-  MemoryStick,
-  HardDrive,
-  Network,
+  DownloadSimple,
   Eye,
-  EyeOff,
-} from 'lucide-react';
+  EyeSlash,
+  GraphicsCard,
+  HardDrives,
+  Memory,
+  Monitor,
+  Network,
+} from '@phosphor-icons/react';
 import { PageHeader, Card, Rows, Row, InfoBar, EmptyState } from '../components/ui';
 import { getTransport } from '../lib/transport';
 import { formatBytes, formatMHz, formatUptime, text, maskMac, isNum, DASH } from '../lib/format';
@@ -103,13 +103,13 @@ export function Hardware() {
     <div className="page">
       <PageHeader title="Hardware" subtitle="Componentes detectados neste PC">
         <button className="btn" onClick={() => load(true)} disabled={loading}>
-          <RefreshCw size={14} /> {loading ? 'Atualizando…' : 'Atualizar'}
+          <ArrowsClockwise size={14} /> {loading ? 'Atualizando…' : 'Atualizar'}
         </button>
         <button className="btn" onClick={handleCopy} disabled={!info}>
           {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copiado' : 'Copiar resumo'}
         </button>
         <button className="btn" onClick={handleExport} disabled={!info}>
-          <Download size={14} /> Exportar JSON
+          <DownloadSimple size={14} /> Exportar JSON
         </button>
       </PageHeader>
 
@@ -136,7 +136,7 @@ export function Hardware() {
             </Rows>
           </Card>
 
-          <Card title="Placa-mãe" icon={CircuitBoard}>
+          <Card title="Placa-mãe" icon={Circuitry}>
             <Rows>
               <Row label="Fabricante">{text(info.motherboard?.manufacturer)}</Row>
               <Row label="Modelo">{text(info.motherboard?.model)}</Row>
@@ -161,7 +161,7 @@ export function Hardware() {
             </Rows>
           </Card>
 
-          <Card title="Placa de vídeo" icon={MonitorSmartphone}>
+          <Card title="Placa de vídeo" icon={GraphicsCard}>
             <Rows>
               {(info.gpus || []).length === 0 && <Row label="GPU">{DASH}</Row>}
               {(info.gpus || []).map((g, i) => (
@@ -174,7 +174,7 @@ export function Hardware() {
             </Rows>
           </Card>
 
-          <Card title="Memória" icon={MemoryStick}>
+          <Card title="Memória" icon={Memory}>
             <Rows>
               <Row label="Total">{formatBytes(info.ram?.totalBytes, 0)}</Row>
               <Row label="Tipo / velocidade">
@@ -189,7 +189,7 @@ export function Hardware() {
             </Rows>
           </Card>
 
-          <Card title="Armazenamento" icon={HardDrive}>
+          <Card title="Armazenamento" icon={HardDrives}>
             <Rows>
               {(info.disks || []).map((d) => (
                 <Row key={d.id} label={`${text(d.label)} · ${d.type}`}>
@@ -208,7 +208,7 @@ export function Hardware() {
                 onClick={() => setShowMac((v) => !v)}
                 aria-label={showMac ? 'Ocultar endereço MAC' : 'Mostrar endereço MAC'}
               >
-                {showMac ? <EyeOff size={14} /> : <Eye size={14} />}
+                {showMac ? <EyeSlash size={14} /> : <Eye size={14} />}
               </button>
             }
           >

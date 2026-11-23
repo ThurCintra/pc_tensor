@@ -1,20 +1,8 @@
 import { useEffect, useState } from 'react';
-import { PageHeader, Switch, InfoBar, Badge } from '../components/ui';
+import { PageHeader, Section, Setting, Switch, InfoBar, Badge } from '../components/ui';
 import { getTransport } from '../lib/transport';
 import { CloudSection } from '../cloud/CloudSection';
 import { UpdatesSection } from './UpdatesSection';
-
-function Setting({ title, description, children }) {
-  return (
-    <div className="setting">
-      <div className="setting-text">
-        <div>{title}</div>
-        {description && <div className="setting-desc">{description}</div>}
-      </div>
-      {children}
-    </div>
-  );
-}
 
 /**
  * Preferências salvas em %APPDATA%\pc-sentinel\settings.json.
@@ -54,7 +42,7 @@ export function Settings({ appInfo, updates, onRelaunchAsAdmin }) {
   if (!saved || !draft)
     return (
       <div className="page">
-        <PageHeader title="Configurações" />
+        <PageHeader title="Configurações" subtitle="Preferências deste PC" />
       </div>
     );
 
@@ -70,24 +58,24 @@ export function Settings({ appInfo, updates, onRelaunchAsAdmin }) {
   );
 
   return (
-    <div className="page" style={{ maxWidth: 860 }}>
-      <PageHeader title="Configurações" />
+    <div className="page">
+      <PageHeader title="Configurações" subtitle="Preferências deste PC" />
       {error && (
         <InfoBar tone="critical" title="Não foi possível salvar.">
           {error}
         </InfoBar>
       )}
 
-      <h2 className="section-title">Atualizações</h2>
-      <UpdatesSection
-        appInfo={appInfo}
-        updates={updates}
-        checkOnStartup={saved.updates?.checkOnStartup ?? true}
-        onCheckOnStartupChange={(checkOnStartup) => save({ updates: { checkOnStartup } })}
-      />
+      <Section title="Atualizações">
+        <UpdatesSection
+          appInfo={appInfo}
+          updates={updates}
+          checkOnStartup={saved.updates?.checkOnStartup ?? true}
+          onCheckOnStartupChange={(checkOnStartup) => save({ updates: { checkOnStartup } })}
+        />
+      </Section>
 
-      <h2 className="section-title">Alertas de temperatura</h2>
-      <div>
+      <Section title="Alertas de temperatura">
         <Setting
           title="Avisar quando esquentar"
           description="Notificação do Windows, aviso no app e vibração no celular"
@@ -106,10 +94,9 @@ export function Settings({ appInfo, updates, onRelaunchAsAdmin }) {
         >
           {numberField('cooldownMinutes', (v) => ({ alerts: { cooldownMinutes: v } }))}
         </Setting>
-      </div>
+      </Section>
 
-      <h2 className="section-title">Sistema</h2>
-      <div>
+      <Section title="Sistema">
         <Setting
           title="Iniciar com o Windows"
           description={
@@ -138,43 +125,48 @@ export function Settings({ appInfo, updates, onRelaunchAsAdmin }) {
             <Badge tone="caution">Rode o terminal como administrador</Badge>
           )}
         </Setting>
-      </div>
+      </Section>
 
-      <h2 className="section-title">pc_tensor Cloud</h2>
-      <CloudSection />
+      <Section title="pc_tensor Cloud">
+        <CloudSection />
+      </Section>
 
-      <h2 className="section-title">Celular</h2>
-      <div>
+      <Section title="Celular">
         <Setting
           title="Porta do servidor"
           description="Trocar reinicia a transmissão; os celulares precisam ler o novo QR Code"
         >
           {numberField('mobilePort', (v) => ({ mobilePort: v }))}
         </Setting>
-      </div>
+      </Section>
 
-      <h2 className="section-title">Modo Boost</h2>
-      <div className="setting" style={{ display: 'block' }}>
-        <div style={{ marginBottom: 8 }}>Apps fechados ao liberar memória</div>
-        <div className="setting-desc" style={{ marginBottom: 8 }}>
-          Um executável por linha, por exemplo <code>Discord.exe</code>. Processos do sistema são ignorados.
-        </div>
-        <textarea
-          className="input"
-          rows={6}
-          spellCheck={false}
-          value={draft.boostTargets}
-          onChange={(e) => setDraft({ ...draft, boostTargets: e.target.value })}
-          onBlur={() =>
-            save({
-              boostTargets: draft.boostTargets
-                .split(/\r?\n/)
-                .map((l) => l.trim())
-                .filter(Boolean),
-            })
+      <Section title="Modo Boost">
+        <Setting
+          stacked
+          title="Apps fechados ao liberar memória"
+          description={
+            <>
+              Um executável por linha, por exemplo <code>Discord.exe</code>. Processos do sistema são ignorados.
+            </>
           }
-        />
-      </div>
+        >
+          <textarea
+            className="input"
+            rows={6}
+            spellCheck={false}
+            value={draft.boostTargets}
+            onChange={(e) => setDraft({ ...draft, boostTargets: e.target.value })}
+            onBlur={() =>
+              save({
+                boostTargets: draft.boostTargets
+                  .split(/\r?\n/)
+                  .map((l) => l.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+        </Setting>
+      </Section>
     </div>
   );
 }

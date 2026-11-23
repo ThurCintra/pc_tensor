@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Zap } from 'lucide-react';
+import { Lightning } from '@phosphor-icons/react';
 import type { TelemetryFrame } from '../realtime/protocol';
 import type { SentinelStore } from '../realtime/sentinel-store';
 import { BentoCard, Muted } from './BentoCard';
@@ -48,7 +48,7 @@ export function EnergyCard({ frame, store, highlight, className }: EnergyCardPro
   };
 
   return (
-    <BentoCard title="Taxímetro de energia" icon={Zap} highlight={highlight} className={className}>
+    <BentoCard title="Taxímetro de energia" icon={Lightning} highlight={highlight} className={className}>
       <div>
         <div className="text-xs text-fg-3">{hasToday ? 'Hoje' : 'Esta sessão'}</div>
         <div

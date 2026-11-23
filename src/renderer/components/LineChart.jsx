@@ -91,7 +91,15 @@ export function LineChart({ samples, series, min = 0, max = 100, unit = '', thre
         )}
 
         {paths.map((p) => (
-          <path key={p.key} d={p.d} fill="none" stroke={p.color} strokeWidth="2" strokeLinejoin="round" />
+          <path
+            key={p.key}
+            d={p.d}
+            fill="none"
+            color={p.color}
+            stroke={p.color}
+            strokeWidth="2"
+            strokeLinejoin="round"
+          />
         ))}
 
         {hovered && (
@@ -105,9 +113,7 @@ export function LineChart({ samples, series, min = 0, max = 100, unit = '', thre
             <i style={{ background: s.color }} />
             {s.label}
             {hovered && (
-              <b className="tabular" style={{ color: 'var(--text)' }}>
-                {isNum(hovered[s.key]) ? `${hovered[s.key].toFixed(1)}${unit}` : 'sem leitura'}
-              </b>
+              <b className="tabular">{isNum(hovered[s.key]) ? `${hovered[s.key].toFixed(1)}${unit}` : 'sem leitura'}</b>
             )}
           </span>
         ))}

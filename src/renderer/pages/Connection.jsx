@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Copy, Check, KeyRound, Smartphone } from 'lucide-react';
+import { Broadcast, Check, Copy, DeviceMobile, Key } from '@phosphor-icons/react';
 import { PageHeader, Card, Rows, Row, Badge, InfoBar, Switch } from '../components/ui';
 import { Dialog } from '../components/Dialog';
 import { getTransport } from '../lib/transport';
@@ -44,32 +44,39 @@ export function Connection() {
       {notice && <InfoBar tone="success">{notice}</InfoBar>}
 
       <div className="grid-2">
-        <Card title="Conectar" icon={Smartphone}>
+        <Card title="Conectar" icon={DeviceMobile}>
           {info?.isRunning ? (
-            <div
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}
-            >
+            <div className="stack-center">
               {info.qrCodeDataUrl && (
                 <img className="qr" src={info.qrCodeDataUrl} alt="QR Code para conectar o celular" />
               )}
-              <p className="muted" style={{ margin: 0 }}>
-                Aponte a câmera do celular para o código.
-              </p>
-              <button className="btn" onClick={copyLink} style={{ maxWidth: '100%' }}>
+              <p className="muted">Aponte a câmera do celular para o código.</p>
+              <button className="btn" onClick={copyLink}>
                 {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {copied ? 'Link copiado' : 'Copiar link'}
-                </span>
+                {copied ? 'Link copiado' : 'Copiar link'}
               </button>
             </div>
           ) : (
-            <p className="muted" style={{ margin: 0 }}>
-              A transmissão está desligada. Ligue-a para gerar o código.
-            </p>
+            <p className="muted">A transmissão está desligada. Ligue-a para gerar o código.</p>
           )}
         </Card>
 
-        <Card title="Transmissão">
+        <Card
+          title="Transmissão"
+          icon={Broadcast}
+          footer={
+            <div className="stack-sm">
+              <div>
+                <button className="btn danger" onClick={() => setConfirmRevoke(true)} disabled={!info}>
+                  <Key size={14} /> Desconectar todos os aparelhos
+                </button>
+              </div>
+              <p className="hint">
+                Quem tem o link pode encerrar processos e mudar o plano de energia. Compartilhe só com aparelhos seus.
+              </p>
+            </div>
+          }
+        >
           <Rows>
             <Row label="Transmitir para o celular">
               <Switch checked={Boolean(info?.isRunning)} onChange={toggleServer} disabled={!info} />
@@ -81,14 +88,6 @@ export function Connection() {
               </Badge>
             </Row>
           </Rows>
-          <div style={{ marginTop: 16 }}>
-            <button className="btn" onClick={() => setConfirmRevoke(true)} disabled={!info}>
-              <KeyRound size={14} /> Desconectar todos os aparelhos
-            </button>
-          </div>
-          <p className="faint" style={{ fontSize: 12, marginBottom: 0 }}>
-            Quem tem o link pode encerrar processos e mudar o plano de energia. Compartilhe só com aparelhos seus.
-          </p>
         </Card>
       </div>
 
@@ -98,7 +97,7 @@ export function Connection() {
           onClose={() => setConfirmRevoke(false)}
           footer={
             <>
-              <button className="btn accent" onClick={revoke}>
+              <button className="btn danger-fill" onClick={revoke}>
                 Desconectar
               </button>
               <button className="btn" onClick={() => setConfirmRevoke(false)}>
@@ -107,7 +106,7 @@ export function Connection() {
             </>
           }
         >
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="muted">
             Um novo código será gerado. Os celulares pareados perdem o acesso e precisam ler o QR Code de novo.
           </p>
         </Dialog>

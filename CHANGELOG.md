@@ -5,6 +5,21 @@ e as versões seguem o [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ## [Não lançado]
 
+## [1.5.0] - 2026-11-23
+
+### Adicionado
+
+- **Visual novo, minimalista:** cinzas neutros nos temas claro e escuro, bordas finas, sem sombras nem
+  gradientes, fonte Geist, ícones Phosphor em traço fino e um ícone novo do app (hexágono com pulso). Cor só
+  onde significa algo: âmbar para atenção, vermelho para crítico e verde para tudo certo.
+  - Os cards de cima da Visão geral deixam os medidores na mesma altura, e a barra da memória mostra o uso
+    (a paginação foi para o texto).
+  - Configurações com a mesma largura das outras telas e as opções de cada seção num bloco só.
+  - Pit Wall com o mesmo visual do resto do app (status, cards, interruptor de vibração).
+  - Confirmações de encerrar processo e desconectar aparelhos com o botão em vermelho.
+- **Ícones dos programas em Processos**, extraídos do próprio executável como no Gerenciador de Tarefas. O
+  caminho do executável fica no PC e não vai para o celular, que mostra um ícone genérico.
+
 ## [1.4.7] - 2026-11-20
 
 ### Corrigido
@@ -244,7 +259,8 @@ Primeira versão publicada.
 - Controles remotos: encerrar processo, plano de energia, Modo Boost e mídia.
 - Instalador para Windows com início automático e liberação da porta no firewall.
 
-[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.7...HEAD
+[Não lançado]: https://github.com/ThurCintra/pc_tensor/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.7...v1.5.0
 [1.4.7]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/ThurCintra/pc_tensor/compare/v1.4.4...v1.4.5

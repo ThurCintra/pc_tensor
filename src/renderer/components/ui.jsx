@@ -1,5 +1,10 @@
-import { Info, AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
+import { CheckCircle, Info, Warning, X, XCircle } from '@phosphor-icons/react';
 import { isNum } from '../lib/format';
+
+/*
+ * Componentes visuais compartilhados. As classes ficam em styles/components.css e styles/layout.css;
+ * as telas montam a interface com estes blocos em vez de estilos soltos.
+ */
 
 export function PageHeader({ title, subtitle, children }) {
   return (
@@ -13,20 +18,48 @@ export function PageHeader({ title, subtitle, children }) {
   );
 }
 
-export function Card({ title, icon: Icon, action, children, className = '', style }) {
+/** Grupo com título pequeno (Configurações, Caixa preta do Pit Wall); só texto, sem ícone, no visual limpo. */
+export function Section({ title, children }) {
   return (
-    <section className={`card ${className}`} style={style}>
+    <section className="section">
+      <h2 className="section-title">{title}</h2>
+      <div className="section-body">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * Card com cabeçalho (ícone, título e ação) e um rodapé opcional que fica sempre no pé,
+ * para que medidores e legendas de cards lado a lado fiquem na mesma altura.
+ */
+export function Card({ title, icon: Icon, action, footer, children, className = '' }) {
+  return (
+    <section className={`card ${className}`}>
       {(title || action) && (
         <div className="card-header">
-          <div className="card-title">
-            {Icon && <Icon size={16} />}
+          <h2 className="card-title">
+            {Icon && <Icon size={16} aria-hidden />}
             {title}
-          </div>
+          </h2>
           {action}
         </div>
       )}
       {children}
+      {footer && <div className="card-foot">{footer}</div>}
     </section>
+  );
+}
+
+/** Linha de configuração: texto à esquerda e o controle à direita (ou embaixo, com `stacked`). */
+export function Setting({ title, description, stacked = false, children, as: Tag = 'div', ...rest }) {
+  return (
+    <Tag className={`setting ${stacked ? 'stacked' : ''}`} {...rest}>
+      <div className="setting-text">
+        <div>{title}</div>
+        {description && <div className="setting-desc">{description}</div>}
+      </div>
+      {children}
+    </Tag>
   );
 }
 
@@ -46,6 +79,19 @@ export function Meter({ value, level = 'normal', label }) {
   );
 }
 
+/** Medidor com rótulo e valor em cima. */
+export function LabeledMeter({ label, valueText, value, level, ariaLabel, strong = false }) {
+  return (
+    <div>
+      <div className={`meter-label ${strong ? 'strong' : ''}`}>
+        <span>{label}</span>
+        <span className={`tabular ${strong ? 'muted' : ''}`}>{valueText}</span>
+      </div>
+      <Meter value={value} level={level} label={ariaLabel} />
+    </div>
+  );
+}
+
 export function Badge({ tone, dot = false, children }) {
   return (
     <span className={`badge ${tone || ''}`}>
@@ -55,18 +101,28 @@ export function Badge({ tone, dot = false, children }) {
   );
 }
 
-const INFOBAR_ICONS = { info: Info, caution: AlertTriangle, critical: XCircle, success: CheckCircle2 };
+const INFOBAR_ICONS = { info: Info, caution: Warning, critical: XCircle, success: CheckCircle };
 
-export function InfoBar({ tone = 'info', title, children, actions }) {
+/** Aviso em faixa. Com `onDismiss`, ganha o botão de fechar. */
+export function InfoBar({ tone = 'info', title, children, actions, onDismiss }) {
   const Icon = INFOBAR_ICONS[tone] || Info;
   return (
     <div className={`infobar ${tone === 'info' ? '' : tone}`} role={tone === 'critical' ? 'alert' : 'status'}>
-      <Icon size={16} />
+      <Icon size={16} aria-hidden />
       <div className="infobar-body">
         {title && <span className="infobar-title">{title}</span>}
         {children}
       </div>
-      {actions && <div className="infobar-actions">{actions}</div>}
+      {(actions || onDismiss) && (
+        <div className="infobar-actions">
+          {actions}
+          {onDismiss && (
+            <button className="btn subtle icon" onClick={onDismiss} aria-label="Fechar">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@
 Monitor de hardware para Windows: temperaturas, uso de CPU, memória, discos e rede em tempo real, com
 alertas quando o PC esquenta e acesso pelo celular na mesma rede Wi-Fi.
 
-Feito com Electron + React. O visual segue o Windows 11 e acompanha o tema claro ou escuro do sistema.
+Feito com Electron + React. O visual é minimalista e acompanha o tema claro ou escuro do sistema.
 
 ## Funcionalidades
 
